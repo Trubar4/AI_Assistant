@@ -1,0 +1,6 @@
+data/
+manuals/
+metadata.rdf
+__pycache__/
+*.pyc
+.env
