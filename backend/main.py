@@ -15,6 +15,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 load_dotenv()
@@ -58,6 +60,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Static files — API routes are registered first so they take priority
+_frontend = _ROOT / "frontend"
+_ds       = _ROOT / "design-system"
+_manuals  = _ROOT / "manuals"
+
+if _frontend.exists():
+    app.mount("/frontend",      StaticFiles(directory=str(_frontend)), name="frontend")
+if _ds.exists():
+    app.mount("/design-system", StaticFiles(directory=str(_ds)),       name="design-system")
+if _manuals.exists():
+    app.mount("/manuals",       StaticFiles(directory=str(_manuals)),   name="manuals")
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/frontend/MaschinenAssistent.html")
 
 
 # ---------------------------------------------------------------------------
