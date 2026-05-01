@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="co-light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maschinen-Assistent · LR 1104.03.08</title>
+  <link rel="stylesheet" href="../design-system/lds.css" />
+  <style>
+    /* ── App shell ──────────────────────────────────────────── */
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      display: grid;
+      grid-template-rows: 64px 1fr;
+      height: 100vh;
+    }
+    .app-layout {
+      display: grid;
+      grid-template-columns: 216px 1fr;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ────────────────────────────────────────────── */
+    .app-sidebar {
+      background: var(--r-bg-bright);
+      border-right: 1px solid var(--r-outline-bright);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .app-sidebar__footer {
+      margin-top: auto;
+      padding: var(--s-4) var(--s-4);
+      font: 400 11px/16px var(--font-text);
+      color: var(--r-on-surface-muted);
+      border-top: 1px solid var(--r-outline-bright);
+    }
+    .app-sidebar__footer span { color: var(--r-on-surface-disabled); }
+
+    /* ── Main area ──────────────────────────────────────────── */
+    .app-main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--r-bg-default);
+    }
+    .app-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--s-6) var(--s-6) var(--s-4);
+    }
+    .view { display: none; }
+    .view.is-active { display: block; }
+
+    /* ── Hero ───────────────────────────────────────────────── */
+    .app-hero {
+      max-width: 680px;
+      margin: var(--s-7) auto 0;
+      text-align: center;
+    }
+    .app-hero__eyebrow {
+      font: 400 12px/16px var(--font-text);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--r-on-surface-muted);
+      margin-bottom: var(--s-3);
+    }
+    .app-hero__title {
+      font: 400 32px/40px var(--font-head);
+      color: var(--r-on-surface-default);
+      margin: 0 0 var(--s-3);
+    }
+    .app-hero__title em {
+      font-style: normal;
+      font-family: var(--font-head-b);
+      color: var(--r-brand);
+      background: var(--p-steel-975);
+      padding: 0 6px;
+    }
+    .app-hero__sub {
+      font: 400 15px/24px var(--font-text);
+      color: var(--r-on-surface-muted);
+      margin: 0 0 var(--s-6);
+    }
+    .app-hero__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--s-2);
+      justify-content: center;
+      margin-top: var(--s-3);
+    }
+
+    /* ── Chat history ───────────────────────────────────────── */
+    #chat-history {
+      max-width: 760px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-5);
+    }
+    .chat-question {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .chat-question__bubble {
+      background: var(--r-surface-inverse);
+      color: var(--r-on-inverse);
+      padding: var(--s-3) var(--s-4);
+      border-radius: var(--radius-2);
+      max-width: 72%;
+      font: 400 15px/22px var(--font-text);
+    }
+
+    /* ── Answer card ────────────────────────────────────────── */
+    .answer-card {
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-2);
+      background: var(--r-surface-default);
+      box-shadow: var(--shadow-1);
+      overflow: hidden;
+    }
+    .answer-card__head {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      padding: var(--s-3) var(--s-5);
+      border-bottom: 1px solid var(--r-outline-bright);
+      background: var(--r-surface-high);
+    }
+    .answer-card__body {
+      padding: var(--s-5);
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-4);
+    }
+    .answer-card__foot {
+      padding: var(--s-3) var(--s-5);
+      border-top: 1px solid var(--r-outline-bright);
+      background: var(--r-surface-high);
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      flex-wrap: wrap;
+    }
+    .answer-card__foot .spacer { flex: 1; }
+    .answer-text {
+      font: 400 15px/24px var(--font-text);
+      color: var(--r-on-surface-default);
+      white-space: pre-wrap;
+    }
+    .answer-section-label {
+      font: 700 11px/14px var(--font-text-b);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--r-on-surface-muted);
+      margin-bottom: var(--s-2);
+    }
+
+    /* ── Sources ────────────────────────────────────────────── */
+    .source-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-2);
+    }
+    .source-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--s-3);
+      padding: var(--s-3) var(--s-4);
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-high);
+      color: inherit;
+      text-decoration: none;
+      transition: background var(--motion-fast);
+    }
+    .source-item:hover { background: var(--r-surface-higher); }
+    .source-item__info { flex: 1; min-width: 0; }
+    .source-item__crumb {
+      font: 400 11px/14px var(--font-text);
+      color: var(--r-on-surface-muted);
+      margin-bottom: 2px;
+    }
+    .source-item__title {
+      font: 500 13px/18px var(--font-text-m);
+      color: var(--r-on-surface-default);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .source-item__score {
+      font: 400 11px/14px var(--font-text);
+      color: var(--r-on-surface-muted);
+      flex-shrink: 0;
+    }
+
+    /* ── Disclaimer ─────────────────────────────────────────── */
+    .disclaimer {
+      display: flex;
+      gap: var(--s-3);
+      padding: var(--s-3) var(--s-4);
+      background: var(--r-warning-soft);
+      color: var(--r-on-warning-soft);
+      border-left: 4px solid var(--r-outline-warning);
+      border-radius: var(--radius-1);
+    }
+    .disclaimer__title {
+      font: 700 12px/16px var(--font-text-b);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+    }
+    .disclaimer__text {
+      font: 400 13px/18px var(--font-text);
+    }
+
+    /* ── Composer ───────────────────────────────────────────── */
+    .app-composer {
+      padding: var(--s-3) var(--s-5) var(--s-4);
+      border-top: 1px solid var(--r-outline-bright);
+      background: var(--r-bg-default);
+    }
+    .composer-row {
+      display: flex;
+      align-items: flex-end;
+      gap: var(--s-2);
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .composer-textarea {
+      flex: 1;
+      resize: none;
+      overflow: hidden;
+      min-height: 44px;
+      max-height: 160px;
+      line-height: 22px;
+      padding: 10px 14px;
+      background: var(--r-surface-default);
+      color: var(--r-on-surface-default);
+      border: 1px solid var(--r-outline-default);
+      border-radius: var(--radius-1);
+      font: 400 15px/22px var(--font-text);
+      outline: none;
+      transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+    }
+    .composer-textarea::placeholder { color: var(--r-on-surface-muted); }
+    .composer-textarea:focus {
+      border-color: var(--r-outline-variant);
+      box-shadow: 0 0 0 3px rgba(255,208,0,0.2);
+    }
+    .composer-hint {
+      max-width: 760px;
+      margin: var(--s-2) auto 0;
+      font: 400 11px/16px var(--font-text);
+      color: var(--r-on-surface-muted);
+      text-align: center;
+    }
+
+    /* ── Voice overlay ──────────────────────────────────────── */
+    .voice-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: var(--s-5);
+    }
+    .voice-overlay.is-active { display: flex; }
+    .voice-ring {
+      width: 96px; height: 96px;
+      border-radius: 50%;
+      background: var(--r-brand);
+      display: flex; align-items: center; justify-content: center;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,208,0,0.5); }
+      50%       { box-shadow: 0 0 0 24px rgba(255,208,0,0); }
+    }
+    .voice-overlay__label {
+      font: 400 16px/24px var(--font-text);
+      color: var(--p-white);
+    }
+    .voice-overlay__transcript {
+      font: 400 14px/20px var(--font-text);
+      color: rgba(255,255,255,0.6);
+      min-height: 20px;
+    }
+
+    /* ── Error code view ────────────────────────────────────── */
+    .errorcode-view {
+      max-width: 560px;
+      margin: var(--s-7) auto 0;
+    }
+    .errorcode-view h2 {
+      font: 400 22px/28px var(--font-head);
+      margin: 0 0 var(--s-2);
+    }
+    .errorcode-view p {
+      font: 400 14px/20px var(--font-text);
+      color: var(--r-on-surface-muted);
+      margin: 0 0 var(--s-5);
+    }
+    .errorcode-row {
+      display: flex;
+      gap: var(--s-2);
+      margin-bottom: var(--s-5);
+    }
+    .errorcode-row .lds-input { flex: 1; font-variant-numeric: tabular-nums; }
+    #errorcode-result { margin-top: var(--s-5); }
+    .ec-field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-1);
+      padding: var(--s-3) 0;
+      border-bottom: 1px solid var(--r-outline-bright);
+    }
+    .ec-field:last-child { border-bottom: none; }
+    .ec-field__label {
+      font: 700 11px/14px var(--font-text-b);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--r-on-surface-muted);
+    }
+    .ec-field__value {
+      font: 400 14px/20px var(--font-text);
+      color: var(--r-on-surface-default);
+    }
+
+    /* ── Loading skeleton ───────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--r-surface-high) 25%, var(--r-surface-higher) 50%, var(--r-surface-high) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: var(--radius-1);
+      height: 14px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* ── Inline SVG icon helper ─────────────────────────────── */
+    .icon { display: inline-flex; flex-shrink: 0; }
+  </style>
+</head>
+
+<body>
+
+<!-- ═══ APP BAR ═══════════════════════════════════════════════════════════ -->
+<header class="lds-appbar">
+  <svg height="18" viewBox="0 0 1000 124" aria-label="Liebherr" style="display:block;flex-shrink:0">
+    <path d="M238.9,95.2h31.4V124h-89.9V0h89v28.8h-30.6v19.8h27.9v26.1h-27.9V95.2z M101.3,124h59.3V0h-59.3V124z M58.4,0H0l0,124h85.4V90.8h-27V0z M654.1,74.6H682V48.5h-27.9V28.8h30.6V0h-89v124h89.9V95.2h-31.5V74.6z M423.4,90.7c0,16.2-9.5,26.8-25.7,30.7c-7.1,1.7-18.6,2.6-29,2.6h-80.5V0h80c10.2,0,21.4,0.9,28.4,2.6c15.8,3.9,25.1,14.5,25.1,30.7c0,14.9-8.8,25.1-20,28.4C413.7,64.4,423.4,75,423.4,90.7 M344.7,50.3h8.1c10.8,0,14.4-5.4,14.4-13s-3.6-13-14.4-13h-8.1V50.3z M369,86.3c0-8.1-3.7-13.5-15.3-13.5h-9v27h9C365.4,99.7,369,94.3,369,86.3 M517,45.8h-19.8V0h-58.4v124h58.4V76.4H517V124h58.4V0H517V45.8z M967.9,72.3c15.3-7,22.1-18.6,22.1-34.4c0-18.4-11-30.4-29.4-34.9c-8.1-1.9-21.2-3-33-3h-71.9v124h55.7V84.5h5l21.1,39.5h62.5L967.9,72.3z M919.5,58.4h-8.1V28.8h8.1c10.8,0,14.4,5.4,14.4,14.8C933.9,53,930.3,58.4,919.5,58.4z M815.4,72.3c15.3-7,22.1-18.6,22.1-34.4c0-18.4-11-30.4-29.4-34.9c-8.1-1.9-21.2-3-33-3h-71.9v124h55.7V84.5h5l21.1,39.5h62.5L815.4,72.3z M766.9,58.4h-8.1V28.8h8.1c10.8,0,14.4,5.4,14.4,14.8C781.3,53,777.7,58.4,766.9,58.4z"
+      fill="currentColor"/>
+  </svg>
+  <div class="lds-appbar__product"><strong>Maschinen</strong>Assistent</div>
+  <div style="flex:1"></div>
+  <span style="font:400 13px/18px var(--font-text);color:var(--p-steel-400);padding:0 var(--s-3);border-left:1px solid var(--p-steel-700)">LR 1104.03.08</span>
+  <span id="online-status" style="font:400 12px/16px var(--font-text);color:var(--p-steel-400);padding:0 var(--s-3)">Offline</span>
+</header>
+
+<!-- ═══ LAYOUT ════════════════════════════════════════════════════════════ -->
+<div class="app-layout">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+  <aside class="app-sidebar">
+    <nav class="lds-nav" style="padding-top:var(--s-3)">
+      <button class="lds-nav__item lds-nav__item--active" data-view="chat" onclick="switchView('chat')">
+        <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z"/></svg>
+        Assistent
+      </button>
+      <button class="lds-nav__item" data-view="errorcode" onclick="switchView('errorcode')">
+        <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="6" y="8" width="12" height="11" rx="6"/><path d="M9 8a3 3 0 0 1 6 0M2 13h4M18 13h4M3 8l3 2M21 8l-3 2M3 18l3-2M21 18l-3-2M12 8v11"/></svg>
+        Fehlercodes
+      </button>
+    </nav>
+    <div class="app-sidebar__footer">
+      v0.1 &nbsp;<span>MTP-Demo</span>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────────── -->
+  <main class="app-main">
+
+    <!-- Chat view -->
+    <div id="view-chat" class="view is-active app-scroll">
+      <div id="hero" class="app-hero">
+        <div class="app-hero__eyebrow">Maschinen-Assistent · LR 1104.03.08</div>
+        <h1 class="app-hero__title">Wie kann ich <em>helfen?</em></h1>
+        <p class="app-hero__sub">
+          Stellen Sie eine Frage in natürlicher Sprache zu Aufrüsten, Wartung,
+          Sicherheit oder Fehlercodes. Antworten kommen direkt aus dem
+          maschinenspezifischen Manual.
+        </p>
+        <div class="app-hero__chips">
+          <button class="lds-pill" onclick="prefill('Getriebeölstand prüfen')">Getriebeölstand prüfen</button>
+          <button class="lds-pill" onclick="prefill('Ausleger aufrüsten Schritte')">Ausleger aufrüsten</button>
+          <button class="lds-pill" onclick="prefill('Wartungsintervalle Übersicht')">Wartungsintervalle</button>
+          <button class="lds-pill" onclick="prefill('Sicherheitshinweise Betrieb')">Sicherheitshinweise</button>
+          <button class="lds-pill" onclick="prefill('Hydraulik Störung')">Hydraulik Störung</button>
+        </div>
+      </div>
+      <div id="chat-history"></div>
+    </div>
+
+    <!-- Error code view -->
+    <div id="view-errorcode" class="view app-scroll">
+      <div class="errorcode-view">
+        <h2>Fehlercode nachschlagen</h2>
+        <p>Fehlercode eingeben, um Beschreibung, Ursache und empfohlene Massnahme abzurufen.</p>
+        <div class="errorcode-row">
+          <input class="lds-input" id="ec-input" type="text" placeholder="z. B. E1042"
+            style="font-variant-numeric:tabular-nums;text-transform:uppercase"
+            onkeydown="if(event.key==='Enter')lookupCode()" />
+          <button class="lds-btn lds-btn--primary" onclick="lookupCode()">Nachschlagen</button>
+        </div>
+        <div id="errorcode-result"></div>
+      </div>
+    </div>
+
+    <!-- Composer (always visible) -->
+    <div class="app-composer" id="composer-wrap">
+      <div class="composer-row">
+        <textarea class="composer-textarea" id="question-input"
+          placeholder='Frage zur Maschine stellen…  z. B. „Welche Schritte beim Aufrüsten mit 60 m?"'
+          rows="1"
+          oninput="autoResize(this)"
+          onkeydown="handleKey(event)"></textarea>
+        <button class="lds-btn lds-btn--ghost lds-btn--icon" id="voice-btn"
+          title="Spracheingabe" onclick="toggleVoice()" style="flex-shrink:0">
+          <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <rect x="9" y="3" width="6" height="12" rx="3"/>
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>
+          </svg>
+        </button>
+        <button class="lds-btn lds-btn--primary" id="send-btn" onclick="sendQuestion()">
+          Senden
+        </button>
+      </div>
+      <div class="composer-hint">
+        Antworten basieren auf dem Manual — keine Garantie auf Vollständigkeit. Sicherheitsrelevante Schritte stets im Original prüfen.
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══ VOICE OVERLAY ═════════════════════════════════════════════════════ -->
+<div class="voice-overlay" id="voice-overlay" onclick="stopVoice()">
+  <div class="voice-ring">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--p-steel-975)" stroke-width="1.6" stroke-linecap="round">
+      <rect x="9" y="3" width="6" height="12" rx="3"/>
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>
+    </svg>
+  </div>
+  <div class="voice-overlay__label">Sprechen Sie jetzt…</div>
+  <div class="voice-overlay__transcript" id="voice-transcript"></div>
+  <button class="lds-btn lds-btn--ghost" style="color:var(--p-white);border-color:var(--p-steel-500)"
+    onclick="stopVoice()">Abbrechen</button>
+</div>
+
+<!-- ═══ SCRIPT ════════════════════════════════════════════════════════════ -->
+<script>
+const API = 'http://localhost:8000';
+
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+function icon(name, size = 16) {
+  const paths = {
+    external: '<path d="M14 4h6v6M20 4 10 14M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6" stroke-linecap="round" stroke-linejoin="round"/>',
+    speaker:  '<path d="M4 9v6h4l5 4V5L8 9H4z" stroke-linejoin="round"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14" stroke-linecap="round"/>',
+    copy:     '<path d="M9 9h11v11H9zM5 5h11v3M5 5v11h3" stroke-linejoin="round"/>',
+    doc:      '<path d="M6 2h8l5 5v15H6V2zM14 2v6h5" stroke-linejoin="round"/>',
+    alert:    '<path d="M12 3 2 20h20L12 3z" stroke-linejoin="round"/><path d="M12 10v5M12 17.5v.5" stroke-linecap="round"/>',
+  };
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${paths[name] || ''}</svg>`;
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(160, el.scrollHeight) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuestion(); }
+}
+
+function prefill(text) {
+  const el = document.getElementById('question-input');
+  el.value = text;
+  autoResize(el);
+  el.focus();
+}
+
+function switchView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('is-active'));
+  document.getElementById('view-' + id).classList.add('is-active');
+  document.querySelectorAll('.lds-nav__item').forEach(b => {
+    b.classList.toggle('lds-nav__item--active', b.dataset.view === id);
+  });
+  const composer = document.getElementById('composer-wrap');
+  composer.style.display = id === 'chat' ? '' : 'none';
+}
+
+// ── Health check ─────────────────────────────────────────────────────────
+
+async function checkHealth() {
+  try {
+    const r = await fetch(API + '/health');
+    if (r.ok) {
+      document.getElementById('online-status').textContent = 'Online · V03.06';
+      document.getElementById('online-status').style.color = 'var(--r-on-success-soft)';
+    }
+  } catch { /* stays offline */ }
+}
+
+// ── Ask ───────────────────────────────────────────────────────────────────
+
+async function sendQuestion() {
+  const el = document.getElementById('question-input');
+  const q = el.value.trim();
+  if (!q) return;
+
+  el.value = '';
+  autoResize(el);
+  document.getElementById('hero').style.display = 'none';
+
+  const history = document.getElementById('chat-history');
+
+  // Question bubble
+  const qDiv = document.createElement('div');
+  qDiv.className = 'chat-question';
+  qDiv.innerHTML = `<div class="chat-question__bubble">${escHtml(q)}</div>`;
+  history.appendChild(qDiv);
+
+  // Loading card
+  const loadDiv = document.createElement('div');
+  loadDiv.innerHTML = `
+    <div class="answer-card">
+      <div class="answer-card__body" style="gap:var(--s-3)">
+        <div class="skeleton" style="width:60%"></div>
+        <div class="skeleton" style="width:90%"></div>
+        <div class="skeleton" style="width:75%"></div>
+      </div>
+    </div>`;
+  history.appendChild(loadDiv);
+  loadDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+  document.getElementById('send-btn').disabled = true;
+
+  let data;
+  try {
+    const resp = await fetch(API + '/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q }),
+    });
+    data = await resp.json();
+  } catch (err) {
+    loadDiv.innerHTML = renderError('Verbindung zum Backend fehlgeschlagen. Starten Sie den Server mit: uvicorn backend.main:app');
+    document.getElementById('send-btn').disabled = false;
+    return;
+  }
+
+  loadDiv.innerHTML = renderAnswer(q, data);
+  document.getElementById('send-btn').disabled = false;
+  loadDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function renderAnswer(question, data) {
+  const grounding = data.grounding || 'TEILWEISE';
+  const badgeCls = grounding === 'BELEGT' ? 'lds-badge--success'
+    : grounding === 'NICHT_BELEGT' ? 'lds-badge--error' : 'lds-badge--warning';
+
+  const disclaimer = data.fallback_used ? `
+    <div class="disclaimer">
+      <div>${icon('alert', 18)}</div>
+      <div>
+        <div class="disclaimer__title">Antwort nicht eindeutig belegt</div>
+        <div class="disclaimer__text">Bitte direkt im Manual nachschlagen oder Liebherr-Service kontaktieren. Die unten verlinkte Quelle ist die nächstbeste Übereinstimmung.</div>
+      </div>
+    </div>` : '';
+
+  const sources = (data.sources || []).map(s => {
+    const href = `../manuals/${escHtml(s.filename)}`;
+    const score = s.score ? `${Math.round(s.score)}%` : '';
+    return `
+      <a class="source-item" href="${href}" target="_blank">
+        <div>${icon('doc', 14)}</div>
+        <div class="source-item__info">
+          <div class="source-item__title">${escHtml(s.title)}</div>
+          <div class="source-item__crumb">${escHtml(s.filename)}</div>
+        </div>
+        ${score ? `<div class="source-item__score">${score}</div>` : ''}
+      </a>`;
+  }).join('');
+
+  const sourcesBlock = sources ? `
+    <div>
+      <div class="answer-section-label">Quellen im Manual</div>
+      <div class="source-list">${sources}</div>
+    </div>` : '';
+
+  return `
+    <div class="answer-card">
+      <div class="answer-card__head">
+        <span class="lds-badge ${badgeCls}">${escHtml(grounding)}</span>
+        <span style="font:400 13px/18px var(--font-text);color:var(--r-on-surface-muted)">${escHtml(question)}</span>
+      </div>
+      <div class="answer-card__body">
+        ${disclaimer}
+        <div class="answer-text">${escHtml(data.answer || '')}</div>
+        ${sourcesBlock}
+      </div>
+      <div class="answer-card__foot">
+        ${sources ? `<a class="lds-btn lds-btn--primary" href="${`../manuals/${escHtml((data.sources||[])[0]?.filename||'index.html')}`}" target="_blank">${icon('external',16)} Im Manual öffnen</a>` : ''}
+        <button class="lds-btn lds-btn--ghost" onclick="speak(this)" data-text="${escHtml(data.answer||'')}">
+          ${icon('speaker',16)} Vorlesen
+        </button>
+        <div class="spacer"></div>
+        <button class="lds-btn lds-btn--ghost lds-btn--icon" title="Kopieren" onclick="copyAnswer(this)" data-text="${escHtml(data.answer||'')}">
+          ${icon('copy',16)}
+        </button>
+      </div>
+    </div>`;
+}
+
+function renderError(msg) {
+  return `
+    <div class="lds-alert lds-alert--error">
+      <div>${icon('alert', 18)}</div>
+      <div>
+        <div class="lds-alert__title">Fehler</div>
+        <div class="lds-alert__text">${escHtml(msg)}</div>
+      </div>
+    </div>`;
+}
+
+// ── Error code lookup ─────────────────────────────────────────────────────
+
+async function lookupCode() {
+  const el = document.getElementById('ec-input');
+  const code = el.value.trim();
+  if (!code) return;
+
+  const resultDiv = document.getElementById('errorcode-result');
+  resultDiv.innerHTML = `<div class="skeleton" style="height:80px"></div>`;
+
+  let data;
+  try {
+    const resp = await fetch(API + '/errorcode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    });
+    data = await resp.json();
+  } catch {
+    resultDiv.innerHTML = renderError('Verbindung zum Backend fehlgeschlagen.');
+    return;
+  }
+
+  if (!data.found) {
+    resultDiv.innerHTML = `
+      <div class="lds-alert lds-alert--warning">
+        <div>${icon('alert', 18)}</div>
+        <div>
+          <div class="lds-alert__title">Nicht gefunden</div>
+          <div class="lds-alert__text">Fehlercode <strong>${escHtml(code)}</strong> ist in der Datenbank nicht vorhanden.</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  resultDiv.innerHTML = `
+    <div class="lds-card lds-card--elevated">
+      <div class="lds-card__header">
+        <span class="lds-badge lds-badge--error">${escHtml(data.code)}</span>
+        <span style="font:500 14px/20px var(--font-text-m)">${escHtml(data.description)}</span>
+      </div>
+      <div class="lds-card__body">
+        ${data.cause ? `<div class="ec-field"><div class="ec-field__label">Ursache</div><div class="ec-field__value">${escHtml(data.cause)}</div></div>` : ''}
+        ${data.action ? `<div class="ec-field"><div class="ec-field__label">Massnahme</div><div class="ec-field__value">${escHtml(data.action)}</div></div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ── Voice input ───────────────────────────────────────────────────────────
+
+let recognition = null;
+
+function toggleVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    alert('Spracheingabe ist in diesem Browser nicht verfügbar. Bitte Chrome oder Edge verwenden.');
+    return;
+  }
+  if (recognition) { stopVoice(); return; }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = 'de-DE';
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  recognition.onresult = (e) => {
+    const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+    document.getElementById('voice-transcript').textContent = transcript;
+    if (e.results[e.results.length - 1].isFinal) {
+      document.getElementById('question-input').value = transcript;
+      autoResize(document.getElementById('question-input'));
+      stopVoice();
+    }
+  };
+  recognition.onerror = () => stopVoice();
+  recognition.onend = () => stopVoice();
+
+  recognition.start();
+  document.getElementById('voice-overlay').classList.add('is-active');
+  document.getElementById('voice-transcript').textContent = '';
+}
+
+function stopVoice() {
+  if (recognition) { try { recognition.stop(); } catch {} recognition = null; }
+  document.getElementById('voice-overlay').classList.remove('is-active');
+}
+
+// ── Voice output ──────────────────────────────────────────────────────────
+
+function speak(btn) {
+  const text = btn.dataset.text;
+  if (!text) return;
+  if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return; }
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'de-DE';
+  utt.rate = 0.95;
+  window.speechSynthesis.speak(utt);
+}
+
+// ── Copy ──────────────────────────────────────────────────────────────────
+
+function copyAnswer(btn) {
+  navigator.clipboard.writeText(btn.dataset.text).catch(() => {});
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
+checkHealth();
+</script>
+
+</body>
+</html>
