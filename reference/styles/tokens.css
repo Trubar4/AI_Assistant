@@ -1,0 +1,160 @@
+/* Liebherr Pattern Library tokens — extracted from patternlib.css
+   Only the subset we use, recomposed for direct stylesheet use. */
+
+@import url("./fonts.css");
+
+:root {
+  /* Spacing */
+  --spacing-0: 0;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 24px;
+  --spacing-6: 32px;
+  --spacing-7: 48px;
+  --spacing-8: 64px;
+
+  /* Brand colors */
+  --color-yellow: #ffd000;
+  --color-artic-blue: #003057;
+  --color-blue: #2779c4;
+  --color-black: #000;
+  --color-white: #fff;
+
+  /* Steel neutrals */
+  --color-steel-50:  #f9fafb;
+  --color-steel-100: #f0f3f6;
+  --color-steel-200: #e5e8ed;
+  --color-steel-300: #d3d8dd;
+  --color-steel-400: #bdc4ca;
+  --color-steel-500: #9ea4ab;
+  --color-steel-600: #888e94;
+  --color-steel-700: #6b7278;
+  --color-steel-800: #51585d;
+  --color-steel-900: #353a40;
+  --color-steel-950: #282c30;
+  --color-steel-975: #202326;
+
+  /* Accents */
+  --color-clay:        #eb6f24;
+  --color-clay-dark:   #b0542e;
+  --color-clay-light:  #f89939;
+  --color-clay-light-300: #fde1c4;
+  --color-leaf:        #2ea675;
+  --color-leaf-dark:   #33825e;
+  --color-slate:       #5789a4;
+  --color-slate-dark:  #3b6579;
+  --color-burgundy:    #b81962;
+
+  /* Functional */
+  --color-error:       #e52828;
+  --color-error-soft:  #f06969;
+  --color-error-bg:    #ffd5d5;
+  --color-success:     #398713;
+  --color-success-soft:#58a649;
+  --color-success-bg:  #d5f4cf;
+  --color-warning:     #b0542e;
+  --color-warning-soft:#e3a735;
+
+  /* Type scale (corporate) */
+  --h1-size: 48px;  --h1-lh: 52px;
+  --h2-size: 40px;  --h2-lh: 44px;
+  --h3-size: 32px;  --h3-lh: 36px;
+  --h4-size: 28px;  --h4-lh: 32px;
+  --h5-size: 24px;  --h5-lh: 28px;
+  --h6-size: 20px;  --h6-lh: 24px;
+  --copy-size: 16px;        --copy-lh: 24px;
+  --copy-small-size: 14px;  --copy-small-lh: 20px;
+  --copy-xs-size: 12px;     --copy-xs-lh: 16px;
+
+  /* Theme defaults — light */
+  --bg-page:        var(--color-white);
+  --bg-surface:     var(--color-white);
+  --bg-elevated:    var(--color-steel-50);
+  --bg-input:       var(--color-white);
+  --bg-chip:        var(--color-steel-100);
+  --bg-divider:     var(--color-steel-200);
+  --bg-rail:        var(--color-steel-50);
+  --fg-primary:     #000;
+  --fg-secondary:   var(--color-steel-700);
+  --fg-tertiary:    var(--color-steel-600);
+  --fg-on-yellow:   #000;
+  --fg-on-dark:     var(--color-white);
+  --border:         var(--color-steel-200);
+  --border-strong:  var(--color-steel-400);
+
+  --shadow-1: 0 1px 2px rgba(32, 35, 38, 0.06);
+  --shadow-2: 0 2px 8px rgba(32, 35, 38, 0.08), 0 1px 2px rgba(32, 35, 38, 0.04);
+  --shadow-3: 0 12px 32px rgba(32, 35, 38, 0.10), 0 2px 8px rgba(32, 35, 38, 0.04);
+
+  /* Density */
+  --density: 1;
+}
+
+[data-theme="dark"] {
+  --bg-page:        var(--color-steel-975);
+  --bg-surface:     var(--color-steel-950);
+  --bg-elevated:    var(--color-steel-900);
+  --bg-input:       var(--color-steel-900);
+  --bg-chip:        var(--color-steel-900);
+  --bg-divider:     var(--color-steel-900);
+  --bg-rail:        var(--color-steel-975);
+  --fg-primary:     var(--color-white);
+  --fg-secondary:   var(--color-steel-300);
+  --fg-tertiary:    var(--color-steel-400);
+  --border:         var(--color-steel-900);
+  --border-strong:  var(--color-steel-800);
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-2: 0 2px 12px rgba(0,0,0,0.5);
+  --shadow-3: 0 12px 32px rgba(0,0,0,0.55);
+}
+
+/* Reset */
+*,*::before,*::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg-page);
+  color: var(--fg-primary);
+  font-family: "LiebherrText-Regular", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: var(--copy-size);
+  line-height: var(--copy-lh);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button { font-family: inherit; cursor: pointer; }
+input, textarea { font-family: inherit; }
+
+/* Type utilities */
+.font-head        { font-family: "LiebherrHead-Regular", "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.font-head-black  { font-family: "LiebherrHead-Black",   "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 900; }
+.font-text        { font-family: "LiebherrText-Regular", "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.font-text-medium { font-family: "LiebherrText-Medium",  "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.font-text-bold   { font-family: "LiebherrText-Bold",    "Helvetica Neue", Helvetica, Arial, sans-serif; }
+
+.h1 { font-family: "LiebherrHead-Black", sans-serif; font-size: var(--h1-size); line-height: var(--h1-lh); margin: 0; letter-spacing: -0.01em; }
+.h2 { font-family: "LiebherrHead-Black", sans-serif; font-size: var(--h2-size); line-height: var(--h2-lh); margin: 0; letter-spacing: -0.005em; }
+.h3 { font-family: "LiebherrHead-Black", sans-serif; font-size: var(--h3-size); line-height: var(--h3-lh); margin: 0; }
+.h4 { font-family: "LiebherrHead-Regular", sans-serif; font-size: var(--h4-size); line-height: var(--h4-lh); margin: 0; }
+.h5 { font-family: "LiebherrHead-Regular", sans-serif; font-size: var(--h5-size); line-height: var(--h5-lh); margin: 0; }
+.h6 { font-family: "LiebherrHead-Regular", sans-serif; font-size: var(--h6-size); line-height: var(--h6-lh); margin: 0; font-weight: 700; }
+
+.copy        { font-size: var(--copy-size); line-height: var(--copy-lh); }
+.copy-small  { font-size: var(--copy-small-size); line-height: var(--copy-small-lh); }
+.copy-xs     { font-size: var(--copy-xs-size); line-height: var(--copy-xs-lh); letter-spacing: 0.02em; }
+
+/* Selection */
+::selection { background: var(--color-yellow); color: #000; }
+
+/* Focus */
+:focus-visible {
+  outline: 2px solid var(--color-yellow);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+/* Scrollbar (dark-friendly, subtle) */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }

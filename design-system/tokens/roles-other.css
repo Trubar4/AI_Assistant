@@ -1,0 +1,107 @@
+/* CO/Dark — Corporate Dark (cab-friendly) */
+[data-theme="co-dark"] {
+  --r-bg-colored:        var(--p-yellow-400);
+  --r-bg-default:        var(--p-steel-975);
+  --r-bg-bright:         var(--p-steel-950);
+  --r-bg-dim:            var(--p-steel-900);
+
+  --r-surface-primary:   var(--p-yellow-400);
+  --r-surface-default:   var(--p-steel-950);
+  --r-surface-high:      var(--p-steel-900);
+  --r-surface-higher:    var(--p-steel-800);
+  --r-surface-disabled:  var(--p-steel-800);
+
+  --r-surface-prominent-hover:   var(--p-clay-500);
+  --r-surface-prominent-pressed: var(--p-clay-700);
+  --r-surface-moderate-hover:    var(--p-steel-900);
+  --r-surface-moderate-pressed:  var(--p-steel-800);
+  --r-surface-subtle-hover:      var(--p-steel-900);
+  --r-surface-subtle-pressed:    var(--p-steel-800);
+
+  --r-outline-default:   var(--p-steel-700);
+  --r-outline-bright:    var(--p-steel-800);
+  --r-outline-brightest: var(--p-steel-900);
+  --r-outline-dim:       var(--p-steel-500);
+  --r-outline-variant:   var(--p-yellow-400);
+  --r-outline-disabled:  var(--p-steel-700);
+
+  --r-on-color:          var(--p-black);
+  --r-on-surface-default:var(--p-white);
+  --r-on-surface-muted:  var(--p-steel-300);
+  --r-on-surface-disabled:var(--p-steel-600);
+
+  --r-surface-inverse:        var(--p-white);
+  --r-surface-inverse-high:   var(--p-steel-100);
+  --r-surface-inverse-higher: var(--p-steel-300);
+  --r-on-inverse:             var(--p-black);
+  --r-on-inverse-muted:       var(--p-steel-700);
+  --r-outline-on-inverse:     var(--p-steel-300);
+
+  --r-accent-1: var(--p-slate-500);   --r-accent-1-hover: var(--p-slate-300);
+  --r-accent-1-text: var(--p-slate-300); --r-on-accent-1: var(--p-white);
+  --r-accent-2: var(--p-terra-500);   --r-accent-2-hover: var(--p-terra-300);
+  --r-accent-2-text: var(--p-terra-300); --r-on-accent-2: var(--p-white);
+  --r-accent-3: var(--p-clay-500);    --r-accent-3-hover: var(--p-clay-300);
+  --r-accent-3-text: var(--p-clay-300); --r-on-accent-3: var(--p-white);
+  --r-accent-4: var(--p-leaf-500);    --r-accent-4-hover: var(--p-leaf-300);
+  --r-accent-4-text: var(--p-leaf-300); --r-on-accent-4: var(--p-white);
+  --r-accent-5: var(--p-ruby-500);    --r-accent-5-hover: var(--p-ruby-300);
+  --r-accent-5-text: var(--p-ruby-300); --r-on-accent-5: var(--p-white);
+
+  --r-error: var(--p-error-500);     --r-error-hover: var(--p-error-300);
+  --r-on-error: var(--p-white);      --r-error-soft: rgba(229,40,40,0.18);
+  --r-on-error-soft: var(--p-error-300); --r-outline-error: var(--p-error-300);
+  --r-warning: var(--p-warning-300); --r-warning-hover: var(--p-warning-500);
+  --r-on-warning: var(--p-warning-700); --r-warning-soft: rgba(227,167,53,0.18);
+  --r-on-warning-soft: var(--p-warning-300); --r-outline-warning: var(--p-warning-300);
+  --r-success: var(--p-success-500); --r-success-hover: var(--p-success-300);
+  --r-on-success: var(--p-white);    --r-success-soft: rgba(57,135,19,0.18);
+  --r-on-success-soft: var(--p-success-300); --r-outline-success: var(--p-success-300);
+
+  --r-brand: var(--p-yellow-400); --r-on-brand: var(--p-black);
+  --r-focus-ring: var(--p-yellow-400);
+}
+
+/* HA/Light — Hausgeräte Light */
+[data-theme="ha-light"] {
+  --r-bg-colored:        var(--p-blue-700);
+  --r-bg-default:        var(--p-white);
+  --r-bg-bright:         var(--p-steel-50);
+  --r-bg-dim:            var(--p-steel-100);
+  --r-surface-primary:   var(--p-blue-500);
+  --r-surface-default:   var(--p-white);
+  --r-surface-high:      var(--p-steel-50);
+  --r-surface-higher:    var(--p-steel-100);
+  --r-surface-disabled:  var(--p-steel-200);
+  --r-outline-default:   var(--p-steel-300);
+  --r-outline-bright:    var(--p-steel-200);
+  --r-outline-variant:   var(--p-blue-700);
+  --r-on-color:          var(--p-white);
+  --r-on-surface-default:var(--p-black);
+  --r-on-surface-muted:  var(--p-steel-700);
+  --r-surface-inverse:   var(--p-blue-700);
+  --r-on-inverse:        var(--p-white);
+  --r-accent-1: var(--p-slate-500); --r-accent-1-hover: var(--p-slate-700); --r-on-accent-1: var(--p-white);
+  --r-accent-3: var(--p-clay-500);  --r-accent-3-hover: var(--p-clay-700);  --r-on-accent-3: var(--p-white);
+  --r-accent-4: var(--p-leaf-500);  --r-accent-4-hover: var(--p-leaf-700);  --r-on-accent-4: var(--p-white);
+  --r-accent-5: var(--p-ruby-500);  --r-accent-5-hover: var(--p-ruby-700);  --r-on-accent-5: var(--p-white);
+  --r-error: var(--p-error-500);    --r-on-error: var(--p-white); --r-error-soft: var(--p-error-100); --r-on-error-soft: var(--p-error-700);
+  --r-warning: var(--p-warning-300);--r-on-warning: var(--p-warning-700); --r-warning-soft: var(--p-warning-100); --r-on-warning-soft: var(--p-warning-700);
+  --r-success: var(--p-success-500);--r-on-success: var(--p-white); --r-success-soft: var(--p-success-100); --r-on-success-soft: var(--p-success-700);
+  --r-brand: var(--p-blue-500); --r-on-brand: var(--p-white); --r-focus-ring: var(--p-blue-500);
+}
+
+/* HA/Dark */
+[data-theme="ha-dark"] {
+  --r-bg-default: var(--p-steel-975); --r-bg-bright: var(--p-steel-950); --r-bg-dim: var(--p-steel-900);
+  --r-surface-primary: var(--p-blue-500); --r-surface-default: var(--p-steel-950);
+  --r-surface-high: var(--p-steel-900); --r-surface-higher: var(--p-steel-800);
+  --r-outline-default: var(--p-steel-700); --r-outline-bright: var(--p-steel-800); --r-outline-variant: var(--p-blue-500);
+  --r-on-surface-default: var(--p-white); --r-on-surface-muted: var(--p-steel-300);
+  --r-surface-inverse: var(--p-white); --r-on-inverse: var(--p-black);
+  --r-accent-3: var(--p-clay-500); --r-accent-3-hover: var(--p-clay-300); --r-on-accent-3: var(--p-white);
+  --r-error: var(--p-error-500); --r-on-error: var(--p-white); --r-error-soft: rgba(229,40,40,0.18); --r-on-error-soft: var(--p-error-300);
+  --r-warning: var(--p-warning-300); --r-on-warning: var(--p-warning-700); --r-warning-soft: rgba(227,167,53,0.18); --r-on-warning-soft: var(--p-warning-300);
+  --r-success: var(--p-success-500); --r-on-success: var(--p-white); --r-success-soft: rgba(57,135,19,0.18); --r-on-success-soft: var(--p-success-300);
+  --r-brand: var(--p-blue-500); --r-on-brand: var(--p-white); --r-focus-ring: var(--p-blue-500);
+}

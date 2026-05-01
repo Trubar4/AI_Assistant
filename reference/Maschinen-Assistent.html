@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="light" data-density="comfortable">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maschinen-Assistent · Liebherr LR 1300 SX</title>
+
+  <link rel="stylesheet" href="styles/tokens.css" />
+  <link rel="stylesheet" href="styles/components.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="data/demo-data.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+
+// ===== tweaks-panel.jsx =====
+
+// tweaks-panel.jsx
+// Reusable Tweaks shell + form-control helpers.
+//
+// Owns the host protocol (listens for __activate_edit_mode / __deactivate_edit_mode,
+// posts __edit_mode_available / __edit_mode_set_keys / __edit_mode_dismissed) so
+// individual prototypes don't re-roll it. Ships a consistent set of controls so you
+// don't hand-draw <input type="range">, segmented radios, steppers, etc.
+//
+// Usage (in an HTML file that loads React + Babel):
+//
+//   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+//     "primaryColor": "#D97757",
+//     "fontSize": 16,
+//     "density": "regular",
+//     "dark": false
+//   }/*EDITMODE-END*/;
+//
+//   function App() {
+//     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+//     return (
+//       <div style={{ fontSize: t.fontSize, color: t.primaryColor }}>
+//         Hello
+//         <TweaksPanel>
+//           <TweakSection label="Typography" />
+//           <TweakSlider label="Font size" value={t.fontSize} min={10} max={32} unit="px"
+//                        onChange={(v) => setTweak('fontSize', v)} />
+//           <TweakRadio  label="Density" value={t.density}
+//                        options={['compact', 'regular', 'comfy']}
+//                        onChange={(v) => setTweak('density', v)} />
+//           <TweakSection label="Theme" />
+//           <TweakColor  label="Primary" value={t.primaryColor}
+//                        onChange={(v) => setTweak('primaryColor', v)} />
+//           <TweakToggle label="Dark mode" value={t.dark}
+//                        onChange={(v) => setTweak('dark', v)} />
+//         </TweaksPanel>
+//       </div>
+//     );
+//   }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;width:100%;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+`;
+
+// ── useTweaks ───────────────────────────────────────────────────────────────
+// Single source of truth for tweak values. setTweak persists via the host
+// (__edit_mode_set_keys → host rewrites the EDITMODE block on disk).
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  // Accepts either setTweak('key', value) or setTweak({ key: value, ... }) so a
+  // useState-style call doesn't write a "[object Object]" key into the persisted
+  // JSON block.
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+  }, []);
+  return [values, setTweak];
+}
+
+// ── TweaksPanel ─────────────────────────────────────────────────────────────
+// Floating shell. Registers the protocol listener BEFORE announcing
+// availability — if the announce ran first, the host's activate could land
+// before our handler exists and the toolbar toggle would silently no-op.
+// The close button posts __edit_mode_dismissed so the host's toolbar toggle
+// flips off in lockstep; the host echoes __deactivate_edit_mode back which
+// is what actually hides the panel.
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel"
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">{children}</div>
+      </div>
+    </>
+  );
+}
+
+// ── Layout helpers ──────────────────────────────────────────────────────────
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Controls ────────────────────────────────────────────────────────────────
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  // The active value is read by pointer-move handlers attached for the lifetime
+  // of a drag — ref it so a stale closure doesn't fire onChange for every move.
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+function TweakColor({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <input type="color" className="twk-swatch" value={value}
+             onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+
+
+// ===== components/icons.jsx =====
+// Inline SVG icons (Liebherr-style: simple, monochrome, 24px viewBox)
+// Use as: <Icon name="search" size={20} />
+
+const ICONS = {
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M16 16l4.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
+  send: <path d="M3 12 21 4l-4 17-5-7-9-2z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />,
+  mic: (
+    <>
+      <rect x="9" y="3" width="6" height="12" rx="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
+  speaker: (
+    <>
+      <path d="M4 9v6h4l5 4V5L8 9H4z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
+  wrench: <path d="M14.7 3.3a5 5 0 0 0-6.4 6.4l-5.6 5.6 2.8 2.8 5.6-5.6a5 5 0 0 0 6.4-6.4l-2.8 2.8-2.8-2.8 2.8-2.8z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />,
+  alert: (
+    <>
+      <path d="M12 3 2 20h20L12 3z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M12 10v5M12 17.5v.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
+  snow: (
+    <path
+      d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19M12 6l-2.5-2.5M12 6l2.5-2.5M12 18l-2.5 2.5M12 18l2.5 2.5M6 12l-2.5-2.5M6 12l-2.5 2.5M18 12l2.5-2.5M18 12l2.5 2.5"
+      stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none"
+    />
+  ),
+  chat: <path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />,
+  bug: (
+    <>
+      <rect x="6" y="8" width="12" height="11" rx="6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M9 8a3 3 0 0 1 6 0M2 13h4M18 13h4M3 8l3 2M21 8l-3 2M3 18l3-2M21 18l-3-2M12 8v11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
+  history: (
+    <>
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M3 3v5h5M12 7v5l3 2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  book: (
+    <>
+      <path d="M4 4h7a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H4V4zM20 4h-7a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h8V4z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    </>
+  ),
+  external: (
+    <>
+      <path d="M14 4h6v6M20 4 10 14M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  thumbsup: <path d="M7 22V11l4-8a2 2 0 0 1 2 2v6h7a2 2 0 0 1 2 2.4l-1.5 7A2 2 0 0 1 18.5 22H7zM2 11h5v11H2z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />,
+  thumbsdown: <path d="M17 2v11l-4 8a2 2 0 0 1-2-2v-6H4a2 2 0 0 1-2-2.4l1.5-7A2 2 0 0 1 5.5 2H17zM22 13h-5V2h5z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />,
+  copy: <path d="M9 9h11v11H9zM5 5h11v3M5 5v11h3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />,
+  share: <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />,
+  close: <path d="M5 5l14 14M19 5 5 19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none" />,
+  chevron: <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />,
+  bell: (
+    <>
+      <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2.5h-15L6 16z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M10 20a2 2 0 0 0 4 0" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </>
+  ),
+  settings: (
+    <>
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    </>
+  ),
+  filter: <path d="M3 5h18l-7 8v6l-4 2v-8L3 5z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />,
+  check: <path d="m4 12 5 5L20 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />,
+  doc: <path d="M6 2h8l5 5v15H6V2zM14 2v6h5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+};
+
+function Icon({ name, size = 20, className = "" }) {
+  return (
+    <svg
+      className={className}
+      width={size} height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      style={{ flexShrink: 0 }}
+    >
+      {ICONS[name] || null}
+    </svg>
+  );
+}
+
+// Liebherr wordmark — recreated from the SVG path in the design system
+function LiebherrLogo({ height = 18, color = "#fff" }) {
+  return (
+    <svg height={height} viewBox="0 0 1000 124" aria-label="Liebherr" style={{ display: "block" }}>
+      <path
+        d="M238.9,95.2h31.4V124h-89.9V0h89v28.8h-30.6v19.8h27.9v26.1h-27.9V95.2z M101.3,124h59.3V0h-59.3V124z M58.4,0H0l0,124h85.4
+           V90.8h-27V0z M654.1,74.6H682V48.5h-27.9V28.8h30.6V0h-89v124h89.9V95.2h-31.5V74.6z M423.4,90.7c0,16.2-9.5,26.8-25.7,30.7
+           c-7.1,1.7-18.6,2.6-29,2.6h-80.5V0h80c10.2,0,21.4,0.9,28.4,2.6c15.8,3.9,25.1,14.5,25.1,30.7c0,14.9-8.8,25.1-20,28.4
+           C413.7,64.4,423.4,75,423.4,90.7 M344.7,50.3h8.1c10.8,0,14.4-5.4,14.4-13s-3.6-13-14.4-13h-8.1V50.3z M369,86.3
+           c0-8.1-3.7-13.5-15.3-13.5h-9v27h9C365.4,99.7,369,94.3,369,86.3 M517,45.8h-19.8V0h-58.4v124h58.4V76.4H517V124h58.4V0H517V45.8z
+           M967.9,72.3c15.3-7,22.1-18.6,22.1-34.4c0-18.4-11-30.4-29.4-34.9c-8.1-1.9-21.2-3-33-3h-71.9v124h55.7V84.5h5l21.1,39.5h62.5
+           L967.9,72.3z M919.5,58.4h-8.1V28.8h8.1c10.8,0,14.4,5.4,14.4,14.8C933.9,53,930.3,58.4,919.5,58.4z M815.4,72.3
+           c15.3-7,22.1-18.6,22.1-34.4c0-18.4-11-30.4-29.4-34.9c-8.1-1.9-21.2-3-33-3h-71.9v124h55.7V84.5h5l21.1,39.5h62.5L815.4,72.3z
+           M766.9,58.4h-8.1V28.8h8.1c10.8,0,14.4,5.4,14.4,14.8C781.3,53,777.7,58.4,766.9,58.4z"
+        fill={color}
+      />
+    </svg>
+  );
+}
+
+window.Icon = Icon;
+window.LiebherrLogo = LiebherrLogo;
+
+
+// ===== components/Header.jsx =====
+// Header — top bar with logo, machine selector, online status
+
+function Header({ machine, onChangeMachine, onOpenManual }) {
+  return (
+    <header className="lh-header">
+      <div className="lh-header__logo">
+        <LiebherrLogo height={20} color="#fff" />
+      </div>
+      <div className="lh-header__product">
+        <strong>Maschinen</strong>Assistent
+      </div>
+
+      <div className="lh-header__spacer" />
+
+      <button className="lh-header__online" type="button" title="System online · Manual synchronisiert">
+        Online · Manual {machine.manualVersion}
+      </button>
+
+      <button className="lh-header__machine" onClick={onChangeMachine} aria-label="Maschine wechseln">
+        <span className="lh-header__machine-thumb">LR</span>
+        <span className="lh-header__machine-text">
+          <small>Aktive Maschine</small>
+          <span>{machine.series} · {machine.serial.slice(-6)}</span>
+        </span>
+        <Icon name="chevron" size={16} />
+      </button>
+
+      <button className="lh-header__icon-btn" onClick={onOpenManual} aria-label="Manual öffnen">
+        <Icon name="book" size={20} />
+      </button>
+      <button className="lh-header__icon-btn" aria-label="Benachrichtigungen">
+        <Icon name="bell" size={20} />
+      </button>
+      <div className="lh-header__avatar" aria-label="Benutzerprofil">MK</div>
+    </header>
+  );
+}
+
+window.Header = Header;
+
+
+// ===== components/Sidebar.jsx =====
+// Sidebar — left nav with sections + recent history
+
+function Sidebar({ activeView, onChangeView, history, onSelectHistory }) {
+  const navItems = [
+    { id: "chat", icon: "chat", label: "Assistent", count: null },
+    { id: "errorcode", icon: "bug", label: "Fehlercodes", count: 3 },
+    { id: "history", icon: "history", label: "Verlauf", count: history.length },
+    { id: "manual", icon: "book", label: "Manual durchsuchen", count: null }
+  ];
+
+  return (
+    <aside className="lh-sidebar">
+      <div className="lh-sidebar__section">
+        <div className="lh-sidebar__section-label">Bereiche</div>
+      </div>
+      <nav className="lh-sidebar__nav">
+        {navItems.map((it) => (
+          <button
+            key={it.id}
+            className={"lh-sidebar__nav-item" + (activeView === it.id ? " is-active" : "")}
+            onClick={() => onChangeView(it.id)}
+          >
+            <Icon name={it.icon} size={18} />
+            <span>{it.label}</span>
+            {it.count != null && <span className="count">{it.count}</span>}
+          </button>
+        ))}
+      </nav>
+
+      <div className="lh-sidebar__section" style={{ marginTop: 8 }}>
+        <div className="lh-sidebar__section-label">Letzte Anfragen</div>
+      </div>
+      <div className="lh-sidebar__history">
+        {history.map((h) => (
+          <div key={h.id} className="lh-history-item" onClick={() => onSelectHistory(h)}>
+            <div className="lh-history-item__title">{h.title}</div>
+            <div className="lh-history-item__meta">
+              <span className={"lh-history-item__dot is-" + h.status} />
+              {h.time}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="lh-sidebar__footer">
+        <Icon name="settings" size={16} />
+        <span>v1.4 <span className="ver">MTP-Demo</span></span>
+      </div>
+    </aside>
+  );
+}
+
+window.Sidebar = Sidebar;
+
+
+// ===== components/AnswerCard.jsx =====
+// AnswerCard — structured answer with confidence badge, summary, warning, steps, sources
+
+function ConfidenceBadge({ level, label }) {
+  const cls =
+    level === "BELEGT" ? "is-belegt" :
+    level === "TEILWEISE" ? "is-teilweise" : "is-nicht";
+  return (
+    <span className={"lh-answer__badge " + cls}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
+      {level}
+    </span>
+  );
+}
+
+function StepList({ steps }) {
+  return (
+    <div className="lh-steps">
+      {steps.map((s, i) => (
+        <div key={i} className="lh-step">
+          <div className="lh-step__num">{i + 1}</div>
+          <div className="lh-step__body">
+            <div className="lh-step__title">{s.title}</div>
+            <div className="lh-step__text">{s.text}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Alert({ type = "warning", title, text }) {
+  const iconName = type === "error" ? "alert" : type === "info" ? "doc" : "alert";
+  return (
+    <div className={"lh-alert is-" + type}>
+      <Icon name={iconName} size={20} />
+      <div>
+        <div className="lh-alert__title">{title}</div>
+        <div className="lh-alert__text">{text}</div>
+      </div>
+    </div>
+  );
+}
+
+function SourceCard({ src }) {
+  return (
+    <a className="lh-source" href="#" onClick={(e) => e.preventDefault()}>
+      {src.match && <span className="lh-source__match">{src.match}</span>}
+      <div className="lh-source__crumb">{src.breadcrumb}</div>
+      <div className="lh-source__title">{src.title}</div>
+      <div className="lh-source__file">
+        <Icon name="doc" size={12} /> {src.file}
+      </div>
+    </a>
+  );
+}
+
+function AnswerCard({ answer, onSpeak, onOpenManual, onAskFollowup }) {
+  const lowConf = answer.confidence === "NICHT_BELEGT";
+  return (
+    <div className="lh-answer">
+      <div className="lh-answer__header">
+        <ConfidenceBadge level={answer.confidence} />
+        <div className="lh-answer__title">
+          <strong>{answer.breadcrumb[answer.breadcrumb.length - 1]}</strong>
+          <span style={{ color: "var(--fg-tertiary)", marginLeft: 8 }}>· {answer.coverageNote}</span>
+        </div>
+      </div>
+
+      <div className="lh-answer__body">
+        {lowConf && (
+          <div className="lh-disclaimer" style={{ marginBottom: 16 }}>
+            <div className="lh-disclaimer__icon"><Icon name="alert" size={16} /></div>
+            <div>
+              <div className="lh-disclaimer__title">Antwort konnte nicht eindeutig belegt werden</div>
+              <div className="lh-disclaimer__text">
+                Bitte direkt im Manual nachschlagen oder Service kontaktieren. Die unten verlinkte Quelle ist die nächstbeste Übereinstimmung.
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="lh-answer__summary">{answer.summary}</div>
+
+        {answer.warning && (
+          <Alert type={answer.warning.type} title={answer.warning.title} text={answer.warning.text} />
+        )}
+
+        {answer.steps && answer.steps.length > 0 && (
+          <>
+            <div className="lh-answer__section-label">Arbeitsschritte ({answer.steps.length})</div>
+            <StepList steps={answer.steps} />
+          </>
+        )}
+
+        {answer.sources && answer.sources.length > 0 && (
+          <>
+            <div className="lh-answer__section-label">Quellen im Manual</div>
+            <div className="lh-sources">
+              {answer.sources.map((s, i) => <SourceCard key={i} src={s} />)}
+            </div>
+          </>
+        )}
+
+        {answer.relatedQuestions && answer.relatedQuestions.length > 0 && (
+          <>
+            <div className="lh-answer__section-label">Folgefragen</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {answer.relatedQuestions.map((q, i) => (
+                <button key={i} className="lh-pill" onClick={() => onAskFollowup && onAskFollowup(q)}>
+                  {q}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="lh-answer__footer">
+        <button className="lh-btn lh-btn--primary" onClick={onOpenManual}>
+          <Icon name="external" size={16} />
+          Im Manual öffnen
+        </button>
+        <button className="lh-btn lh-btn--ghost" onClick={onSpeak}>
+          <Icon name="speaker" size={16} />
+          Vorlesen
+        </button>
+        <div className="spacer" />
+        <button className="lh-btn lh-btn--icon lh-btn--ghost" aria-label="Hilfreich">
+          <Icon name="thumbsup" size={16} />
+        </button>
+        <button className="lh-btn lh-btn--icon lh-btn--ghost" aria-label="Nicht hilfreich">
+          <Icon name="thumbsdown" size={16} />
+        </button>
+        <button className="lh-btn lh-btn--icon lh-btn--ghost" aria-label="Kopieren">
+          <Icon name="copy" size={16} />
+        </button>
+        <button className="lh-btn lh-btn--icon lh-btn--ghost" aria-label="Teilen">
+          <Icon name="share" size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+window.AnswerCard = AnswerCard;
+window.Alert = Alert;
+
+
+// ===== components/Composer.jsx =====
+// Composer + Voice overlay + Hero/empty state
+
+function Hero({ suggestions, quickChips, onPickSuggestion, onPickChip }) {
+  const toneCls = (t) => "is-" + t;
+  return (
+    <div className="lh-hero">
+      <div className="lh-hero__eyebrow">Maschinen-Assistent · LR 1300 SX</div>
+      <h1 className="lh-hero__title">
+        Wie kann ich <em>helfen</em>, Mark?
+      </h1>
+      <p className="lh-hero__sub">
+        Stellen Sie eine Frage in natürlicher Sprache zu Aufrüsten, Wartung, Sicherheit oder Fehlercodes.
+        Antworten kommen direkt aus dem maschinenspezifischen Manual.
+      </p>
+
+      <div className="lh-hero__suggestions">
+        {suggestions.map((s) => (
+          <button key={s.id} className="lh-suggest" onClick={() => onPickSuggestion(s)}>
+            <div className={"lh-suggest__icon " + toneCls(s.tone)}>
+              <Icon name={s.icon} size={18} />
+            </div>
+            <div>
+              <div className="lh-suggest__title">{s.title}</div>
+              <div className="lh-suggest__sub">{s.sub}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div style={{ marginTop: 4 }}>
+        <div className="lh-answer__section-label" style={{ margin: "0 0 10px" }}>Häufige Fragen</div>
+        <div className="lh-hero__chips">
+          {quickChips.map((c, i) => (
+            <button key={i} className="lh-pill" onClick={() => onPickChip(c)}>{c}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Composer({ onSubmit, onStartVoice, value, onChange }) {
+  const [mode, setMode] = React.useState("ask");
+  const taRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(160, ta.scrollHeight) + "px";
+  }, [value]);
+
+  const handleKey = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (value.trim()) onSubmit(value);
+    }
+  };
+
+  return (
+    <>
+      <div className="lh-composer">
+        <textarea
+          ref={taRef}
+          className="lh-composer__textarea"
+          placeholder={
+            mode === "ask"
+              ? "Frage zur Maschine stellen…  z. B. „Welche Schritte beim Aufrüsten mit 60 m?\""
+              : "Fehlercode eingeben…  z. B. E1042"
+          }
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKey}
+          rows={1}
+        />
+        <div className="lh-composer__bar">
+          <div className="lh-composer__mode">
+            <button className={mode === "ask" ? "is-active" : ""} onClick={() => setMode("ask")}>
+              <Icon name="chat" size={14} /> Frage
+            </button>
+            <button className={mode === "ec" ? "is-active" : ""} onClick={() => setMode("ec")}>
+              <Icon name="bug" size={14} /> Fehlercode
+            </button>
+          </div>
+          <div className="spacer" />
+          <button className="lh-mic-btn" onClick={onStartVoice} aria-label="Sprachaufnahme starten">
+            <Icon name="mic" size={20} />
+          </button>
+          <button
+            className="lh-btn lh-btn--primary"
+            onClick={() => value.trim() && onSubmit(value)}
+            disabled={!value.trim()}
+          >
+            <Icon name="send" size={16} />
+            Senden
+          </button>
+        </div>
+      </div>
+      <div className="lh-composer__hint">
+        <kbd>↵</kbd> Senden · <kbd>Shift</kbd>+<kbd>↵</kbd> Zeilenumbruch · <kbd>Strg</kbd>+<kbd>M</kbd> Sprache
+      </div>
+    </>
+  );
+}
+
+function VoiceOverlay({ active, onCancel, transcript }) {
+  if (!active) return null;
+  return (
+    <div className="lh-voice-overlay">
+      <div className="lh-waveform" aria-hidden>
+        {Array.from({ length: 14 }).map((_, i) => (
+          <span key={i} style={{ animationDelay: (i * 0.07) + "s" }} />
+        ))}
+      </div>
+      <div className="lh-voice-overlay__title">Hört zu…</div>
+      <div className="lh-voice-overlay__caption">
+        {transcript ? <span className="live">{transcript}</span> : "Sprechen Sie Ihre Frage. Tippen Sie zum Beenden auf Abbrechen."}
+      </div>
+      <button className="lh-voice-overlay__cancel" onClick={onCancel}>Abbrechen</button>
+    </div>
+  );
+}
+
+window.Hero = Hero;
+window.Composer = Composer;
+window.VoiceOverlay = VoiceOverlay;
+
+
+// ===== components/MachineSelect.jsx =====
+// Machine selection landing screen
+
+function MachineSelect({ onSelect, currentSerial }) {
+  const machines = [
+    { serial: "WLH123456789", series: "LR 1300 SX", cat: "Raupenkran", spec: "300 t · 96 m HA · 2023" },
+    { serial: "WLH987654321", series: "LR 1700-1.0", cat: "Raupenkran", spec: "700 t · 165 m HA · 2024" },
+    { serial: "WLH445566778", series: "LTM 1090-4.2", cat: "Mobilkran", spec: "90 t · 60 m TA · 2022" },
+    { serial: "WLH112233445", series: "LTM 1450-8.1", cat: "Mobilkran", spec: "450 t · 85 m TA · 2024" },
+    { serial: "WLH778899001", series: "LR 11000", cat: "Raupenkran", spec: "1000 t · 200 m HA · 2024" },
+    { serial: "WLH334455667", series: "LR 1250.1", cat: "Raupenkran", spec: "250 t · 84 m HA · 2023" }
+  ];
+
+  const [filter, setFilter] = React.useState("all");
+  const filtered = machines.filter(m =>
+    filter === "all" ? true : filter === "raupen" ? m.cat === "Raupenkran" : m.cat === "Mobilkran"
+  );
+
+  return (
+    <div className="lh-select">
+      <div className="lh-select__inner">
+        <div className="lh-select__head">
+          <div className="lh-select__head-text">
+            <div className="lh-select__step">Schritt · Maschine wählen</div>
+            <div className="lh-select__title">Maschine wählen.</div>
+            <div className="lh-select__sub">
+              Wählen Sie die Maschine, für die der Assistent das Manual und die Fehlercodes laden soll.
+              Sie können später jederzeit wechseln.
+            </div>
+          </div>
+          <div className="lh-select__search">
+            <Icon name="search" size={18} />
+            <input placeholder="Seriennummer oder Modell…" />
+          </div>
+        </div>
+
+        <div className="lh-select__filter-row">
+          <span className="label">Filter</span>
+          <button className={"lh-pill" + (filter === "all" ? " is-clay" : "")} onClick={() => setFilter("all")}>Alle ({machines.length})</button>
+          <button className={"lh-pill" + (filter === "raupen" ? " is-clay" : "")} onClick={() => setFilter("raupen")}>Raupenkrane</button>
+          <button className={"lh-pill" + (filter === "mobil" ? " is-clay" : "")} onClick={() => setFilter("mobil")}>Mobilkrane</button>
+          <div style={{ flex: 1 }} />
+          <button className="lh-btn lh-btn--ghost lh-btn--small">
+            <Icon name="filter" size={14} />
+            Erweitert
+          </button>
+        </div>
+
+        <div className="lh-select__grid">
+          {filtered.map(m => (
+            <div
+              key={m.serial}
+              className={"lh-mc" + (m.serial === currentSerial ? " is-active" : "")}
+              onClick={() => onSelect(m)}
+            >
+              {m.serial === currentSerial && <div className="lh-mc__corner" />}
+              <div className="lh-mc__img">
+                <span className="lh-mc__img-label">{m.series.replace(/\s/g, "_")}.png</span>
+              </div>
+              <div className="lh-mc__body">
+                <div className="lh-mc__cat">{m.cat}</div>
+                <div className="lh-mc__name">{m.series}</div>
+                <div className="lh-mc__meta">SN ···{m.serial.slice(-6)} · {m.spec}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.MachineSelect = MachineSelect;
+
+
+// ===== components/ErrorCodeView.jsx =====
+// Error code lookup screen
+
+function ErrorCodeView({ codes, onAskAssistant }) {
+  const [query, setQuery] = React.useState("");
+  const [active, setActive] = React.useState(null);
+
+  const recents = ["E1042", "E2117", "E0815"];
+
+  const lookup = (q) => {
+    const code = q.toUpperCase().trim();
+    setQuery(code);
+    if (codes[code]) setActive(codes[code]);
+    else setActive(null);
+  };
+
+  return (
+    <div className="lh-chat" style={{ paddingBottom: 64 }}>
+      <div className="lh-ec-grid">
+        <div>
+          <div className="lh-hero__eyebrow">Fehlercode-Lookup</div>
+          <h2 className="h3" style={{ marginTop: 4, marginBottom: 8 }}>Fehlercode nachschlagen</h2>
+          <p className="copy" style={{ color: "var(--fg-secondary)", marginBottom: 16 }}>
+            Geben Sie den Fehlercode aus dem Display ein. Der Assistent liefert Ursache und Handlungsempfehlung
+            aus der Fehlercode-Datenbank dieser Maschine.
+          </p>
+        </div>
+
+        <div className="lh-ec-input-row">
+          <input
+            placeholder="z. B. E1042"
+            value={query}
+            onChange={(e) => setQuery(e.target.value.toUpperCase())}
+            onKeyDown={(e) => { if (e.key === "Enter") lookup(query); }}
+          />
+          <button className="lh-mic-btn" aria-label="Sprache"><Icon name="mic" size={18} /></button>
+          <button className="lh-btn lh-btn--primary" onClick={() => lookup(query)}>
+            <Icon name="search" size={16} /> Suchen
+          </button>
+        </div>
+
+        <div>
+          <div className="copy-xs" style={{ color: "var(--fg-tertiary)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Kürzliche Codes
+          </div>
+          <div className="lh-ec-recents">
+            {recents.map(c => (
+              <button key={c} className="lh-pill" onClick={() => lookup(c)}>
+                <Icon name="bug" size={12} /> {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {active && (
+          <div className="lh-ec-result" style={{ marginTop: 16 }}>
+            <div className="lh-ec-result__top">
+              <div className="lh-ec-result__code">{active.code}</div>
+              <div className="lh-ec-result__title">{active.title}</div>
+              <div className={"lh-ec-result__severity is-" + active.severity}>{active.severityLabel}</div>
+            </div>
+            <div className="lh-ec-grid-cols">
+              <div className="lh-ec-cell">
+                <div className="lh-ec-cell__label">Mögliche Ursache</div>
+                <div className="lh-ec-cell__text">{active.cause}</div>
+              </div>
+              <div className="lh-ec-cell">
+                <div className="lh-ec-cell__label">Handlungsempfehlung</div>
+                <div className="lh-ec-cell__text" style={{ whiteSpace: "pre-line" }}>{active.action}</div>
+              </div>
+            </div>
+            <div className="lh-answer__section-label" style={{ padding: "0 24px", margin: "16px 0 8px" }}>
+              Quellen im Manual
+            </div>
+            <div style={{ padding: "0 24px 20px" }}>
+              <div className="lh-sources">
+                {active.sources.map((s, i) => <SourceCard key={i} src={s} />)}
+              </div>
+            </div>
+            <div className="lh-answer__footer">
+              <button className="lh-btn lh-btn--primary">
+                <Icon name="external" size={16} /> Im Manual öffnen
+              </button>
+              <button className="lh-btn lh-btn--ghost" onClick={() => onAskAssistant(active.code)}>
+                <Icon name="chat" size={16} /> Im Assistent fragen
+              </button>
+              <div className="spacer" />
+              <button className="lh-btn lh-btn--ghost lh-btn--small">
+                <Icon name="speaker" size={14} /> Vorlesen
+              </button>
+            </div>
+          </div>
+        )}
+
+        {query && !active && (
+          <div className="lh-disclaimer" style={{ marginTop: 16 }}>
+            <div className="lh-disclaimer__icon"><Icon name="alert" size={16} /></div>
+            <div>
+              <div className="lh-disclaimer__title">Code „{query}\" nicht gefunden</div>
+              <div className="lh-disclaimer__text">
+                Der Code ist nicht in der Datenbank dieser Maschine. Prüfen Sie die Schreibweise oder
+                stellen Sie eine Frage im Assistent.
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+window.ErrorCodeView = ErrorCodeView;
+
+
+// ===== app.jsx =====
+// Main App — wires everything together
+
+const { useState, useEffect, useRef, useCallback } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "light",
+  "density": "comfortable",
+  "showVoice": true,
+  "accentMode": "yellow"
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [view, setView] = useState("chat"); // chat | errorcode | select | manual | history
+  const [machine, setMachine] = useState(window.DEMO_DATA.machine);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+  const [voiceActive, setVoiceActive] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
+
+  // Apply theme + density to root
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", tweaks.theme);
+    document.documentElement.setAttribute("data-density", tweaks.density);
+  }, [tweaks.theme, tweaks.density]);
+
+  // Keyboard shortcut: Ctrl+M for voice
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        startVoice();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const chatRef = useRef(null);
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
+    }
+  }, [messages, isThinking]);
+
+  const decideAnswer = (q) => {
+    const text = q.toLowerCase();
+    if (text.includes("aufrüst") || text.includes("60 m") || text.includes("60m") || text.includes("hauptausl")) {
+      return window.DEMO_DATA.answerAufruesten;
+    }
+    if (/^e\d{3,4}/.test(text.trim())) {
+      const code = text.trim().toUpperCase().match(/E\d+/)?.[0];
+      if (code && window.DEMO_DATA.errorCodes[code]) {
+        const ec = window.DEMO_DATA.errorCodes[code];
+        return {
+          confidence: "BELEGT",
+          confidenceLabel: "Aus Fehlercode-Datenbank",
+          coverageNote: `Fehlercode ${ec.code}`,
+          breadcrumb: ["Fehlercodes", ec.code],
+          summary: `${ec.title}. ${ec.cause}`,
+          warning: { type: ec.severity === "error" ? "error" : "warning", title: "MASSNAHME", text: ec.action },
+          sources: ec.sources.map(s => ({ ...s, match: "100 %" })),
+          relatedQuestions: ["Wann zum Service?", "Kann ich weiterarbeiten?"]
+        };
+      }
+    }
+    if (text.includes("?") || text.length > 10) {
+      return window.DEMO_DATA.answerLowConfidence;
+    }
+    return window.DEMO_DATA.answerAufruesten;
+  };
+
+  const submitQuestion = (text) => {
+    setInput("");
+    setMessages(m => [...m, { role: "user", text, time: nowTime() }]);
+    setIsThinking(true);
+    setTimeout(() => {
+      const ans = decideAnswer(text);
+      setMessages(m => [...m, { role: "bot", time: nowTime(), answer: ans }]);
+      setIsThinking(false);
+    }, 1100);
+  };
+
+  const startVoice = () => {
+    setVoiceActive(true);
+    setVoiceTranscript("");
+    const phrases = [
+      "Welche", "Welche Schritte", "Welche Schritte muss ich",
+      "Welche Schritte muss ich beim Aufrüsten",
+      "Welche Schritte muss ich beim Aufrüsten mit",
+      "Welche Schritte muss ich beim Aufrüsten mit 60 Metern",
+      "Welche Schritte muss ich beim Aufrüsten mit 60 Metern befolgen?"
+    ];
+    let i = 0;
+    const t = setInterval(() => {
+      if (i >= phrases.length) {
+        clearInterval(t);
+        setTimeout(() => {
+          setVoiceActive(false);
+          submitQuestion(phrases[phrases.length - 1]);
+        }, 500);
+        return;
+      }
+      setVoiceTranscript(phrases[i]);
+      i++;
+    }, 350);
+  };
+
+  const cancelVoice = () => { setVoiceActive(false); setVoiceTranscript(""); };
+
+  if (view === "select") {
+    return (
+      <>
+        <ThemeFrame tweaks={tweaks} setTweak={setTweak}>
+          <Header
+            machine={machine}
+            onChangeMachine={() => setView("select")}
+            onOpenManual={() => setView("manual")}
+          />
+          <Sidebar
+            activeView="select"
+            onChangeView={setView}
+            history={window.DEMO_DATA.recentHistory}
+            onSelectHistory={() => {}}
+          />
+          <main className="lh-main">
+            <MachineSelect
+              currentSerial={machine.serial}
+              onSelect={(m) => {
+                setMachine({
+                  ...machine,
+                  series: m.series,
+                  type: m.cat,
+                  serial: m.serial
+                });
+                setView("chat");
+              }}
+            />
+          </main>
+        </ThemeFrame>
+      </>
+    );
+  }
+
+  return (
+    <ThemeFrame tweaks={tweaks} setTweak={setTweak}>
+      <Header
+        machine={machine}
+        onChangeMachine={() => setView("select")}
+        onOpenManual={() => setView("manual")}
+      />
+      <Sidebar
+        activeView={view}
+        onChangeView={setView}
+        history={window.DEMO_DATA.recentHistory}
+        onSelectHistory={() => {}}
+      />
+      <main className="lh-main">
+        <Breadcrumb view={view} machine={machine} />
+
+        {view === "chat" && (
+          <div className="lh-chat" ref={chatRef}>
+            <div className="lh-chat__inner">
+              {messages.length === 0 && (
+                <Hero
+                  suggestions={window.DEMO_DATA.suggestions}
+                  quickChips={window.DEMO_DATA.quickChips}
+                  onPickSuggestion={(s) => {
+                    if (s.id === "s2") { setView("errorcode"); return; }
+                    submitQuestion(s.title);
+                  }}
+                  onPickChip={submitQuestion}
+                />
+              )}
+              {messages.map((m, i) => (
+                m.role === "user" ? (
+                  <div key={i} className="lh-msg is-user">
+                    <div className="lh-msg__avatar is-user">MK</div>
+                    <div className="lh-msg__body">
+                      <div className="lh-msg__role">Mark Köhler<span className="time">{m.time}</span></div>
+                      <div className="lh-msg__text">{m.text}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div key={i} className="lh-msg">
+                    <div className="lh-msg__avatar is-bot">
+                      <Icon name="wrench" size={18} />
+                    </div>
+                    <div className="lh-msg__body">
+                      <div className="lh-msg__role">Maschinen-Assistent<span className="time">{m.time}</span></div>
+                      <AnswerCard
+                        answer={m.answer}
+                        onSpeak={() => speak(m.answer.summary)}
+                        onOpenManual={() => setView("manual")}
+                        onAskFollowup={submitQuestion}
+                      />
+                    </div>
+                  </div>
+                )
+              ))}
+              {isThinking && (
+                <div className="lh-msg">
+                  <div className="lh-msg__avatar is-bot"><Icon name="wrench" size={18} /></div>
+                  <div className="lh-msg__body">
+                    <div className="lh-msg__role">Maschinen-Assistent<span className="time">denkt nach…</span></div>
+                    <div style={{ color: "var(--fg-tertiary)", fontSize: 13, marginBottom: 4 }}>
+                      Suche im Manual · 5 Treffer · prüfe Belege…
+                    </div>
+                    <div className="lh-typing"><span /><span /><span /></div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="lh-composer-wrap">
+              <Composer
+                value={input}
+                onChange={setInput}
+                onSubmit={submitQuestion}
+                onStartVoice={startVoice}
+              />
+            </div>
+          </div>
+        )}
+
+        {view === "errorcode" && (
+          <ErrorCodeView
+            codes={window.DEMO_DATA.errorCodes}
+            onAskAssistant={(code) => { setView("chat"); submitQuestion("Was bedeutet " + code + "?"); }}
+          />
+        )}
+
+        {view === "history" && <HistoryView />}
+        {view === "manual" && <ManualPlaceholder onBack={() => setView("chat")} />}
+
+        <VoiceOverlay active={voiceActive} onCancel={cancelVoice} transcript={voiceTranscript} />
+      </main>
+    </ThemeFrame>
+  );
+}
+
+function ThemeFrame({ children, tweaks, setTweak }) {
+  return (
+    <>
+      <div className="app">{children}</div>
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Erscheinungsbild">
+          <TweakRadio
+            label="Theme"
+            value={tweaks.theme}
+            options={[{ value: "light", label: "Hell" }, { value: "dark", label: "Kabine (dunkel)" }]}
+            onChange={(v) => setTweak("theme", v)}
+          />
+          <TweakRadio
+            label="Dichte"
+            value={tweaks.density}
+            options={[{ value: "comfortable", label: "Komfort" }, { value: "compact", label: "Kompakt" }]}
+            onChange={(v) => setTweak("density", v)}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+function Breadcrumb({ view, machine }) {
+  const map = {
+    chat: ["Assistent", "Chat"],
+    errorcode: ["Assistent", "Fehlercodes"],
+    history: ["Assistent", "Verlauf"],
+    manual: ["Assistent", "Manual"],
+  };
+  const crumbs = map[view] || ["Assistent"];
+  return (
+    <nav className="lh-breadcrumb" aria-label="Breadcrumb">
+      <a>{machine.series}</a>
+      <span className="lh-breadcrumb__sep">›</span>
+      {crumbs.map((c, i) => (
+        <React.Fragment key={i}>
+          {i < crumbs.length - 1 ? <a>{c}</a> : <span className="lh-breadcrumb__current">{c}</span>}
+          {i < crumbs.length - 1 && <span className="lh-breadcrumb__sep">›</span>}
+        </React.Fragment>
+      ))}
+      <div style={{ flex: 1 }} />
+      <span style={{ fontSize: 12, color: "var(--fg-tertiary)" }}>
+        Manual {machine.manualVersion} · letzte Sync {machine.lastSync}
+      </span>
+    </nav>
+  );
+}
+
+function HistoryView() {
+  return (
+    <div className="lh-chat">
+      <div className="lh-chat__inner">
+        <div className="lh-hero__eyebrow">Verlauf</div>
+        <h2 className="h3" style={{ margin: "4px 0 16px" }}>Letzte Anfragen</h2>
+        <div style={{ border: "1px solid var(--border)", background: "var(--bg-surface)" }}>
+          {window.DEMO_DATA.recentHistory.map((h, i) => (
+            <div key={h.id} style={{
+              padding: "16px 20px",
+              borderBottom: i < window.DEMO_DATA.recentHistory.length - 1 ? "1px solid var(--border)" : "none",
+              display: "grid", gridTemplateColumns: "auto 1fr auto auto", gap: 16, alignItems: "center"
+            }}>
+              <span className={"lh-history-item__dot is-" + h.status} style={{ width: 10, height: 10 }} />
+              <div>
+                <div style={{ fontFamily: "LiebherrText-Medium", fontSize: 15 }}>{h.title}</div>
+                <div style={{ fontSize: 12, color: "var(--fg-tertiary)", marginTop: 2 }}>{h.time}</div>
+              </div>
+              <span className="lh-pill">
+                {h.status === "ok" ? "Beantwortet" : h.status === "warning" ? "Warnung" : "Fehler"}
+              </span>
+              <button className="lh-btn lh-btn--ghost lh-btn--small">
+                <Icon name="external" size={14} /> Öffnen
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ManualPlaceholder({ onBack }) {
+  return (
+    <div className="lh-chat">
+      <div className="lh-chat__inner">
+        <div className="lh-hero__eyebrow">Manual</div>
+        <h2 className="h3" style={{ margin: "4px 0 8px" }}>Aufrüsten des Hauptauslegers</h2>
+        <div style={{ color: "var(--fg-tertiary)", fontSize: 13, marginBottom: 16, fontFamily: "ui-monospace, monospace" }}>
+          ID_8a3f12-de-DE.html · DE 04/2025
+        </div>
+        <div style={{
+          aspectRatio: "16 / 11",
+          background: "repeating-linear-gradient(135deg, var(--bg-elevated) 0 16px, var(--bg-chip) 16px 32px)",
+          border: "1px solid var(--border)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "var(--fg-tertiary)", fontFamily: "ui-monospace, monospace", fontSize: 13
+        }}>
+          [ Manual HTML-Seite würde hier eingebettet ]
+        </div>
+        <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+          <button className="lh-btn lh-btn--secondary" onClick={onBack}>← Zurück zum Assistent</button>
+          <button className="lh-btn lh-btn--ghost"><Icon name="external" size={14} /> In neuem Tab öffnen</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "de-DE";
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch {}
+}
+
+function nowTime() {
+  const d = new Date();
+  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
+
+  </script>
+</body>
+</html>

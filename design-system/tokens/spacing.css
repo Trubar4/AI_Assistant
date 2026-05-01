@@ -1,0 +1,42 @@
+/* Spacing · Radius · Shadow · Motion — confirmed from Figma specs (80px section gap/padding) */
+:root {
+  /* Spacing scale — base 4 */
+  --s-0: 0;
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+  --s-9: 80px;     /* Figma section padding/gap */
+  --s-10: 120px;
+
+  /* Radii — Liebherr is mostly square (1–2px) */
+  --radius-0: 0;
+  --radius-1: 1px;
+  --radius-2: 2px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-1: 0 1px 2px rgba(32,35,38,0.06);
+  --shadow-2: 0 2px 8px rgba(32,35,38,0.08), 0 1px 2px rgba(32,35,38,0.04);
+  --shadow-3: 0 12px 32px rgba(32,35,38,0.10), 0 2px 8px rgba(32,35,38,0.04);
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --easing: cubic-bezier(.2,.8,.2,1);
+
+  /* Layout */
+  --content-max: 1280px;
+  --content-narrow: 880px;
+}
+
+[data-theme="co-dark"], [data-theme="ha-dark"] {
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-2: 0 2px 12px rgba(0,0,0,0.5);
+  --shadow-3: 0 12px 32px rgba(0,0,0,0.55);
+}

@@ -1,0 +1,32 @@
+/* Liebherr font stack — loaded from the official LiMAM CDN */
+
+@font-face {
+  font-family: "LiebherrHead-Black";
+  src: url("https://assets-cdn.liebherr.com/assets/api/3c3d21f7-2747-4a07-bb1b-f9f4598c21df/original/LiebherrHead-Black_Web.woff2") format("woff2"),
+       url("https://assets-cdn.liebherr.com/assets/api/114f48b5-dfe3-4739-b96d-03167ed68c38/original/LiebherrHead-Black_Web.woff") format("woff");
+  font-display: swap;
+}
+@font-face {
+  font-family: "LiebherrHead-Regular";
+  src: url("https://assets-cdn.liebherr.com/assets/api/bfb44747-d200-4af8-a756-fab6de288b32/original/LiebherrHead-Regular_Web.woff2") format("woff2"),
+       url("https://assets-cdn.liebherr.com/assets/api/3d27219b-3d85-4123-9731-47d14dfd002c/original/LiebherrHead-Regular_Web.woff") format("woff");
+  font-display: swap;
+}
+@font-face {
+  font-family: "LiebherrText-Regular";
+  src: url("https://assets-cdn.liebherr.com/assets/api/cbef770b-7eef-4164-8dc7-a304a545b01f/original/LiebherrText-Regular_Web.woff2") format("woff2"),
+       url("https://assets-cdn.liebherr.com/assets/api/474894f9-c341-4057-bdfa-b5d84a0a05bf/original/LiebherrText-Regular_Web.woff") format("woff");
+  font-display: swap;
+}
+@font-face {
+  font-family: "LiebherrText-Bold";
+  src: url("https://assets-cdn.liebherr.com/assets/api/53da5b14-5565-4436-8d08-3bf3cf0262ae/original/LiebherrText-Bold_Web.woff2") format("woff2"),
+       url("https://assets-cdn.liebherr.com/assets/api/e4261118-f994-4bdc-8f5b-9dec7c0ec00a/original/LiebherrText-Bold_Web.woff") format("woff");
+  font-display: swap;
+}
+@font-face {
+  font-family: "LiebherrText-Medium";
+  src: url("https://assets-cdn.liebherr.com/assets/api/d726fec5-dd05-4133-a47c-77d7900263f6/original/LiebherrText-Medium_Web.woff2") format("woff2"),
+       url("https://assets-cdn.liebherr.com/assets/api/80f57b26-ba8e-4d44-a528-110ff8edd862/original/LiebherrText-Medium_Web.woff") format("woff");
+  font-display: swap;
+}

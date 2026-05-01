@@ -1,0 +1,20 @@
+/* lds.css — single import for the whole design system */
+@import url("./tokens/primitives.css");
+@import url("./tokens/roles-co-light.css");
+@import url("./tokens/roles-other.css");
+@import url("./tokens/spacing.css");
+@import url("./tokens/typography.css");
+@import url("./components/components.css");
+
+/* Reset */
+*,*::before,*::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--r-bg-default);
+  color: var(--r-on-surface-default);
+  font: 400 16px/24px var(--font-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: var(--r-brand); color: var(--r-on-brand); }
+:focus-visible { outline: 2px solid var(--r-focus-ring); outline-offset: 2px; }

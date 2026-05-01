@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="co-light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Liebherr-inspired Design System (lds)</title>
+<link rel="stylesheet" href="design-system/lds.css" />
+<style>
+  body { background: var(--r-bg-dim); }
+  .ds-page { max-width: 1280px; margin: 0 auto; padding: 64px 48px 96px; }
+  .ds-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 48px; padding-bottom: 24px; border-bottom: 4px solid var(--r-brand); }
+  .ds-eyebrow { font: 700 11px/16px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.12em; color: var(--p-clay-700); margin-bottom: 8px; }
+  .ds-title { font: 900 56px/60px var(--font-head-b); letter-spacing: -0.01em; margin: 0; }
+  .ds-sub { color: var(--r-on-surface-muted); font-size: 17px; margin-top: 8px; max-width: 560px; }
+  .ds-theme-switch { display: flex; gap: 4px; padding: 4px; background: var(--r-surface-default); border: 1px solid var(--r-outline-default); }
+  .ds-theme-switch button { padding: 8px 14px; font: 500 12px/16px var(--font-text-m); background: transparent; border: none; cursor: pointer; color: var(--r-on-surface-muted); }
+  .ds-theme-switch button.active { background: var(--p-steel-975); color: var(--p-white); }
+  [data-theme*="dark"] .ds-theme-switch button.active { background: var(--r-brand); color: var(--r-on-brand); }
+
+  .ds-section { margin-bottom: 64px; }
+  .ds-section__head { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+  .ds-section__head h2 { font: 900 32px/36px var(--font-head-b); margin: 0; }
+  .ds-section__head .num { font: 700 14px/20px var(--font-text-b); color: var(--p-clay-700); }
+  .ds-section__head .rule { flex: 1; height: 1px; background: var(--r-outline-bright); }
+  .ds-grid { display: grid; gap: 16px; }
+  .ds-grid--3 { grid-template-columns: repeat(3, 1fr); }
+  .ds-grid--4 { grid-template-columns: repeat(4, 1fr); }
+  .ds-grid--6 { grid-template-columns: repeat(6, 1fr); }
+
+  .swatch { background: var(--r-surface-default); border: 1px solid var(--r-outline-bright); }
+  .swatch__chip { aspect-ratio: 16/7; }
+  .swatch__meta { padding: 8px 10px; }
+  .swatch__role { font: 700 11px/14px var(--font-text-b); }
+  .swatch__var { font: 400 10px/14px var(--font-mono); color: var(--r-on-surface-muted); }
+  .swatch__hex { font: 400 10px/14px var(--font-mono); color: var(--r-on-surface-muted); margin-top: 2px; }
+
+  .role-group { margin-bottom: 28px; }
+  .role-group h3 { font: 700 12px/16px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.1em; color: var(--r-on-surface-muted); margin: 0 0 12px; }
+
+  .demo-card { background: var(--r-surface-default); border: 1px solid var(--r-outline-bright); padding: 24px; }
+  .demo-card h4 { font: 700 14px/20px var(--font-text-b); margin: 0 0 16px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--r-on-surface-muted); }
+  .demo-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+
+  .type-spec { display: grid; grid-template-columns: 120px 80px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px dashed var(--r-outline-bright); align-items: baseline; }
+  .type-spec:last-child { border: 0; }
+  .type-spec code { font: 400 11px/16px var(--font-mono); color: var(--r-on-surface-muted); }
+
+  .scale-row { display: flex; align-items: flex-end; gap: 12px; }
+  .scale-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; font: 400 11px/14px var(--font-mono); color: var(--r-on-surface-muted); }
+  .scale-cell span:first-child { background: var(--r-brand); }
+
+  .radius-cell { width: 80px; height: 80px; background: var(--p-steel-975); display: flex; align-items: center; justify-content: center; color: var(--r-brand); font: 700 11px/14px var(--font-text-b); }
+
+  .shadow-cell { width: 100%; aspect-ratio: 16/9; background: var(--r-surface-default); display: flex; align-items: center; justify-content: center; font: 400 11px/14px var(--font-mono); color: var(--r-on-surface-muted); }
+
+  .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+  .icon-tile { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--r-surface-default); border: 1px solid var(--r-outline-bright); font: 400 10px/14px var(--font-mono); color: var(--r-on-surface-muted); }
+
+  .quick-block { display: flex; flex-direction: column; gap: 8px; }
+  pre { background: var(--p-steel-975); color: var(--r-brand); padding: 16px; font: 400 12px/18px var(--font-mono); overflow-x: auto; border-radius: var(--radius-1); }
+</style>
+</head>
+<body>
+
+<div class="ds-page">
+
+  <!-- Header -->
+  <header class="ds-header">
+    <div>
+      <div class="ds-eyebrow">Foundation · v0.1 · 2026-04</div>
+      <h1 class="ds-title">Liebherr-inspired<br/>Design System</h1>
+      <p class="ds-sub">A reusable, role-based token system + components for HTML/React projects. Distilled from Liebherr Pattern Library and LiMain Color Roles.</p>
+    </div>
+    <div class="ds-theme-switch" role="tablist" aria-label="Theme">
+      <button class="active" data-theme-btn="co-light">CO/Light</button>
+      <button data-theme-btn="co-dark">CO/Dark</button>
+      <button data-theme-btn="ha-light">HA/Light</button>
+      <button data-theme-btn="ha-dark">HA/Dark</button>
+    </div>
+  </header>
+
+  <!-- 01 Color Roles -->
+  <section class="ds-section">
+    <div class="ds-section__head"><span class="num">01</span><h2>Color Roles</h2><div class="rule"></div></div>
+
+    <div class="role-group">
+      <h3>Base · Background &amp; Surface</h3>
+      <div class="ds-grid ds-grid--6" id="grid-base"></div>
+    </div>
+
+    <div class="role-group">
+      <h3>Inverse</h3>
+      <div class="ds-grid ds-grid--6" id="grid-inverse"></div>
+    </div>
+
+    <div class="role-group">
+      <h3>Accent · 1–5 (Slate · Terra · Clay · Leaf · Ruby)</h3>
+      <div class="ds-grid ds-grid--6" id="grid-accent"></div>
+    </div>
+
+    <div class="role-group">
+      <h3>Functional</h3>
+      <div class="ds-grid ds-grid--6" id="grid-functional"></div>
+    </div>
+  </section>
+
+  <!-- 02 Typography -->
+  <section class="ds-section">
+    <div class="ds-section__head"><span class="num">02</span><h2>Typography</h2><div class="rule"></div></div>
+    <div class="demo-card">
+      <div class="type-spec"><code>display</code><code>68/72</code><div style="font:900 68px/72px var(--font-head-b); letter-spacing:-0.01em;">Maschinen.</div></div>
+      <div class="type-spec"><code>h1</code><code>48/52</code><div class="lds-h1">Aufrüsten 60 m</div></div>
+      <div class="type-spec"><code>h2</code><code>40/44</code><div class="lds-h2">Schritt für Schritt</div></div>
+      <div class="type-spec"><code>h3</code><code>32/36</code><div class="lds-h3">Sicherheitshinweise</div></div>
+      <div class="type-spec"><code>h4</code><code>28/32</code><div class="lds-h4">Inbetriebnahme</div></div>
+      <div class="type-spec"><code>h5</code><code>24/28</code><div class="lds-h5">Hauptausleger</div></div>
+      <div class="type-spec"><code>h6</code><code>20/24</code><div class="lds-h6">Gegengewicht montieren</div></div>
+      <div class="type-spec"><code>copy</code><code>16/24</code><div class="lds-copy">Beim Aufrüsten des Hauptauslegers mit 60 m Länge müssen die Abstützung, das Gegengewicht und der Lastmoment-Begrenzer überprüft werden.</div></div>
+      <div class="type-spec"><code>copy-s</code><code>14/20</code><div class="lds-copy-s">Verwenden Sie ausschließlich freigegebene Gewichtspakete (siehe Tabelle 4-2).</div></div>
+      <div class="type-spec"><code>eyebrow</code><code>11/16</code><div class="lds-eyebrow">Use Case · Maintenance Assistant</div></div>
+      <div class="type-spec"><code>mono</code><code>—</code><div class="lds-mono">ID_8a3f12-de-DE.html</div></div>
+    </div>
+  </section>
+
+  <!-- 03 Spacing -->
+  <section class="ds-section">
+    <div class="ds-section__head"><span class="num">03</span><h2>Spacing &amp; Radius</h2><div class="rule"></div></div>
+    <div class="demo-card">
+      <h4>Spacing scale</h4>
+      <div class="scale-row" id="scale-row"></div>
+    </div>
+    <div style="height:16px"></div>
+    <div class="demo-card">
+      <h4>Radius</h4>
+      <div class="ds-grid ds-grid--4">
+        <div class="radius-cell" style="border-radius:0">0px</div>
+        <div class="radius-cell" style="border-radius:1px">1px</div>
+        <div class="radius-cell" style="border-radius:2px">2px</div>
+        <div class="radius-cell" style="border-radius:999px">pill</div>
+      </div>
+    </div>
+    <div style="height:16px"></div>
+    <div class="demo-card">
+      <h4>Shadows</h4>
+      <div class="ds-grid ds-grid--3">
+        <div class="shadow-cell" style="box-shadow: var(--shadow-1)">shadow-1</div>
+        <div class="shadow-cell" style="box-shadow: var(--shadow-2)">shadow-2</div>
+        <div class="shadow-cell" style="box-shadow: var(--shadow-3)">shadow-3</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 Components -->
+  <section class="ds-section">
+    <div class="ds-section__head"><span class="num">04</span><h2>Components</h2><div class="rule"></div></div>
+
+    <div class="ds-grid" style="grid-template-columns: 1fr 1fr;">
+      <div class="demo-card">
+        <h4>Buttons</h4>
+        <div class="demo-row">
+          <button class="lds-btn lds-btn--primary">Primary</button>
+          <button class="lds-btn lds-btn--secondary">Secondary</button>
+          <button class="lds-btn lds-btn--ghost">Ghost</button>
+          <button class="lds-btn lds-btn--danger">Danger</button>
+        </div>
+        <div class="demo-row">
+          <button class="lds-btn lds-btn--primary lds-btn--sm">Small</button>
+          <button class="lds-btn lds-btn--primary">Default</button>
+          <button class="lds-btn lds-btn--primary lds-btn--lg">Large</button>
+          <button class="lds-btn lds-btn--primary" disabled>Disabled</button>
+        </div>
+      </div>
+
+      <div class="demo-card">
+        <h4>Pills &amp; Badges</h4>
+        <div class="demo-row">
+          <span class="lds-pill">Standard</span>
+          <span class="lds-pill lds-pill--solid">Aktiv</span>
+          <span class="lds-pill lds-pill--accent-3">Wartung</span>
+          <span class="lds-pill lds-pill--success">OK</span>
+          <span class="lds-pill lds-pill--warning">Warnung</span>
+          <span class="lds-pill lds-pill--error">Fehler</span>
+        </div>
+        <div class="demo-row">
+          <span class="lds-badge lds-badge--success">● BELEGT</span>
+          <span class="lds-badge lds-badge--warning">● TEILWEISE</span>
+          <span class="lds-badge lds-badge--error">● NICHT_BELEGT</span>
+        </div>
+      </div>
+
+      <div class="demo-card">
+        <h4>Inputs</h4>
+        <div class="lds-field" style="margin-bottom:12px">
+          <label class="lds-label">Frage</label>
+          <input class="lds-input" placeholder="z. B. Welche Schritte beim Aufrüsten?" />
+        </div>
+        <div class="lds-field" style="margin-bottom:12px">
+          <label class="lds-label">Fehlercode</label>
+          <input class="lds-input lds-mono" placeholder="E1042" value="E1042" />
+        </div>
+        <div class="lds-field">
+          <label class="lds-label">Notiz</label>
+          <textarea class="lds-textarea" rows="3" placeholder="Beobachtungen…"></textarea>
+        </div>
+      </div>
+
+      <div class="demo-card">
+        <h4>Alerts</h4>
+        <div class="quick-block">
+          <div class="lds-alert lds-alert--warning">
+            <div><div class="lds-alert__title">Warnung · Quetschgefahr</div><div class="lds-alert__text">Im Schwenkbereich min. 5 m Abstand halten.</div></div>
+          </div>
+          <div class="lds-alert lds-alert--error">
+            <div><div class="lds-alert__title">Fehler E2117</div><div class="lds-alert__text">CAN-Bus Timeout — Steuergerät neu starten.</div></div>
+          </div>
+          <div class="lds-alert lds-alert--success">
+            <div><div class="lds-alert__title">Belegt</div><div class="lds-alert__text">5 Quellen ausgewertet, 100 % Übereinstimmung.</div></div>
+          </div>
+          <div class="lds-alert lds-alert--info">
+            <div><div class="lds-alert__title">Hinweis</div><div class="lds-alert__text">Manual-Version DE 04/2025.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 Code usage -->
+  <section class="ds-section">
+    <div class="ds-section__head"><span class="num">05</span><h2>Use in your project</h2><div class="rule"></div></div>
+    <div class="demo-card">
+      <h4>Add to any HTML</h4>
+<pre>&lt;link rel="stylesheet" href="design-system/lds.css"&gt;
+&lt;html data-theme="co-light"&gt; &lt;!-- co-dark · ha-light · ha-dark --&gt;
+
+&lt;button class="lds-btn lds-btn--primary"&gt;Senden&lt;/button&gt;
+&lt;div class="lds-card"&gt;
+  &lt;div class="lds-card__header"&gt;
+    &lt;span class="lds-badge lds-badge--success"&gt;BELEGT&lt;/span&gt;
+    &lt;span class="lds-copy-s"&gt;Aufrüsten 60 m&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="lds-card__body"&gt;…&lt;/div&gt;
+&lt;/div&gt;</pre>
+    </div>
+    <div style="height:16px"></div>
+    <div class="demo-card">
+      <h4>Reuse in another GitHub project</h4>
+      <p class="lds-copy-s" style="color:var(--r-on-surface-muted); margin: 0 0 12px;">Three options:</p>
+      <ol class="lds-copy-s" style="line-height: 22px; padding-left: 20px;">
+        <li><strong>Submodule</strong>: <code>git submodule add &lt;design-system-repo&gt; design-system</code></li>
+        <li><strong>npm package</strong>: publish <code>design-system/</code> as <code>@your-org/lds</code> and import the CSS</li>
+        <li><strong>CDN</strong>: host <code>lds.css</code> on any static host and link via <code>&lt;link rel="stylesheet"&gt;</code></li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  /* Theme switch */
+  document.querySelectorAll('[data-theme-btn]').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('[data-theme-btn]').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      document.documentElement.setAttribute('data-theme', b.dataset.themeBtn);
+    });
+  });
+
+  /* Build swatch grids from role names */
+  const swatches = {
+    'grid-base': [
+      { role: 'bg-default', label: 'Background/Default' },
+      { role: 'bg-bright', label: 'Background/Bright' },
+      { role: 'bg-dim', label: 'Background/Dim' },
+      { role: 'bg-colored', label: 'Background/Colored' },
+      { role: 'surface-default', label: 'Surface/Default' },
+      { role: 'surface-high', label: 'Surface/High' },
+      { role: 'surface-higher', label: 'Surface/Higher' },
+      { role: 'surface-primary', label: 'Surface/Primary' },
+      { role: 'surface-disabled', label: 'Surface/Disabled' },
+      { role: 'outline-default', label: 'Outline/Default' },
+      { role: 'outline-bright', label: 'Outline/Bright' },
+      { role: 'outline-variant', label: 'Outline/Variant' },
+    ],
+    'grid-inverse': [
+      { role: 'surface-inverse', label: 'Surface/Inverse', onText: 'on-inverse' },
+      { role: 'surface-inverse-high', label: 'Surface/Inverse-High', onText: 'on-inverse' },
+      { role: 'surface-inverse-higher', label: 'Surface/Inverse-Higher', onText: 'on-inverse' },
+    ],
+    'grid-accent': [
+      { role: 'accent-1', label: 'Accent/1 · Slate', onText: 'on-accent-1' },
+      { role: 'accent-2', label: 'Accent/2 · Terra', onText: 'on-accent-2' },
+      { role: 'accent-3', label: 'Accent/3 · Clay', onText: 'on-accent-3' },
+      { role: 'accent-4', label: 'Accent/4 · Leaf', onText: 'on-accent-4' },
+      { role: 'accent-5', label: 'Accent/5 · Ruby', onText: 'on-accent-5' },
+    ],
+    'grid-functional': [
+      { role: 'error', label: 'Functional/Error', onText: 'on-error' },
+      { role: 'warning', label: 'Functional/Warning', onText: 'on-warning' },
+      { role: 'success', label: 'Functional/Success', onText: 'on-success' },
+      { role: 'error-soft', label: 'Functional/Error-Soft', onText: 'on-error-soft' },
+      { role: 'warning-soft', label: 'Functional/Warning-Soft', onText: 'on-warning-soft' },
+      { role: 'success-soft', label: 'Functional/Success-Soft', onText: 'on-success-soft' },
+    ]
+  };
+
+  Object.entries(swatches).forEach(([id, items]) => {
+    const grid = document.getElementById(id);
+    if (!grid) return;
+    grid.innerHTML = items.map(it => {
+      const onTextVar = it.onText ? `var(--r-${it.onText})` : 'var(--r-on-surface-default)';
+      return `
+        <div class="swatch">
+          <div class="swatch__chip" style="background: var(--r-${it.role}); color: ${onTextVar}; display:flex; align-items:center; justify-content:center; font: 700 11px/14px var(--font-text-b); letter-spacing: 0.06em;">Aa</div>
+          <div class="swatch__meta">
+            <div class="swatch__role">${it.label}</div>
+            <div class="swatch__var">--r-${it.role}</div>
+          </div>
+        </div>`;
+    }).join('');
+  });
+
+  /* Spacing scale */
+  const scale = [
+    {n:'1', px:4}, {n:'2', px:8}, {n:'3', px:12}, {n:'4', px:16}, {n:'5', px:24},
+    {n:'6', px:32}, {n:'7', px:48}, {n:'8', px:64}, {n:'9', px:80}, {n:'10', px:120}
+  ];
+  document.getElementById('scale-row').innerHTML = scale.map(s => `
+    <div class="scale-cell">
+      <span style="height:${s.px}px; width:${Math.max(8, s.px)}px;"></span>
+      <span>s-${s.n}</span>
+      <span>${s.px}px</span>
+    </div>
+  `).join('');
+</script>
+
+</body>
+</html>

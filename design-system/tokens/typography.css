@@ -1,0 +1,44 @@
+/* Typography — Liebherr font stack from official LiMAM CDN */
+@font-face { font-family: "LiebherrHead-Black";   src: url("https://assets-cdn.liebherr.com/assets/api/3c3d21f7-2747-4a07-bb1b-f9f4598c21df/original/LiebherrHead-Black_Web.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "LiebherrHead-Regular"; src: url("https://assets-cdn.liebherr.com/assets/api/bfb44747-d200-4af8-a756-fab6de288b32/original/LiebherrHead-Regular_Web.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "LiebherrText-Regular"; src: url("https://assets-cdn.liebherr.com/assets/api/cbef770b-7eef-4164-8dc7-a304a545b01f/original/LiebherrText-Regular_Web.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "LiebherrText-Medium";  src: url("https://assets-cdn.liebherr.com/assets/api/d726fec5-dd05-4133-a47c-77d7900263f6/original/LiebherrText-Medium_Web.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "LiebherrText-Bold";    src: url("https://assets-cdn.liebherr.com/assets/api/53da5b14-5565-4436-8d08-3bf3cf0262ae/original/LiebherrText-Bold_Web.woff2") format("woff2"); font-display: swap; }
+
+:root {
+  --font-head:   "LiebherrHead-Regular", system-ui, sans-serif;
+  --font-head-b: "LiebherrHead-Black",   system-ui, sans-serif;
+  --font-text:   "LiebherrText-Regular", system-ui, sans-serif;
+  --font-text-m: "LiebherrText-Medium",  system-ui, sans-serif;
+  --font-text-b: "LiebherrText-Bold",    system-ui, sans-serif;
+  --font-mono:   ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Type scale — corporate */
+  --t-display: 68px / 72px;
+  --t-h1: 48px / 52px;
+  --t-h2: 40px / 44px;
+  --t-h3: 32px / 36px;
+  --t-h4: 28px / 32px;
+  --t-h5: 24px / 28px;
+  --t-h6: 20px / 24px;
+  --t-copy: 16px / 24px;
+  --t-copy-s: 14px / 20px;
+  --t-copy-xs: 12px / 16px;
+}
+
+.lds-h1, .lds-h2, .lds-h3 { font-family: var(--font-head-b); margin: 0; letter-spacing: -0.005em; }
+.lds-h4, .lds-h5, .lds-h6 { font-family: var(--font-head); margin: 0; }
+.lds-h1 { font: 900 48px/52px var(--font-head-b); letter-spacing: -0.01em; }
+.lds-h2 { font: 900 40px/44px var(--font-head-b); }
+.lds-h3 { font: 900 32px/36px var(--font-head-b); }
+.lds-h4 { font: 400 28px/32px var(--font-head); }
+.lds-h5 { font: 400 24px/28px var(--font-head); }
+.lds-h6 { font: 700 20px/24px var(--font-head); }
+
+.lds-copy   { font: 400 16px/24px var(--font-text); }
+.lds-copy-m { font: 400 16px/24px var(--font-text-m); }
+.lds-copy-b { font: 700 16px/24px var(--font-text-b); }
+.lds-copy-s { font: 400 14px/20px var(--font-text); }
+.lds-copy-xs{ font: 400 12px/16px var(--font-text); letter-spacing: 0.02em; }
+.lds-eyebrow{ font: 700 11px/16px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.1em; }
+.lds-mono   { font-family: var(--font-mono); }
