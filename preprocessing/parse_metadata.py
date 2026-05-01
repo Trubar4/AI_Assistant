@@ -98,7 +98,7 @@ def main():
     index = parse(rdf_path)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(index, ensure_ascii=False, indent=2))
+    out_path.write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # Summary
     from collections import Counter

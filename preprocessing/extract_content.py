@@ -184,7 +184,7 @@ def main():
         index[f.name] = result
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(index, ensure_ascii=False, indent=2))
+    out_path.write_text(json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8")
 
     total_words = sum(v["word_count"] for v in index.values())
     print(f"\nFiles parsed  : {len(index)}")

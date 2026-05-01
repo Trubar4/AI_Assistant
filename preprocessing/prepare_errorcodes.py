@@ -207,7 +207,7 @@ def main():
             raise ValueError(f"Unsupported file type: {ext}")
         print(f"Loaded {len(codes)} codes from {src}")
 
-    out_path.write_text(json.dumps(codes, ensure_ascii=False, indent=2))
+    out_path.write_text(json.dumps(codes, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Output → {out_path}")
 
 
