@@ -23,6 +23,7 @@ from rapidfuzz import fuzz
 _ROOT = Path(__file__).parent.parent
 METADATA_INDEX = _ROOT / "data" / "metadata_index.json"
 CONTENT_INDEX  = _ROOT / "data" / "content_index.json"
+TOC_INDEX      = _ROOT / "data" / "toc_index.json"
 
 # ---------------------------------------------------------------------------
 # Keyword sets for semantic phase boosting
@@ -89,17 +90,28 @@ def _load_index(
     meta    = json.loads(metadata_path.read_text(encoding="utf-8"))
     content = json.loads(content_path.read_text(encoding="utf-8"))
 
+    # TOC index is optional — provides authoritative breadcrumbs when present
+    toc_by_file: dict = {}
+    toc_path = TOC_INDEX
+    if toc_path.exists():
+        for entry in json.loads(toc_path.read_text(encoding="utf-8")):
+            toc_by_file[entry["filename"]] = entry
+
     merged = []
     for filename, m in meta.items():
         c = content.get(filename)
         if c is None:
             continue
+        toc = toc_by_file.get(filename, {})
+        # TOC breadcrumb is authoritative; fall back to HTML-extracted one
+        breadcrumb = toc.get("breadcrumb") or c.get("breadcrumb", [])
         merged.append({
             "filename":        filename,
             "title":           m.get("title") or c.get("title", ""),
             "topic_type":      m.get("topic_type", ""),
             "lifecycle_phases": m.get("lifecycle_phases", []),
-            "breadcrumb":      c.get("breadcrumb", []),
+            "breadcrumb":      breadcrumb,
+            "depth":           toc.get("depth", 0),
             "text":            c.get("text", ""),
             "warnings":        c.get("warnings", []),
             "steps":           c.get("steps", []),
