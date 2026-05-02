@@ -13,6 +13,7 @@ import os
 from dataclasses import dataclass, field
 
 import anthropic
+from fastapi import HTTPException
 
 _client: anthropic.Anthropic | None = None
 
@@ -90,12 +91,17 @@ def answer(query: str, results: list[dict]) -> str:
     context = _build_context(results)
     user_message = f"Frage: {query}\n\nKontext-Material:\n\n{context}"
 
-    response = _get_client().messages.create(
-        model=ANSWER_MODEL,
-        max_tokens=1024,
-        system=ANSWER_SYSTEM,
-        messages=[{"role": "user", "content": user_message}],
-    )
+    try:
+        response = _get_client().messages.create(
+            model=ANSWER_MODEL,
+            max_tokens=1024,
+            system=ANSWER_SYSTEM,
+            messages=[{"role": "user", "content": user_message}],
+        )
+    except anthropic.AuthenticationError:
+        raise HTTPException(status_code=401, detail="Ungültiger Anthropic API-Key. Bitte ANTHROPIC_API_KEY in .env prüfen.")
+    except anthropic.APIConnectionError:
+        raise HTTPException(status_code=503, detail="Keine Verbindung zur Anthropic API. Internetverbindung prüfen.")
     return response.content[0].text.strip()
 
 
