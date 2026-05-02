@@ -85,6 +85,9 @@ def _from_tables(soup: BeautifulSoup, filename: str) -> dict[str, dict]:
         # Skip header row if first row looks like column labels
         start = 0
         header_text = " ".join(parsed[0]).lower()
+        # Bail out entirely for maintenance-plan / parts-list tables
+        if any(kw in header_text for kw in ["baugruppe", "tätigkeiten", "tätigkeit", "intervall"]):
+            continue
         if any(kw in header_text for kw in ["code", "fehler", "nr.", "nummer", "meldung", "ursache"]):
             start = 1
 
