@@ -145,8 +145,8 @@
     .answer-text {
       font: 400 15px/24px var(--font-text);
       color: var(--r-on-surface-default);
-      white-space: pre-wrap;
     }
+    .answer-text p:last-child { margin-bottom: 0; }
     .answer-section-label {
       font: 700 11px/14px var(--font-text-b);
       text-transform: uppercase;
@@ -480,6 +480,60 @@ function escHtml(s) {
     .replace(/"/g,'&quot;');
 }
 
+function renderMarkdown(md) {
+  if (!md) return '';
+  const lines = md.split('\n');
+  const out = [];
+  let inUl = false, inOl = false;
+
+  function closeList() {
+    if (inUl) { out.push('</ul>'); inUl = false; }
+    if (inOl) { out.push('</ol>'); inOl = false; }
+  }
+
+  function fmt(t) {
+    return escHtml(t)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/`([^`]+)`/g, '<code style="font-family:monospace;background:var(--r-surface-high);padding:1px 4px;border-radius:3px">$1</code>');
+  }
+
+  for (const raw of lines) {
+    const t = raw.trim();
+    if (!t) { closeList(); out.push('<div style="height:var(--s-2)"></div>'); continue; }
+
+    if (/^#{1,3} /.test(t)) {
+      closeList();
+      const level = (t.match(/^(#+) /) || ['',''])[1].length;
+      const text = t.replace(/^#+\s+/, '');
+      const sz = level <= 1 ? '16px/22px' : '14px/20px';
+      out.push(`<p style="font:700 ${sz} var(--font-text-b);margin:var(--s-3) 0 var(--s-1)">${fmt(text)}</p>`);
+      continue;
+    }
+
+    const ulM = t.match(/^[-*•] (.+)/);
+    if (ulM) {
+      if (inOl) { out.push('</ol>'); inOl = false; }
+      if (!inUl) { out.push('<ul style="margin:var(--s-2) 0;padding-left:1.4em;display:flex;flex-direction:column;gap:var(--s-1)">'); inUl = true; }
+      out.push(`<li>${fmt(ulM[1])}</li>`);
+      continue;
+    }
+
+    const olM = t.match(/^\d+[.)]\s+(.+)/);
+    if (olM) {
+      if (inUl) { out.push('</ul>'); inUl = false; }
+      if (!inOl) { out.push('<ol style="margin:var(--s-2) 0;padding-left:1.4em;display:flex;flex-direction:column;gap:var(--s-1)">'); inOl = true; }
+      out.push(`<li>${fmt(olM[1])}</li>`);
+      continue;
+    }
+
+    closeList();
+    out.push(`<p style="margin:0 0 var(--s-2)">${fmt(t)}</p>`);
+  }
+
+  closeList();
+  return out.join('');
+}
+
 function autoResize(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(160, el.scrollHeight) + 'px';
@@ -613,7 +667,7 @@ function renderAnswer(question, data) {
       </div>
       <div class="answer-card__body">
         ${disclaimer}
-        <div class="answer-text">${escHtml(data.answer || '')}</div>
+        <div class="answer-text">${renderMarkdown(data.answer || '')}</div>
         ${sourcesBlock}
       </div>
       <div class="answer-card__foot">
@@ -675,6 +729,26 @@ async function lookupCode() {
     return;
   }
 
+  const relatedLinks = (data.related || []).map(s => {
+    const href = `../manuals/${escHtml(s.filename)}`;
+    const score = s.score ? `${Math.round(s.score)}%` : '';
+    return `
+      <a class="source-item" href="${href}" target="_blank">
+        <div>${icon('doc', 14)}</div>
+        <div class="source-item__info">
+          <div class="source-item__title">${escHtml(s.title)}</div>
+          <div class="source-item__crumb">${escHtml(s.filename)}</div>
+        </div>
+        ${score ? `<div class="source-item__score">${score}</div>` : ''}
+      </a>`;
+  }).join('');
+
+  const relatedBlock = relatedLinks ? `
+    <div style="margin-top:var(--s-4)">
+      <div class="answer-section-label">Verwandte Manual-Seiten</div>
+      <div class="source-list">${relatedLinks}</div>
+    </div>` : '';
+
   resultDiv.innerHTML = `
     <div class="lds-card lds-card--elevated">
       <div class="lds-card__header">
@@ -685,7 +759,8 @@ async function lookupCode() {
         ${data.cause ? `<div class="ec-field"><div class="ec-field__label">Ursache</div><div class="ec-field__value">${escHtml(data.cause)}</div></div>` : ''}
         ${data.action ? `<div class="ec-field"><div class="ec-field__label">Massnahme</div><div class="ec-field__value">${escHtml(data.action)}</div></div>` : ''}
       </div>
-    </div>`;
+    </div>
+    ${relatedBlock}`;
 }
 
 // ── Voice input ───────────────────────────────────────────────────────────

@@ -110,6 +110,7 @@ class ErrorCodeResponse(BaseModel):
     description: str = ""
     cause: str = ""
     action: str = ""
+    related: list[SourceLink] = []
 
 
 # ---------------------------------------------------------------------------
@@ -152,12 +153,20 @@ async def lookup_errorcode(req: ErrorCodeRequest) -> ErrorCodeResponse:
     if entry is None:
         return ErrorCodeResponse(code=code, found=False)
 
+    query = f"{code} {entry.get('description', '')}".strip()
+    related_results = search(query, top_n=3)
+    related = [
+        SourceLink(title=r["title"], filename=r["filename"], score=r.get("score", 0))
+        for r in related_results
+    ]
+
     return ErrorCodeResponse(
         code=code,
         found=True,
         description=entry.get("description", ""),
         cause=entry.get("cause", ""),
         action=entry.get("action", ""),
+        related=related,
     )
 
 
