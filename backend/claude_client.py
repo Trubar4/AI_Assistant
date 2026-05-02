@@ -89,14 +89,25 @@ def answer(query: str, results: list[dict]) -> str:
         return FALLBACK_ANSWER
 
     context = _build_context(results)
-    user_message = f"Frage: {query}\n\nKontext-Material:\n\n{context}"
 
     try:
         response = _get_client().messages.create(
             model=ANSWER_MODEL,
             max_tokens=1024,
-            system=ANSWER_SYSTEM,
-            messages=[{"role": "user", "content": user_message}],
+            system=[{
+                "type": "text",
+                "text": ANSWER_SYSTEM,
+                "cache_control": {"type": "ephemeral"},
+            }],
+            messages=[{"role": "user", "content": [
+                # Context is cached: same query → same search results → cache hit
+                {
+                    "type": "text",
+                    "text": f"Kontext-Material:\n\n{context}",
+                    "cache_control": {"type": "ephemeral"},
+                },
+                {"type": "text", "text": f"Frage: {query}"},
+            ]}],
         )
     except anthropic.AuthenticationError:
         raise HTTPException(status_code=401, detail="Ungültiger Anthropic API-Key. Bitte ANTHROPIC_API_KEY in .env prüfen.")
@@ -107,16 +118,24 @@ def answer(query: str, results: list[dict]) -> str:
 
 def verify(answer_text: str, results: list[dict]) -> str:
     context = _build_context(results)
-    user_message = (
-        f"Antwort:\n{answer_text}\n\n"
-        f"Kontext-Material:\n\n{context}"
-    )
 
     response = _get_client().messages.create(
         model=VERIFIER_MODEL,
         max_tokens=10,
-        system=VERIFIER_SYSTEM,
-        messages=[{"role": "user", "content": user_message}],
+        system=[{
+            "type": "text",
+            "text": VERIFIER_SYSTEM,
+            "cache_control": {"type": "ephemeral"},
+        }],
+        messages=[{"role": "user", "content": [
+            # Same context as answer() → shares cache entry for repeated questions
+            {
+                "type": "text",
+                "text": f"Kontext-Material:\n\n{context}",
+                "cache_control": {"type": "ephemeral"},
+            },
+            {"type": "text", "text": f"Antwort:\n{answer_text}"},
+        ]}],
     )
     raw = response.content[0].text.strip().upper()
     for status in ("BELEGT", "TEILWEISE", "NICHT_BELEGT"):
