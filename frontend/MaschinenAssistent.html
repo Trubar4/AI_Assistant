@@ -652,26 +652,6 @@ function renderAnswer(question, data) {
       </div>
     </div>` : '';
 
-  const sources = (data.sources || []).map(s => {
-    const href = `../manuals/${escHtml(s.filename)}`;
-    const score = s.score ? `${Math.round(s.score)}%` : '';
-    return `
-      <a class="source-item" href="${href}" target="_blank">
-        <div>${icon('doc', 14)}</div>
-        <div class="source-item__info">
-          <div class="source-item__title">${escHtml(s.title)}</div>
-          <div class="source-item__crumb">${escHtml(s.filename)}</div>
-        </div>
-        ${score ? `<div class="source-item__score">${score}</div>` : ''}
-      </a>`;
-  }).join('');
-
-  const sourcesBlock = sources ? `
-    <div>
-      <div class="answer-section-label">Quellen im Manual</div>
-      <div class="source-list">${sources}</div>
-    </div>` : '';
-
   return `
     <div class="answer-card">
       <div class="answer-card__head">
@@ -681,10 +661,8 @@ function renderAnswer(question, data) {
       <div class="answer-card__body">
         ${disclaimer}
         <div class="answer-text">${renderMarkdown(data.answer || '')}</div>
-        ${sourcesBlock}
       </div>
       <div class="answer-card__foot">
-        ${sources ? `<a class="lds-btn lds-btn--primary" href="${`../manuals/${escHtml((data.sources||[])[0]?.filename||'index.html')}`}" target="_blank">${icon('external',16)} Im Manual öffnen</a>` : ''}
         <button class="lds-btn lds-btn--ghost" onclick="speak(this)" data-text="${escHtml(data.answer||'')}">
           ${icon('speaker',16)} Vorlesen
         </button>
@@ -756,26 +734,6 @@ async function lookupCode() {
     return;
   }
 
-  const relatedLinks = (data.related || []).map(s => {
-    const href = `../manuals/${escHtml(s.filename)}`;
-    const score = s.score ? `${Math.round(s.score)}%` : '';
-    return `
-      <a class="source-item" href="${href}" target="_blank">
-        <div>${icon('doc', 14)}</div>
-        <div class="source-item__info">
-          <div class="source-item__title">${escHtml(s.title)}</div>
-          <div class="source-item__crumb">${escHtml(s.filename)}</div>
-        </div>
-        ${score ? `<div class="source-item__score">${score}</div>` : ''}
-      </a>`;
-  }).join('');
-
-  const relatedBlock = relatedLinks ? `
-    <div style="margin-top:var(--s-4)">
-      <div class="answer-section-label">Verwandte Manual-Seiten</div>
-      <div class="source-list">${relatedLinks}</div>
-    </div>` : '';
-
   resultDiv.innerHTML = `
     <div class="lds-card lds-card--elevated">
       <div class="lds-card__header">
@@ -787,7 +745,6 @@ async function lookupCode() {
         ${data.action ? `<div class="ec-field"><div class="ec-field__label">Massnahme</div><div class="ec-field__value">${escHtml(data.action)}</div></div>` : ''}
       </div>
     </div>
-    ${relatedBlock}
     <div class="ec-followup">
       <div class="answer-section-label">Frage zum Fehlercode stellen</div>
       <div class="ec-followup-row">
