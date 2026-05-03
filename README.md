@@ -1,6 +1,8 @@
-# Maschinen-Assistent
+# KI Assistent — Liebherr LR 1104.03.08
 
-A click-demo of an AI-powered assistant for Liebherr machine operators and service technicians. Users ask questions in natural language (text or voice); the system answers from the machine-specific HTML manual and returns a direct link to the relevant page.
+AI-powered assistant for Liebherr crane operators and service technicians.
+Ask questions in natural German; receive structured answers drawn directly
+from the machine's HTML manual with a clickable source link.
 
 Built for the **Liebherr LR 1104.03.08** crawler crane (Betriebsanleitung V03.06).
 
@@ -8,74 +10,106 @@ Built for the **Liebherr LR 1104.03.08** crawler crane (Betriebsanleitung V03.06
 
 ## Features
 
-- **Manual Q&A** – Ask in plain German; receive a structured answer with a clickable link to the exact HTML page.
-- **Error code lookup** – Enter a fault code; get a description, probable cause, and recommended action.
-- **Verifier step** – A second Claude call checks whether the answer is actually supported by the retrieved context. Low-confidence answers are replaced with an explicit disclaimer.
-- **Voice input / output** – Web Speech API (no external service needed; Chrome/Edge on Android tablets).
+| Feature | Details |
+|---------|---------|
+| Manual Q&A | Natural-language questions answered from the HTML manual |
+| Error code lookup | Enter a fault code → description, probable cause, action steps, related manual pages |
+| Grounding check | A second Claude call verifies whether the answer is actually supported by the retrieved context; low-confidence answers show an explicit disclaimer |
+| Voice input | Web Speech API — browser-native, no external audio service |
+| Prompt caching | System prompt and context blocks are cached on the Anthropic side; repeated questions on the same context cost ~10× less |
 
 ---
 
-## Architecture
+## Prerequisites
 
-```
-User question
-      │
-      ▼
-┌─────────────────────────────────┐
-│  Layer 1 – Preprocessing        │  (run once, offline)
-│  parse_toc.py                   │  → toc_index.json
-│  parse_metadata.py              │  → semantic tags merged in
-│  extract_content.py             │  → content_index.json
-│  prepare_errorcodes.py          │  → errorcodes.json
-└─────────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────────┐
-│  Layer 2 – Backend (FastAPI)    │
-│  search.py   – fuzzy retrieval  │
-│  claude_client.py – LLM calls   │
-│  main.py     – REST endpoints   │
-│    POST /ask                    │
-│    POST /errorcode              │
-│    GET  /health                 │
-└─────────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────────┐
-│  Layer 3 – Frontend             │
-│  MaschinenAssistent.html        │
-│  (single file, Vanilla JS)      │
-│  Voice: Web Speech API          │
-└─────────────────────────────────┘
+- Python 3.11+
+- An Anthropic API key — [console.anthropic.com](https://console.anthropic.com)
+- Chrome or Edge (required for voice input; all browsers work for text)
+
+---
+
+## Installation
+
+```bash
+git clone <repo>
+cd AI_Assistant
+pip install -r requirements.txt
+cp .env.example .env          # then add ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ---
 
-## Project Structure
+## Loading the manual
+
+1. Copy all HTML files from the Liebherr manual export into `manuals/`
+2. Run the preprocessing scripts **once** (in order):
+
+```bash
+python -m preprocessing.parse_toc          # manuals/toc-de-de.js  → data/toc_index.json
+python -m preprocessing.parse_metadata     # manuals/metadata.rdf  → data/metadata_index.json
+python -m preprocessing.extract_content    # manuals/*.html        → data/content_index.json
+python -m preprocessing.extract_errorcodes # manuals/*.html        → data/errorcodes.json
+```
+
+Re-run all four scripts whenever the manual is updated.
+
+---
+
+## Running
+
+```bash
+uvicorn backend.main:app --reload
+```
+
+Open **http://localhost:8000** — the browser redirects to the frontend automatically.
+
+### Health check
 
 ```
-/
+GET /health
+→ {"status":"ok","errorcodes_loaded":504}
+```
+
+---
+
+## Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ANTHROPIC_API_KEY` | — | **Required.** Anthropic API key |
+| `ANSWER_MODEL` | `claude-haiku-4-5` | Model used to generate answers |
+| `VERIFIER_MODEL` | `claude-haiku-4-5` | Model used to verify grounding |
+
+Switch `ANSWER_MODEL=claude-sonnet-4-6` for higher answer quality at ~5× more cost.
+
+---
+
+## Project structure
+
+```
+AI_Assistant/
 ├── preprocessing/
-│   ├── parse_toc.py           # Parses toc-de-de.js → toc_index.json
-│   ├── parse_metadata.py      # Parses metadata.rdf (iiRDS) → semantic tags
-│   ├── extract_content.py     # Extracts text/warnings/steps from HTML files
-│   └── prepare_errorcodes.py  # Converts error code docs → errorcodes.json
+│   ├── parse_toc.py           # toc-de-de.js  → data/toc_index.json
+│   ├── parse_metadata.py      # metadata.rdf  → data/metadata_index.json
+│   ├── extract_content.py     # HTML files    → data/content_index.json
+│   └── extract_errorcodes.py  # HTML files    → data/errorcodes.json
 │
 ├── backend/
-│   ├── main.py                # FastAPI app
-│   ├── search.py              # Retrieval (rapidfuzz / TF-IDF)
-│   └── claude_client.py       # Anthropic API calls (answer + verifier)
+│   ├── main.py                # FastAPI app, /ask /errorcode /health
+│   ├── search.py              # Retrieval (rapidfuzz fuzzy + keyword scoring)
+│   └── claude_client.py       # Anthropic API calls with prompt caching
 │
 ├── frontend/
-│   └── MaschinenAssistent.html
+│   └── MaschinenAssistent.html  # Single-file UI (vanilla JS, no build step)
 │
-├── data/                      # Generated by preprocessing – not committed
+├── data/                      # Generated by preprocessing — not committed
 │   ├── toc_index.json
+│   ├── metadata_index.json
 │   ├── content_index.json
 │   └── errorcodes.json
 │
-├── manuals/                   # Not committed – local or cloud storage
-│   └── [HTML manual files]
+├── manuals/                   # HTML manual files — not committed
+│   └── *.html
 │
 ├── .env.example
 ├── requirements.txt
@@ -84,101 +118,76 @@ User question
 
 ---
 
-## Setup
+## API
 
-### Prerequisites
+### POST /ask
 
-- Python 3.11+
-- An Anthropic API key ([console.anthropic.com](https://console.anthropic.com))
-- Chrome or Edge (for voice features)
-
-### Install
-
-```bash
-pip install -r requirements.txt
-cp .env.example .env
-# Add your key: ANTHROPIC_API_KEY=sk-ant-...
+```json
+{ "question": "Wie prüfe ich den Getriebeölstand?", "top_n": 5 }
 ```
 
-### Run preprocessing (once)
-
-Place the HTML manual files in `manuals/`, then:
-
-```bash
-python preprocessing/parse_toc.py
-python preprocessing/parse_metadata.py
-python preprocessing/extract_content.py
-# optional:
-python preprocessing/prepare_errorcodes.py
+```json
+{
+  "answer": "1. Motor abstellen ...",
+  "grounding": "BELEGT",
+  "fallback_used": false,
+  "sources": [
+    { "title": "Getriebeöl prüfen", "filename": "ID_abc.html", "score": 0.87 }
+  ]
+}
 ```
 
-This produces the JSON indexes in `data/`.
+### POST /errorcode
 
-### Start the backend
-
-```bash
-uvicorn backend.main:app --reload
+```json
+{ "code": "1042" }
 ```
 
-### Open the frontend
-
-Open `frontend/MaschinenAssistent.html` directly in Chrome or Edge (no build step needed).
-
----
-
-## Technology
-
-| Component | Technology |
-|-----------|-----------|
-| Backend | Python 3.11+, FastAPI, uvicorn |
-| LLM | Anthropic Claude API (`claude-haiku-4-5` for speed, `claude-sonnet-4-6` for quality) |
-| Retrieval | rapidfuzz (fuzzy matching) – no vector DB needed for demo |
-| Frontend | Vanilla HTML/CSS/JS, single file |
-| Voice | Web Speech API (browser-native) |
-| Deployment | Local only (`uvicorn`) – no cloud required |
+```json
+{
+  "code": "1042",
+  "found": true,
+  "description": "Hydrauliktemperatur zu hoch",
+  "cause": "Ölkühler verschmutzt",
+  "action": "Kühler reinigen, Ölstand prüfen",
+  "related": [
+    { "title": "Hydrauliksystem", "filename": "ID_xyz.html", "score": 0.74 }
+  ]
+}
+```
 
 ---
 
-## API Cost Estimate
+## Cost estimate
 
-- `claude-haiku-4-5`: ~$0.001 per request — negligible for demo use.
-- Start with Haiku; switch to Sonnet if answer quality needs improvement.
-- $10 in API credits covers weeks of demo usage.
+| Usage level | Requests/day | Est. cost/month |
+|-------------|-------------|-----------------|
+| Demo (1 user) | ~20 | < $1 |
+| Pilot (5 technicians) | ~100 | ~$3 |
+| Fleet (50 machines) | ~1 000 | ~$25 |
 
----
-
-## Demo Scope & Limitations
-
-**In scope:**
-- Single machine (LR 1104.03.08), German only
-- Static error code lookup (no live machine API)
-- Local deployment
-
-**Out of scope:**
-- Multi-language support
-- Multiple machines
-- Vector DB / semantic RAG
-- Authentication
-- Cloud deployment
+Based on `claude-haiku-4-5` with prompt caching. Costs reduce further once
+the system prompt and context are served from cache (after the first request
+per context window).
 
 ---
 
-## Risks
+## Limitations
 
-| Risk | Likelihood | Mitigation |
-|------|-----------|------------|
-| Poor retrieval on vague questions | Medium | Show example questions in the UI |
-| Verifier misses gaps in manual | Medium | Permanent UI notice: "Answer based on manual – no guarantee" |
-| Voice input fails in cabin noise | High | Deliberate MTP learning – test first, then evaluate Whisper |
-| Inconsistent HTML structure across manual files | Medium | Write `extract_content.py` to be robust against missing tags |
-| Slow preprocessing on large manual | Low | One-time operation; can be parallelised |
+- **Single machine model** — LR 1104.03.08 only; extending to other models
+  requires separate preprocessing runs and namespace isolation.
+- **Static error codes** — no live machine API; error codes come from the
+  manual, not from the machine's CAN bus.
+- **Retrieval quality** — uses keyword + fuzzy matching (rapidfuzz); no
+  vector embeddings. Works well for exact or near-exact terminology;
+  synonym-heavy or vague questions may miss relevant pages.
+- **No authentication** — intended for internal/demo use only.
+- **No offline mode** — all AI generation requires the Anthropic API.
 
 ---
 
-## Next Steps
+## Architecture overview
 
-1. Provide a sample set of HTML manual files (e.g. 50 files) for development
-2. Add `ANTHROPIC_API_KEY` to `.env`
-3. Run `parse_toc.py` and validate `toc_index.json`
-4. Run `extract_content.py` and validate `content_index.json`
-5. Build backend endpoints and a minimal frontend for first end-to-end test
+See [ARCHITECTURE.md](ARCHITECTURE.md) for C4 diagrams (System Context and
+Container level), scalability analysis, iPad deployment path, and manual
+sync design.
