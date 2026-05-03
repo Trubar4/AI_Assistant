@@ -1,1 +1,217 @@
-{}
+{
+  "G-001": {
+    "description": "Lastmoment ist über 90 % ausgelastet.",
+    "cause": "",
+    "action": "Lastmoment verringern."
+  },
+  "G-002": {
+    "description": "Maximale Längsneigung oder maximale Querneigung ist erreicht.",
+    "cause": "",
+    "action": "Ausladung verkleinern."
+  },
+  "G-003": {
+    "description": "Gewählte maximale Windgeschwindigkeit ist erreicht.",
+    "cause": "",
+    "action": "Ausleger ablegen."
+  },
+  "G-004": {
+    "description": "Mindestens eine Fehlermeldung des elektrischen Systems ist vorhanden.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben."
+  },
+  "G-005": {
+    "description": "Isolationswiderstand ist kleiner als 300 kOhm .",
+    "cause": "",
+    "action": "Laufende Arbeiten fertigstellen. Maschine in sicheren Zustand bringen. Maschine abstellen und sichern. Liebherr-Kundendienst kontaktieren."
+  },
+  "G-006": {
+    "description": "Datenaufzeichnung wird initialisiert.",
+    "cause": "",
+    "action": "Warten, bis Anzeige Datenaufzeichnung erfolgreich initialisiert grün leuchtet:."
+  },
+  "G-007": {
+    "description": "Warnung im Hochvoltsystem ist aufgetreten.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben."
+  },
+  "G-008": {
+    "description": "Durchschnittstemperatur der Hochvoltbatterien ist hoch.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben."
+  },
+  "G-009": {
+    "description": "Füllstand des Kühlmittels ist niedrig.",
+    "cause": "",
+    "action": "Kühlmittel nachfüllen."
+  },
+  "G-010": {
+    "description": "Kühlmitteltemperatur des Elektrokomponentenkreislaufs ist hoch.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben."
+  },
+  "G-011": {
+    "description": "Drehzahl des Elektromotors ist hoch.",
+    "cause": "",
+    "action": "Drehzahl verringern."
+  },
+  "G-012": {
+    "description": "Füllstand des Hydrauliköltanks ist niedrig.",
+    "cause": "",
+    "action": "Hydrauliköl nachfüllen."
+  },
+  "G-013": {
+    "description": "Füllstand des Hydrauliköltanks ist hoch.",
+    "cause": "",
+    "action": "Hydrauliköl ablassen."
+  },
+  "G-014": {
+    "description": "Temperatur des Hydrauliköls ist hoch.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben."
+  },
+  "G-015": {
+    "description": "Leckage im Hydraulikkreislauf.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben."
+  },
+  "R-001": {
+    "description": "Blinkt rot: Maximale Traglast ist überschritten.",
+    "cause": "",
+    "action": "Last verringern oder Ausleger heben. Sicherstellen, dass vor Anheben der Last Schrägzug ausgeglichen ist."
+  },
+  "R-002": {
+    "description": "Leuchtet rot: Maschine droht durch zu geringe Ausladung nach hinten zu kippen.",
+    "cause": "",
+    "action": "Ausladung vergrößern."
+  },
+  "R-003": {
+    "description": "Leuchtet rot: Maximale Längsneigung oder maximale Querneigung ist überschritten.",
+    "cause": "",
+    "action": "Ausladung verkleinern."
+  },
+  "R-004": {
+    "description": "Blinkt rot: Windgeschwindigkeit ist zu hoch.",
+    "cause": "",
+    "action": "Ausleger ablegen."
+  },
+  "R-005": {
+    "description": "Blinkt rot: Nadelausleger zu weit gesenkt.",
+    "cause": "",
+    "action": "Nadelausleger heben."
+  },
+  "R-006": {
+    "description": "Blinkt rot: Fehler ist in Elektrik aufgetreten.",
+    "cause": "",
+    "action": "Fehlermeldung prüfen. Ursache der Fehlermeldung beheben."
+  },
+  "R-007": {
+    "description": "Blinkt rot: Isolationswiderstand ist kleiner als 100 kOhm.",
+    "cause": "",
+    "action": "Maschine in sicheren Zustand bringen. Maschine abstellen und absichern. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-008": {
+    "description": "Blinkt rot: Fehler im Interlockkreis des Hochvoltsystems ist aufgetreten.",
+    "cause": "",
+    "action": "Maschine abstellen und sichern. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-009": {
+    "description": "Blinkt rot: Batteriespannung ist zu niedrig.",
+    "cause": "",
+    "action": "Füllstand der Batterie prüfen."
+  },
+  "R-010": {
+    "description": "Blinkt rot: Fehler bei der Datenaufzeichnung.",
+    "cause": "",
+    "action": "Liebherr-Kundendienst kontaktieren."
+  },
+  "R-011": {
+    "description": "Blinkt rot: Gewählter Rüstzustand am Bildschirm stimmt mit aufgebautem Rüstzustand nicht überein.",
+    "cause": "",
+    "action": "Von breiter Spur auf schmale Spur umbauen: Spurbreite verstellen. Von schmaler Spur auf breite Spur umbauen: Rüstzustand einstellen."
+  },
+  "R-012": {
+    "description": "Blinkt rot: Gewählter Rüstzustand am Bildschirm stimmt mit aufgebautem Rüstzustand nicht überein.",
+    "cause": "",
+    "action": "Von breiter Spur auf schmale Spur umbauen: Rüstzustand einstellen. Von schmaler Spur auf breite Spur umbauen: Spurbreite verstellen."
+  },
+  "R-013": {
+    "description": "Blinkt rot: Fehler im Hochvoltsystem ist aufgetreten.",
+    "cause": "",
+    "action": "Motor sofort ausschalten. Fehlermeldung lesen. Ursache der Fehlermeldung beheben."
+  },
+  "R-014": {
+    "description": "Blinkt rot: Störung im Hochvoltsystem ist aufgetreten.",
+    "cause": "",
+    "action": "Gefahrbringende Bewegung beenden. Last am Boden abstellen. Motor ausschalten. Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-015": {
+    "description": "Blinkt rot: Drehzahl des Elektromotors ist zu hoch.",
+    "cause": "",
+    "action": "Drehzahl verringern."
+  },
+  "R-016": {
+    "description": "Blinkt rot: Temperatur der Hochvoltbatterien ist zu hoch.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-017": {
+    "description": "Blinkt rot: Füllstand des Kühlmittels ist zu niedrig.",
+    "cause": "",
+    "action": "Kühlmittel nachfüllen."
+  },
+  "R-018": {
+    "description": "Blinkt rot: Kühlmitteltemperatur im Elektrokomponentenkreislauf ist zu hoch.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-019": {
+    "description": "Blinkt rot: Absperrorgan Hydrauliköltank ist geschlossen.",
+    "cause": "",
+    "action": "Position des Absperrorgans Hydrauliköltank prüfen."
+  },
+  "R-020": {
+    "description": "Blinkt rot: Füllstand des Hydrauliköltanks ist zu niedrig.",
+    "cause": "",
+    "action": "Hydrauliköl nachfüllen."
+  },
+  "R-021": {
+    "description": "Blinkt rot: Temperatur des Hydrauliköls ist zu hoch.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-022": {
+    "description": "Blinkt rot: Speisedruck ist zu niedrig.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-023": {
+    "description": "Blinkt rot: Speisedruck an Winde1 ist zu niedrig.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-024": {
+    "description": "Blinkt rot: Speisedruck an Winde2 ist zu niedrig.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-025": {
+    "description": "Blinkt rot: Temperatur des Getriebeöls im Verteilergetriebe ist zu hoch.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-026": {
+    "description": "Blinkt rot: Speisedruck-Ölfilter funktioniert nicht einwandfrei.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-027": {
+    "description": "Blinkt rot: Hydraulikölfilter funktioniert nicht einwandfrei.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  },
+  "R-028": {
+    "description": "Hydraulikölfilter der Freifallwinde funktioniert nicht einwandfrei.",
+    "cause": "",
+    "action": "Fehlermeldung lesen. Ursache der Fehlermeldung beheben. Liebherr-Kundendienst kontaktieren."
+  }
+}
