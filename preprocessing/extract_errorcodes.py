@@ -4,7 +4,7 @@ extract_errorcodes.py
 Scans Liebherr HTML manual pages for error codes → data/errorcodes.json.
 
 Three extraction strategies (in priority order):
-  1. Table extraction  — finds 2-5 column tables whose first column looks like
+  1. Table extraction  — finds 2-6 column tables whose first column looks like
                          error codes (digits or short letter+digit codes).
   2. Definition lists  — <dl><dt>code</dt><dd>description</dd></dl> patterns.
   3. Regex fallback    — inline "1042 : Hydrauliktemperatur zu hoch" patterns;
@@ -17,6 +17,7 @@ Usage:
     python -m preprocessing.extract_errorcodes
     python -m preprocessing.extract_errorcodes --manuals path/to/manuals
     python -m preprocessing.extract_errorcodes --merge   # keep existing entries
+    python -m preprocessing.extract_errorcodes --debug   # show table details
 """
 
 import argparse
@@ -53,8 +54,8 @@ def _is_code(text: str) -> bool:
 def _is_text_description(text: str) -> bool:
     """Return True when text looks like a natural-language description.
 
-    Rejects pure measurements ('1140 mm 3.74 ft'), part numbers, and
-    empty strings.  Real error descriptions start with a letter.
+    Rejects pure measurements ('1140 mm 3.74 ft') and part numbers.
+    Real Liebherr error descriptions always start with a letter.
     """
     t = text.strip()
     return bool(t) and t[0].isalpha()
@@ -69,16 +70,26 @@ def _normalise_code(raw: str) -> str:
 # Extraction helpers
 # ---------------------------------------------------------------------------
 
-def _from_tables(soup: BeautifulSoup, filename: str) -> dict[str, dict]:
+# Header keywords that mean "this is NOT an error-code table"
+_SKIP_HEADER_KW = [
+    "baugruppe", "tätigkeiten", "tätigkeit", "intervall",
+    "abmessung", "maße", "dimension",
+]
+
+# Header keywords that mean "skip the first row (it's a label row)"
+_LABEL_HEADER_KW = ["code", "fehler", "nr.", "nummer", "meldung", "ursache"]
+
+
+def _from_tables(soup: BeautifulSoup, filename: str,
+                 debug: bool = False) -> dict[str, dict]:
     """Extract error codes from HTML tables."""
     results: dict[str, dict] = {}
 
-    for table in soup.find_all("table"):
+    for t_idx, table in enumerate(soup.find_all("table")):
         rows = table.find_all("tr")
         if len(rows) < 2:
             continue
 
-        # Collect all cell texts per row
         parsed: list[list[str]] = []
         for row in rows:
             cells = [td.get_text(" ", strip=True) for td in row.find_all(["td", "th"])]
@@ -92,36 +103,36 @@ def _from_tables(soup: BeautifulSoup, filename: str) -> dict[str, dict]:
         if ncols < 2 or ncols > 6:
             continue
 
-        # Skip header row if first row looks like column labels
-        start = 0
         header_text = " ".join(parsed[0]).lower()
-        # Bail out entirely for maintenance-plan / dimension / spec tables
-        if any(kw in header_text for kw in [
-            "baugruppe", "tätigkeiten", "tätigkeit", "intervall",
-            "abmessung", "maße", "dimension", "gewicht", "wert",
-        ]):
+
+        # Bail out for maintenance-plan / dimension tables
+        if any(kw in header_text for kw in _SKIP_HEADER_KW):
+            if debug:
+                print(f"    [table {t_idx}] SKIP (blacklist header): {parsed[0][:3]}")
             continue
-        if any(kw in header_text for kw in ["code", "fehler", "nr.", "nummer", "meldung", "ursache"]):
-            start = 1
+
+        # Skip label row if first row contains column names
+        start = 1 if any(kw in header_text for kw in _LABEL_HEADER_KW) else 0
 
         data_rows = parsed[start:]
         if not data_rows:
             continue
 
-        # Require at least 2 rows where column 0 looks like a code
+        # Need at least 2 rows with a code-like value in column 0
         code_rows = [r for r in data_rows if r and _is_code(r[0])]
         if len(code_rows) < 2:
+            if debug and any(r and r[0].strip() for r in data_rows[:3]):
+                print(f"    [table {t_idx}] SKIP (code_hits={len(code_rows)}<2): "
+                      f"col0 samples: {[r[0] for r in data_rows[:3] if r]}")
             continue
 
-        # Table-level guard: reject dimension/measurement tables where most
-        # col-1 values start with a digit rather than a letter.
-        desc_samples = [r[1].strip() for r in code_rows if len(r) > 1 and r[1].strip()]
-        if desc_samples:
-            text_frac = sum(1 for d in desc_samples if _is_text_description(d)) / len(desc_samples)
-            if text_frac < 0.5:
-                continue
+        if debug:
+            desc_samples = [r[1] if len(r) > 1 else "" for r in code_rows[:3]]
+            print(f"    [table {t_idx}] CANDIDATE {ncols}col × {len(data_rows)} rows "
+                  f"| code_hits={len(code_rows)} | header={parsed[0][:3]}")
+            print(f"       samples: {list(zip([r[0] for r in code_rows[:3]], desc_samples))}")
 
-        # Map columns to roles
+        accepted = 0
         for row in data_rows:
             if not row or not row[0].strip():
                 continue
@@ -150,6 +161,10 @@ def _from_tables(soup: BeautifulSoup, filename: str) -> dict[str, dict]:
                     "action":      action,
                     "_source":     filename,
                 }
+                accepted += 1
+
+        if debug and code_rows:
+            print(f"       → accepted {accepted} / {len(code_rows)} code rows")
 
     return results
 
@@ -217,7 +232,8 @@ def _from_regex(soup: BeautifulSoup, filename: str) -> dict[str, dict]:
 # Main extraction loop
 # ---------------------------------------------------------------------------
 
-def extract(manuals_dir: Path, toc_path: Path) -> dict[str, dict]:
+def extract(manuals_dir: Path, toc_path: Path,
+            debug: bool = False) -> dict[str, dict]:
     # Build TOC lookup: filename → title
     toc_titles: dict[str, str] = {}
     if toc_path.exists():
@@ -233,10 +249,14 @@ def extract(manuals_dir: Path, toc_path: Path) -> dict[str, dict]:
 
     print(f"Scanning {len(html_files)} HTML file(s) in {manuals_dir} …\n")
 
+    error_pages_seen = 0
+
     for html_file in html_files:
         filename = html_file.name
         title = toc_titles.get(filename, "")
         is_error_page = bool(_ERROR_PAGE_RE.search(title))
+        if is_error_page:
+            error_pages_seen += 1
 
         try:
             soup = BeautifulSoup(
@@ -246,15 +266,18 @@ def extract(manuals_dir: Path, toc_path: Path) -> dict[str, dict]:
             print(f"  [SKIP] {filename}: {exc}")
             continue
 
+        if debug and is_error_page:
+            print(f"\n  [ERROR PAGE] {filename[:70]}")
+            print(f"    title: {title!r}")
+
         # Always try table + deflist extraction
         found: dict[str, dict] = {}
         found.update(_from_deflists(soup, filename))
-        found.update(_from_tables(soup, filename))
+        found.update(_from_tables(soup, filename, debug=debug and is_error_page))
 
         # Regex fallback only on identified error pages (too noisy otherwise)
         if is_error_page:
             regex_hits = _from_regex(soup, filename)
-            # Regex only fills gaps, not overwrite structured data
             for code, entry in regex_hits.items():
                 if code not in found:
                     found[code] = entry
@@ -265,8 +288,10 @@ def extract(manuals_dir: Path, toc_path: Path) -> dict[str, dict]:
             print(f"    → {len(found)} code(s): {', '.join(sorted(found)[:6])}"
                   + ("…" if len(found) > 6 else ""))
 
-        # Later files win on conflict (more specific pages override earlier)
         all_codes.update(found)
+
+    if debug:
+        print(f"\nTOC-matched error pages : {error_pages_seen}")
 
     return all_codes
 
@@ -299,13 +324,18 @@ def main() -> None:
         action="store_true",
         help="Merge with existing errorcodes.json; extracted HTML data wins on conflict",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print table-level diagnostics for TOC-identified error pages",
+    )
     args = parser.parse_args()
 
     manuals_dir = Path(args.manuals)
     toc_path    = Path(args.toc)
     out_path    = Path(args.out)
 
-    extracted = extract(manuals_dir, toc_path)
+    extracted = extract(manuals_dir, toc_path, debug=args.debug)
 
     # Optionally merge with existing file
     if args.merge and out_path.exists():
@@ -332,8 +362,10 @@ def main() -> None:
 
     if len(clean) == 0:
         print(
-            "\nHint: No codes found. Error code pages (Fehlermeldungen, Betriebsstörungen)\n"
-            "      were not among the loaded HTML files. Upload the full manual and re-run."
+            "\nHint: No codes found."
+            "\n  1. Run with --debug to see which tables are on error pages."
+            "\n  2. Check that toc_index.json contains entries for Fehlermeldungs-pages."
+            "\n  3. Make sure the HTML files are in the manuals/ directory."
         )
 
 
