@@ -35,6 +35,9 @@ flowchart TD
     SYS -- "reads pages at startup\npreprocessed to JSON" --> MAN
 ```
 
+**How to read this diagram:**
+Boxes with a person icon are human users. Boxes with a robot or cloud icon are systems. Arrows show which direction data flows; the label describes the protocol or content. This level answers: *who uses the system, and what does it depend on externally?*
+
 **Key architectural decisions at this level:**
 
 - The LLM (Claude) never reads the full manual. It only receives the 3–5 most relevant pages retrieved by the search layer. This keeps latency low and costs predictable.
@@ -78,6 +81,9 @@ flowchart TD
     FE -- "static link" --> HTML
 ```
 
+**How to read this diagram:**
+"Container" in C4 terminology means any independently deployable unit — a running process, a web app, or a data store. It is not related to Docker. The `APP` subgraph is everything that runs on the server; `STORE` is the data that lives on disk. Arrows inside the app boundary are in-process function calls (no network hop); arrows crossing to `CLAUDE` are real HTTPS requests to Anthropic's servers.
+
 ### Request flow — POST /ask
 
 ```
@@ -104,6 +110,138 @@ Browser ← JSON
 ```
 
 No LLM call for error code lookup — sub-100 ms response time.
+
+---
+
+## Claude API — Payload & Two-Call Design
+
+Every `/ask` request results in **two sequential API calls** to Anthropic. This section shows the exact payload structure for each call and explains the design decisions behind it.
+
+### Why two calls?
+
+A single LLM call could hallucinate without knowing it. The second call is an independent model instance that checks: *"Does what Call 1 answered actually match the manual content?"* — like a second pair of eyes. If the verdict is `NICHT_BELEGT`, the answer is discarded and replaced by an explicit disclaimer. This is the right design for safety-critical equipment.
+
+### Call 1 — `answer()`: generate the answer
+
+```json
+POST https://api.anthropic.com/v1/messages
+
+{
+  "model": "claude-haiku-4-5",
+  "max_tokens": 1024,
+
+  "system": [
+    {
+      "type": "text",
+      "text": "Du bist ein Assistent für Liebherr-Maschinenführer und Servicetechniker. Antworte ausschließlich auf Basis des gegebenen Kontext-Materials ...",
+      "cache_control": { "type": "ephemeral" }
+    }
+  ],
+
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Kontext-Material:\n\n### Getriebeöl prüfen (Wartung › Schmierung)\n  1. Motor abstellen.\n  2. Ölstand am Schauglas prüfen ...\n\n---\n\n### Wartungsintervalle (...)\n ...",
+          "cache_control": { "type": "ephemeral" }
+        },
+        {
+          "type": "text",
+          "text": "Frage: Wie oft muss ich das Getriebeöl wechseln?"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Call 2 — `verify()`: check grounding
+
+```json
+POST https://api.anthropic.com/v1/messages
+
+{
+  "model": "claude-haiku-4-5",
+  "max_tokens": 10,
+
+  "system": [
+    {
+      "type": "text",
+      "text": "Du prüfst, ob eine gegebene Antwort vollständig durch den Kontext belegt ist. Antworte ausschließlich mit: BELEGT / TEILWEISE / NICHT_BELEGT",
+      "cache_control": { "type": "ephemeral" }
+    }
+  ],
+
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Kontext-Material:\n\n[identical to Call 1]",
+          "cache_control": { "type": "ephemeral" }
+        },
+        {
+          "type": "text",
+          "text": "Antwort:\nDas Getriebeöl muss alle 1000 Betriebsstunden gewechselt werden ..."
+        }
+      ]
+    }
+  ]
+}
+```
+
+Claude responds with exactly one word: `BELEGT`, `TEILWEISE`, or `NICHT_BELEGT`. `max_tokens: 10` enforces this.
+
+### How the context block is built
+
+`_build_context()` in `claude_client.py` assembles the manual pages retrieved by search into a single text block:
+
+```
+### {page title} ({breadcrumb path})
+  ⚠ {warning text, if any}
+  1. {step 1}
+  2. {step 2}
+  ...
+{free text, capped at 1 500 chars per page}
+
+---
+
+### {next page title} ...
+```
+
+Typically 2 000–6 000 tokens for 5 retrieved pages. Claude never sees pages that were not retrieved — the full manual is never in the prompt.
+
+### Prompt caching — what it means
+
+Each content block marked `"cache_control": {"type": "ephemeral"}` is stored on Anthropic's servers after the first request. On subsequent requests with the same content, Anthropic skips re-processing that block and charges ~10× less for those cached tokens.
+
+| Block | Cached? | Rationale |
+|-------|---------|-----------|
+| System prompt | Yes | Identical on every request |
+| Context block (manual pages) | Yes | Same pages → same block; Call 2 reuses Call 1's cache entry |
+| User question | No | Unique per request |
+| Answer (in Call 2) | No | Unique per request |
+
+For the cache to activate, the cached prefix must exceed 1 024 tokens (Haiku minimum). The system prompt alone (~250 tokens) does not reach this threshold on its own, but system prompt + context block combined easily exceed it with real manual content.
+
+### End-to-end timing
+
+```
+User submits question
+  │
+  ├─ search.py          in-memory retrieval          ~5 ms
+  ├─ _build_context()   assemble text block          ~1 ms
+  ├─ Call 1 (answer)    Haiku, 1024 max tokens      ~800–1500 ms
+  └─ Call 2 (verify)    Haiku, 10 max tokens        ~200–400 ms
+                        (context served from cache)
+                                                    ──────────
+                        Total                       ~1–2 s
+```
+
+The `/errorcode` endpoint makes **no API call** — it is a plain dict lookup in memory and returns in under 100 ms.
 
 ---
 
