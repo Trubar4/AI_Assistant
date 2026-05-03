@@ -50,6 +50,16 @@ def _is_code(text: str) -> bool:
     return bool(_CODE_RE.match(t)) and len(t) <= 10
 
 
+def _is_text_description(text: str) -> bool:
+    """Return True when text looks like a natural-language description.
+
+    Rejects pure measurements ('1140 mm 3.74 ft'), part numbers, and
+    empty strings.  Real error descriptions start with a letter.
+    """
+    t = text.strip()
+    return bool(t) and t[0].isalpha()
+
+
 def _normalise_code(raw: str) -> str:
     """Remove internal whitespace, uppercase."""
     return re.sub(r"\s+", "", raw).upper()
@@ -85,8 +95,11 @@ def _from_tables(soup: BeautifulSoup, filename: str) -> dict[str, dict]:
         # Skip header row if first row looks like column labels
         start = 0
         header_text = " ".join(parsed[0]).lower()
-        # Bail out entirely for maintenance-plan / parts-list tables
-        if any(kw in header_text for kw in ["baugruppe", "tätigkeiten", "tätigkeit", "intervall"]):
+        # Bail out entirely for maintenance-plan / dimension / spec tables
+        if any(kw in header_text for kw in [
+            "baugruppe", "tätigkeiten", "tätigkeit", "intervall",
+            "abmessung", "maße", "dimension", "gewicht", "wert",
+        ]):
             continue
         if any(kw in header_text for kw in ["code", "fehler", "nr.", "nummer", "meldung", "ursache"]):
             start = 1
@@ -96,9 +109,17 @@ def _from_tables(soup: BeautifulSoup, filename: str) -> dict[str, dict]:
             continue
 
         # Require at least 2 rows where column 0 looks like a code
-        code_hits = sum(1 for r in data_rows if r and _is_code(r[0]))
-        if code_hits < 2:
+        code_rows = [r for r in data_rows if r and _is_code(r[0])]
+        if len(code_rows) < 2:
             continue
+
+        # Table-level guard: reject dimension/measurement tables where most
+        # col-1 values start with a digit rather than a letter.
+        desc_samples = [r[1].strip() for r in code_rows if len(r) > 1 and r[1].strip()]
+        if desc_samples:
+            text_frac = sum(1 for d in desc_samples if _is_text_description(d)) / len(desc_samples)
+            if text_frac < 0.5:
+                continue
 
         # Map columns to roles
         for row in data_rows:
@@ -121,7 +142,8 @@ def _from_tables(soup: BeautifulSoup, filename: str) -> dict[str, dict]:
                 cause  = ""
                 action = ""
 
-            if code and desc:
+            # Row-level guard: description must look like natural language
+            if code and desc and _is_text_description(desc):
                 results[code] = {
                     "description": desc,
                     "cause":       cause,
@@ -180,7 +202,7 @@ def _from_regex(soup: BeautifulSoup, filename: str) -> dict[str, dict]:
             continue
         code = _normalise_code(code_raw)
         desc = m.group(2).strip()
-        if code and desc and code not in results:
+        if code and desc and _is_text_description(desc) and code not in results:
             results[code] = {
                 "description": desc,
                 "cause":       "",
