@@ -1,0 +1,78 @@
+/* ============================================================
+   PRIMITIVES — raw values (do not use directly in components)
+   Components consume ROLES (see roles-*.css), which point here.
+   ============================================================ */
+
+:root {
+  /* Brand */
+  --p-yellow-400: #ffd000;       /* CO primary */
+  --p-yellow-500: #e8be00;
+  --p-yellow-300: #ffdd4d;
+
+  --p-blue-700:   #003057;       /* HA artic-blue */
+  --p-blue-500:   #2779c4;       /* HA primary */
+  --p-blue-300:   #5ea4dc;
+
+  /* Neutrals (steel) */
+  --p-white:      #ffffff;
+  --p-steel-50:   #f9fafb;
+  --p-steel-100:  #f0f3f6;
+  --p-steel-200:  #e5e8ed;
+  --p-steel-300:  #d3d8dd;
+  --p-steel-400:  #bdc4ca;
+  --p-steel-500:  #9ea4ab;
+  --p-steel-600:  #888e94;
+  --p-steel-700:  #6b7278;
+  --p-steel-800:  #51585d;
+  --p-steel-900:  #353a40;
+  --p-steel-950:  #282c30;
+  --p-steel-975:  #202326;
+  --p-black:      #000000;
+
+  /* Accent ramps (Slate, Terra, Clay, Leaf, Ruby, Burgundy, Copper, CoolGreen) */
+  --p-slate-700:    #3b6579;
+  --p-slate-500:    #5789a4;
+  --p-slate-300:    #8bb2c2;
+
+  --p-terra-700:    #846554;
+  --p-terra-500:    #aa8d6d;
+  --p-terra-300:    #d1b795;
+
+  --p-clay-700:     #b0542e;
+  --p-clay-500:     #eb6f24;
+  --p-clay-300:     #f89939;
+  --p-clay-100:     #fde1c4;
+
+  --p-leaf-700:     #33825e;
+  --p-leaf-500:     #2ea675;
+  --p-leaf-300:     #5dbf90;
+
+  --p-ruby-700:     #ad0b37;
+  --p-ruby-500:     #e34858;
+  --p-ruby-300:     #f56e7c;
+
+  --p-burgundy-700: #6e143c;
+  --p-burgundy-500: #b81962;
+
+  --p-copper-700:   #c77359;
+  --p-copper-500:   #ea8b6f;
+
+  --p-coolgreen-700:#006b5e;
+  --p-coolgreen-500:#008379;
+
+  /* Functional ramps */
+  --p-error-700:   #ad1f1f;
+  --p-error-500:   #e52828;
+  --p-error-300:   #f06969;
+  --p-error-100:   #ffd5d5;
+
+  --p-warning-700: #8a4019;
+  --p-warning-500: #b0542e;
+  --p-warning-300: #e3a735;
+  --p-warning-100: #fde6cc;
+
+  --p-success-700: #2b6610;
+  --p-success-500: #398713;
+  --p-success-300: #58a649;
+  --p-success-100: #d5f4cf;
+}
