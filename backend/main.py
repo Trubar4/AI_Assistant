@@ -104,6 +104,12 @@ class ErrorCodeRequest(BaseModel):
     code: str
 
 
+class ErrorCodeMatch(BaseModel):
+    code: str
+    description: str = ""
+    action: str = ""
+
+
 class ErrorCodeResponse(BaseModel):
     code: str
     found: bool
@@ -111,6 +117,22 @@ class ErrorCodeResponse(BaseModel):
     cause: str = ""
     action: str = ""
     related: list[SourceLink] = []
+    matches: list[ErrorCodeMatch] = []  # populated on keyword search
+
+
+def _keyword_search(query: str, limit: int = 8) -> list[ErrorCodeMatch]:
+    """Search errorcodes by keyword in description or action text."""
+    q = query.lower()
+    results = []
+    for code, entry in _ERRORCODES.items():
+        if (q in entry.get("description", "").lower()
+                or q in entry.get("action", "").lower()):
+            results.append(ErrorCodeMatch(
+                code=code,
+                description=entry.get("description", ""),
+                action=entry.get("action", ""),
+            ))
+    return results[:limit]
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +173,9 @@ async def lookup_errorcode(req: ErrorCodeRequest) -> ErrorCodeResponse:
 
     entry = _ERRORCODES.get(code) or _ERRORCODES.get(req.code.strip())
     if entry is None:
-        return ErrorCodeResponse(code=code, found=False)
+        # Keyword search fallback
+        matches = _keyword_search(req.code.strip())
+        return ErrorCodeResponse(code=req.code.strip(), found=False, matches=matches)
 
     query = f"{code} {entry.get('description', '')}".strip()
     related_results = search(query, top_n=3)

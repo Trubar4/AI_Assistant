@@ -8,22 +8,31 @@ Current state: **click-demo**, single machine model, local deployment.
 ## C4 Level 1 — System Context
 
 ```mermaid
-C4Context
-  title System Context — KI Assistent
+flowchart TD
+    OP["👷 Crane Operator
+    Asks operational questions:
+    startup, maintenance, warning lights"]
 
-  Person(operator, "Crane Operator", "Asks operational questions:\nstartup, maintenance intervals,\nwarning lights")
-  Person(technician, "Service Technician", "Looks up fault codes,\ntroubleshooting procedures,\nreplacement specs")
+    ST["🔧 Service Technician
+    Looks up fault indicators,
+    troubleshooting, specs"]
 
-  System(assistant, "KI Assistent", "Web-based AI assistant.\nAnswers questions from\nthe machine manual.\nReturns source links.")
+    SYS["🤖 KI Assistent
+    Web-based AI assistant
+    for Liebherr LR 1104.03.08"]
 
-  System_Ext(claude, "Anthropic Claude API", "LLM-as-a-Service.\nGenerates and verifies answers.\nHosted by Anthropic.")
+    CLAUDE["☁️ Anthropic Claude API
+    claude-haiku-4-5
+    Generates and verifies answers"]
 
-  System_Ext(manual, "Liebherr Technical Manual", "HTML export from Liebherr\nTechPub / DITA system.\nStatic files, updated per\nmanual revision.")
+    MAN["📄 Liebherr Technical Manual
+    HTML export from DITA system
+    Static files, updated per revision"]
 
-  Rel(operator,   assistant, "Asks questions", "HTTPS / browser")
-  Rel(technician, assistant, "Looks up fault codes", "HTTPS / browser")
-  Rel(assistant,  claude,    "Sends query + retrieved context", "HTTPS / JSON\nPrompt caching enabled")
-  Rel(assistant,  manual,    "Reads pages at query time", "Local file read\n(preprocessed)")
+    OP -- "HTTPS / browser" --> SYS
+    ST -- "HTTPS / browser" --> SYS
+    SYS -- "query + retrieved context\nprompt caching enabled" --> CLAUDE
+    SYS -- "reads pages at startup\npreprocessed to JSON" --> MAN
 ```
 
 **Key architectural decisions at this level:**
@@ -37,51 +46,36 @@ C4Context
 ## C4 Level 2 — Container
 
 ```mermaid
-C4Container
-  title Container Diagram — KI Assistent
+flowchart TD
+    USER["👤 Operator / Technician\n(Browser)"]
 
-  Person(user, "Operator / Technician")
+    subgraph APP["KI Assistent Application"]
+        FE["Frontend\nHTML / CSS / JS — single file\nVoice input via Web Speech API"]
+        BE["Backend API\nFastAPI · Python · uvicorn\nPOST /ask · /errorcode · /health"]
+        SE["Search Engine\nrapidfuzz — in-memory\nFuzzy + keyword scoring"]
+        EC["Indicator Store\nJSON in memory\nLoaded at startup"]
+        PRE["Preprocessing CLI\nparse_toc · parse_metadata\nextract_content · extract_errorcodes\nRun once after manual update"]
+    end
 
-  Container_Boundary(app, "KI Assistent Application") {
+    subgraph STORE["File Storage (local disk)"]
+        HTML["HTML Manual Pages\nmanuals/*.html"]
+        IDX["content_index.json\ntoc_index.json\ndata/"]
+        EDB["errorcodes.json\ndata/"]
+    end
 
-    Container(frontend, "Frontend", "Vanilla HTML/CSS/JS\nSingle file, no build step",
-      "Tab 1: Q&A with markdown rendering\nTab 2: Fault code lookup\nWeb Speech API for voice input\nFetch API to call backend")
+    CLAUDE["☁️ Anthropic Claude API\nclaude-haiku-4-5\nAnswer + Verifier calls"]
 
-    Container(api, "Backend API", "Python / FastAPI / uvicorn",
-      "POST /ask\nPOST /errorcode\nGET  /health\nServes static frontend files")
-
-    Container(search, "Search Engine", "Python / rapidfuzz",
-      "Fuzzy title matching\nKeyword frequency scoring\nSemantic phase boost\nIn-memory index, loaded at startup")
-
-    Container(errorcodes, "Error Code Store", "JSON in memory\ndata/errorcodes.json",
-      "Dict lookup by normalised code\nLoaded once at startup\nBuilt by extract_errorcodes.py")
-
-    Container(preprocessing, "Preprocessing CLI", "Python scripts\nRun once after manual update",
-      "parse_toc.py\nparse_metadata.py\nextract_content.py\nextract_errorcodes.py")
-  }
-
-  Container_Boundary(storage, "File Storage (local disk)") {
-    ContainerDb(html,    "HTML Manual Pages",  "Static files\nmanuals/*.html",       "~500 HTML pages\nServed directly by FastAPI")
-    ContainerDb(indexes, "Search Index",       "JSON\ndata/content_index.json",      "Extracted text, warnings, steps")
-    ContainerDb(toc,     "TOC Index",          "JSON\ndata/toc_index.json",          "Page titles, hierarchy, breadcrumbs")
-    ContainerDb(ecdb,    "Error Code DB",      "JSON\ndata/errorcodes.json",         "Code → description, cause, action")
-  }
-
-  System_Ext(claude, "Anthropic Claude API", "claude-haiku-4-5\nAnswer + Verifier calls")
-
-  Rel(user,          frontend,     "Uses",               "Browser")
-  Rel(frontend,      api,          "REST calls",         "fetch() / JSON")
-  Rel(api,           search,       "retrieve(query, n)", "In-process call")
-  Rel(api,           errorcodes,   "lookup(code)",       "Dict access")
-  Rel(api,           claude,       "answer() verify()",  "HTTPS / Anthropic SDK\nPrompt caching")
-  Rel(search,        indexes,      "reads at startup",   "JSON load")
-  Rel(search,        toc,          "reads at startup",   "JSON load")
-  Rel(errorcodes,    ecdb,         "reads at startup",   "JSON load")
-  Rel(preprocessing, html,         "parses",             "BeautifulSoup")
-  Rel(preprocessing, indexes,      "writes",             "JSON dump")
-  Rel(preprocessing, toc,          "writes",             "JSON dump")
-  Rel(preprocessing, ecdb,         "writes",             "JSON dump")
-  Rel(frontend,      html,         "links to pages",     "Static file URL")
+    USER -- "browser" --> FE
+    FE -- "fetch / JSON" --> BE
+    BE --> SE
+    BE --> EC
+    BE -- "HTTPS · prompt caching" --> CLAUDE
+    SE -- "reads at startup" --> IDX
+    EC -- "reads at startup" --> EDB
+    PRE -- "parses" --> HTML
+    PRE -- "writes" --> IDX
+    PRE -- "writes" --> EDB
+    FE -- "static link" --> HTML
 ```
 
 ### Request flow — POST /ask

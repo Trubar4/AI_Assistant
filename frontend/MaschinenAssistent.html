@@ -384,7 +384,7 @@
       </button>
       <button class="lds-nav__item" data-view="errorcode" onclick="switchView('errorcode')">
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="6" y="8" width="12" height="11" rx="6"/><path d="M9 8a3 3 0 0 1 6 0M2 13h4M18 13h4M3 8l3 2M21 8l-3 2M3 18l3-2M21 18l-3-2M12 8v11"/></svg>
-        Fehlercodes
+        Störungen
       </button>
     </nav>
     <div class="app-sidebar__footer">
@@ -419,11 +419,10 @@
     <!-- Error code view -->
     <div id="view-errorcode" class="view app-scroll">
       <div class="errorcode-view">
-        <h2>Fehlercode nachschlagen</h2>
-        <p>Fehlercode eingeben, um Beschreibung, Ursache und empfohlene Massnahme abzurufen.</p>
+        <h2>Störung nachschlagen</h2>
+        <p>Code eingeben (z. B. <strong>R-003</strong>) oder Stichwort (z. B. <strong>Batterie</strong>, <strong>Hydraulik</strong>) — zeigt passende Anzeigen und Abhilfemassnahmen.</p>
         <div class="errorcode-row">
-          <input class="lds-input" id="ec-input" type="text" placeholder="z. B. E1042"
-            style="font-variant-numeric:tabular-nums;text-transform:uppercase"
+          <input class="lds-input" id="ec-input" type="text" placeholder="z. B. R-003 oder Hydraulik"
             onkeydown="if(event.key==='Enter')lookupCode()" />
           <button class="lds-btn lds-btn--primary" onclick="lookupCode()">Nachschlagen</button>
         </div>
@@ -732,14 +731,28 @@ async function lookupCode() {
   }
 
   if (!data.found) {
-    resultDiv.innerHTML = `
-      <div class="lds-alert lds-alert--warning">
-        <div>${icon('alert', 18)}</div>
-        <div>
-          <div class="lds-alert__title">Nicht gefunden</div>
-          <div class="lds-alert__text">Fehlercode <strong>${escHtml(code)}</strong> ist in der Datenbank nicht vorhanden.</div>
-        </div>
-      </div>`;
+    const matches = data.matches || [];
+    if (matches.length === 0) {
+      resultDiv.innerHTML = `
+        <div class="lds-alert lds-alert--warning">
+          <div>${icon('alert', 18)}</div>
+          <div>
+            <div class="lds-alert__title">Nichts gefunden</div>
+            <div class="lds-alert__text">Kein Eintrag für <strong>${escHtml(code)}</strong>. Versuchen Sie ein Stichwort wie <em>Batterie</em>, <em>Hydraulik</em> oder <em>Temperatur</em>.</div>
+          </div>
+        </div>`;
+    } else {
+      const rows = matches.map(m => `
+        <div class="ec-match" onclick="fillAndLookup('${escHtml(m.code)}')" style="cursor:pointer">
+          <div style="display:flex;align-items:baseline;gap:var(--s-3);padding:var(--s-3) var(--s-4);border:1px solid var(--r-outline-bright);border-radius:var(--radius-1);background:var(--r-surface-high);margin-bottom:var(--s-2);transition:background var(--motion-fast)" onmouseover="this.style.background='var(--r-surface-higher)'" onmouseout="this.style.background='var(--r-surface-high)'">
+            <span class="lds-badge lds-badge--warning" style="flex-shrink:0">${escHtml(m.code)}</span>
+            <span style="font:400 13px/18px var(--font-text);color:var(--r-on-surface-default)">${escHtml(m.description)}</span>
+          </div>
+        </div>`).join('');
+      resultDiv.innerHTML = `
+        <div class="answer-section-label" style="margin-bottom:var(--s-3)">${matches.length} Treffer für „${escHtml(code)}"</div>
+        ${rows}`;
+    }
     return;
   }
 
@@ -800,6 +813,12 @@ async function lookupCode() {
     if (e.key === 'Enter') followFn();
   });
   document.getElementById('ec-followup-input').focus();
+}
+
+function fillAndLookup(code) {
+  const el = document.getElementById('ec-input');
+  el.value = code;
+  lookupCode();
 }
 
 // ── Inline error-code follow-up ───────────────────────────────────────────

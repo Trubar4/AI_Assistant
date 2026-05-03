@@ -81,6 +81,30 @@ def _normalise_code(raw: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Indicator page classification
+# ---------------------------------------------------------------------------
+
+_INDICATOR_RE = re.compile(
+    r"Rote Fehleranzeige|Gelbe Warnanzeige|Fehler am Hochvoltsystem",
+    re.IGNORECASE,
+)
+
+_REF_RE = re.compile(r"\s*\(Weitere Informationen[^)]*\)", re.IGNORECASE)
+
+
+def _indicator_prefix(title: str) -> str | None:
+    """Return code prefix for indicator/warning pages, or None."""
+    t = title.lower()
+    if "rote fehleranzeige" in t:
+        return "R"
+    if "gelbe warnanzeige" in t:
+        return "G"
+    if "hochvoltsystem" in t:
+        return "HV"
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Extraction helpers
 # ---------------------------------------------------------------------------
 
@@ -181,6 +205,76 @@ def _from_tables(soup: BeautifulSoup, filename: str,
 
         if debug:
             _print(f"       => accepted {accepted} / {len(code_rows)} rows")
+
+    return results
+
+
+def _from_indicator_tables(soup: BeautifulSoup, filename: str,
+                            prefix: str, counter: list) -> dict[str, dict]:
+    """Extract warning/error indicators from Liebherr indicator pages.
+
+    Liebherr DITA HTML export structure:
+      Row 0: ['Ursache', 'Abhilfe', ...]   header
+      Row 1: [description, combined_action, '', action_1, ...]
+      Row 2+: ['', individual_action_step]
+
+    Targets only the main tables (ncols >= 4) to skip the small
+    2-col fragment tables that duplicate individual action items.
+    """
+    results: dict[str, dict] = {}
+
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+        if len(rows) < 2:
+            continue
+
+        parsed: list[list[str]] = []
+        for row in rows:
+            cells = [td.get_text(" ", strip=True) for td in row.find_all(["td", "th"])]
+            if cells:
+                parsed.append(cells)
+
+        if not parsed or len(parsed) < 2:
+            continue
+
+        ncols = max(len(r) for r in parsed)
+        if ncols < 4:
+            continue  # skip 2-col fragment tables
+
+        # Must have 'Ursache' in col-0 of header row
+        if parsed[0][0].strip().lower() != "ursache":
+            continue
+
+        description = parsed[1][0].strip() if parsed[1] else ""
+        if not description or not description[0].isalpha():
+            continue
+
+        # Collect unique action steps from col-1 of rows 2+
+        seen: set[str] = set()
+        steps: list[str] = []
+        for row in parsed[2:]:
+            if len(row) > 1 and row[1].strip():
+                step = _REF_RE.sub("", row[1]).strip().rstrip(" .")
+                if step and step not in seen:
+                    seen.add(step)
+                    steps.append(step)
+
+        # Fallback: use col-1 of data row
+        if not steps and len(parsed[1]) > 1 and parsed[1][1].strip():
+            raw = _REF_RE.sub("", parsed[1][1]).strip()
+            if raw:
+                steps = [raw]
+
+        action = ". ".join(steps) + ("." if steps else "")
+
+        code = f"{prefix}-{counter[0]:03d}"
+        counter[0] += 1
+        results[code] = {
+            "description": description,
+            "cause":       "",
+            "action":      action,
+            "_source":     filename,
+        }
 
     return results
 
@@ -308,6 +402,7 @@ def extract(manuals_dir: Path, toc_path: Path,
     _print(f"Scanning {len(html_files)} HTML file(s) in {manuals_dir} ...\n")
 
     error_pages_seen = 0
+    ind_counters: dict[str, list] = {}  # prefix -> [counter]
 
     for html_file in html_files:
         filename = html_file.name
@@ -315,6 +410,8 @@ def extract(manuals_dir: Path, toc_path: Path,
         is_error_page = bool(_ERROR_PAGE_RE.search(title))
         if is_error_page:
             error_pages_seen += 1
+
+        ind_prefix = _indicator_prefix(title)
 
         try:
             soup = BeautifulSoup(
@@ -338,8 +435,19 @@ def extract(manuals_dir: Path, toc_path: Path,
                 if code not in found:
                     found[code] = entry
 
+        # Indicator extraction (Rote/Gelbe Fehleranzeigen pages)
+        if ind_prefix:
+            if ind_prefix not in ind_counters:
+                ind_counters[ind_prefix] = [1]
+            ind_hits = _from_indicator_tables(
+                soup, filename, ind_prefix, ind_counters[ind_prefix]
+            )
+            for code, entry in ind_hits.items():
+                if code not in found:
+                    found[code] = entry
+
         if found:
-            label = " [error page]" if is_error_page else ""
+            label = f" [{ind_prefix}]" if ind_prefix else (" [error page]" if is_error_page else "")
             _print(f"  {filename[:60]}{label}")
             _print(f"    -> {len(found)} code(s): {', '.join(sorted(found)[:6])}"
                    + ("..." if len(found) > 6 else ""))
