@@ -329,6 +329,20 @@
       color: var(--r-on-surface-default);
     }
 
+    /* ── Inline followup question ───────────────────────────── */
+    .ec-followup {
+      margin-top: var(--s-5);
+      padding-top: var(--s-4);
+      border-top: 1px solid var(--r-outline-bright);
+    }
+    .ec-followup-row {
+      display: flex;
+      gap: var(--s-2);
+      margin-top: var(--s-3);
+    }
+    .ec-followup-row .lds-input { flex: 1; }
+    #ec-followup-answer { margin-top: var(--s-4); }
+
     /* ── Loading skeleton ───────────────────────────────────── */
     .skeleton {
       background: linear-gradient(90deg, var(--r-surface-high) 25%, var(--r-surface-higher) 50%, var(--r-surface-high) 75%);
@@ -760,7 +774,65 @@ async function lookupCode() {
         ${data.action ? `<div class="ec-field"><div class="ec-field__label">Massnahme</div><div class="ec-field__value">${escHtml(data.action)}</div></div>` : ''}
       </div>
     </div>
-    ${relatedBlock}`;
+    ${relatedBlock}
+    <div class="ec-followup">
+      <div class="answer-section-label">Frage zum Fehlercode stellen</div>
+      <div class="ec-followup-row">
+        <input class="lds-input" id="ec-followup-input" type="text"
+          placeholder="z. B. Wie komme ich an den Sensor?" />
+        <button class="lds-btn lds-btn--primary" id="ec-followup-btn">Fragen</button>
+      </div>
+      <div id="ec-followup-answer"></div>
+    </div>`;
+
+  // Wire up followup after HTML is in DOM
+  const followFn = () => askFromErrorCode(data.code, data.description);
+  document.getElementById('ec-followup-btn').addEventListener('click', followFn);
+  document.getElementById('ec-followup-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') followFn();
+  });
+  document.getElementById('ec-followup-input').focus();
+}
+
+// ── Inline error-code follow-up ───────────────────────────────────────────
+
+async function askFromErrorCode(code, description) {
+  const inputEl  = document.getElementById('ec-followup-input');
+  const answerEl = document.getElementById('ec-followup-answer');
+  const userQ    = inputEl.value.trim();
+  if (!userQ) return;
+
+  answerEl.innerHTML = `
+    <div class="answer-card">
+      <div class="answer-card__body" style="gap:var(--s-3)">
+        <div class="skeleton" style="width:60%"></div>
+        <div class="skeleton" style="width:85%"></div>
+        <div class="skeleton" style="width:70%"></div>
+      </div>
+    </div>`;
+  answerEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.getElementById('ec-followup-btn').disabled = true;
+
+  // Pre-seed search with error code context so retrieval lands on the right pages
+  const seededQ = `Fehlercode ${code} (${description}): ${userQ}`;
+
+  let data;
+  try {
+    const resp = await fetch(API + '/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: seededQ }),
+    });
+    data = await resp.json();
+  } catch {
+    answerEl.innerHTML = renderError('Verbindung zum Backend fehlgeschlagen.');
+    document.getElementById('ec-followup-btn').disabled = false;
+    return;
+  }
+
+  answerEl.innerHTML = renderAnswer(userQ, data);
+  document.getElementById('ec-followup-btn').disabled = false;
+  answerEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ── Voice input ───────────────────────────────────────────────────────────
