@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>KI Assistent · LR 1104.03.08</title>
+  <link rel="manifest" href="/frontend/manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="KI Assistent" />
   <link rel="stylesheet" href="../design-system/lds.css" />
   <style>
     /* ── App shell ──────────────────────────────────────────── */
@@ -355,6 +359,51 @@
 
     /* ── Inline SVG icon helper ─────────────────────────────── */
     .icon { display: inline-flex; flex-shrink: 0; }
+
+    /* ── Responsive: Tablet / Mobile (≤ 768px) ─────────────── */
+    @media (max-width: 768px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+      .app-sidebar {
+        display: none;
+      }
+      .app-scroll {
+        padding-bottom: calc(var(--s-6) + 64px + env(safe-area-inset-bottom));
+      }
+      .app-composer {
+        padding-bottom: calc(var(--s-4) + 64px + env(safe-area-inset-bottom));
+      }
+    }
+
+    /* ── Bottom navigation (mobile only) ───────────────────── */
+    .app-bottom-nav {
+      display: none;
+    }
+    @media (max-width: 768px) {
+      .app-bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        background: var(--r-bg-bright);
+        border-top: 1px solid var(--r-outline-bright);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .app-bottom-nav .lds-nav__item {
+        flex: 1;
+        flex-direction: column;
+        gap: var(--s-1);
+        padding: var(--s-2) var(--s-2);
+        font: 400 11px/14px var(--font-text);
+        border-radius: 0;
+        justify-content: center;
+        align-items: center;
+        height: 56px;
+      }
+    }
   </style>
 </head>
 
@@ -455,6 +504,18 @@
     </div>
   </main>
 </div>
+
+<!-- ═══ BOTTOM NAVIGATION (Mobile) ═══════════════════════════════════════ -->
+<nav class="app-bottom-nav" aria-label="Navigation">
+  <button class="lds-nav__item lds-nav__item--active" data-view="chat" onclick="switchView('chat')">
+    <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z"/></svg>
+    Assistent
+  </button>
+  <button class="lds-nav__item" data-view="errorcode" onclick="switchView('errorcode')">
+    <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="6" y="8" width="12" height="11" rx="6"/><path d="M9 8a3 3 0 0 1 6 0M2 13h4M18 13h4M3 8l3 2M21 8l-3 2M3 18l3-2M21 18l-3-2M12 8v11"/></svg>
+    Störungen
+  </button>
+</nav>
 
 <!-- ═══ VOICE OVERLAY ═════════════════════════════════════════════════════ -->
 <div class="voice-overlay" id="voice-overlay" onclick="stopVoice()">
