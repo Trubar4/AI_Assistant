@@ -1,4 +1,5 @@
-data/
+# data/ — uncommit to keep JSON indexes out of repo
+# data/
 manuals/
 metadata.rdf
 __pycache__/
