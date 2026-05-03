@@ -780,6 +780,13 @@ async function lookupCode() {
       <div class="ec-followup-row">
         <input class="lds-input" id="ec-followup-input" type="text"
           placeholder="z. B. Wie komme ich an den Sensor?" />
+        <button class="lds-btn lds-btn--ghost lds-btn--icon" id="ec-followup-voice"
+          title="Spracheingabe">
+          <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <rect x="9" y="3" width="6" height="12" rx="3"/>
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>
+          </svg>
+        </button>
         <button class="lds-btn lds-btn--primary" id="ec-followup-btn">Fragen</button>
       </div>
       <div id="ec-followup-answer"></div>
@@ -788,6 +795,7 @@ async function lookupCode() {
   // Wire up followup after HTML is in DOM
   const followFn = () => askFromErrorCode(data.code, data.description);
   document.getElementById('ec-followup-btn').addEventListener('click', followFn);
+  document.getElementById('ec-followup-voice').addEventListener('click', () => toggleVoice('ec-followup-input'));
   document.getElementById('ec-followup-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') followFn();
   });
@@ -838,14 +846,17 @@ async function askFromErrorCode(code, description) {
 // ── Voice input ───────────────────────────────────────────────────────────
 
 let recognition = null;
+let _voiceTargetId = 'question-input';
 
-function toggleVoice() {
+function toggleVoice(targetId = 'question-input') {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     alert('Spracheingabe ist in diesem Browser nicht verfügbar. Bitte Chrome oder Edge verwenden.');
     return;
   }
   if (recognition) { stopVoice(); return; }
+
+  _voiceTargetId = targetId;
 
   recognition = new SpeechRecognition();
   recognition.lang = 'de-DE';
@@ -856,8 +867,11 @@ function toggleVoice() {
     const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
     document.getElementById('voice-transcript').textContent = transcript;
     if (e.results[e.results.length - 1].isFinal) {
-      document.getElementById('question-input').value = transcript;
-      autoResize(document.getElementById('question-input'));
+      const target = document.getElementById(_voiceTargetId);
+      if (target) {
+        target.value = transcript;
+        if (typeof autoResize === 'function') autoResize(target);
+      }
       stopVoice();
     }
   };
