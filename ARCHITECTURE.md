@@ -1,7 +1,7 @@
 # Architecture — KI Assistent
 
 Reference document for technical discussions.
-Current state: **click-demo**, single machine model, local deployment.
+Current state: **MTP-Demo**, single machine model, deployed on Railway.
 
 ---
 
@@ -22,7 +22,7 @@ flowchart TD
     for Liebherr LR 1104.03.08"]
 
     CLAUDE["☁️ Anthropic Claude API
-    claude-haiku-4-5
+    claude-haiku-4-5-20251001
     Generates and verifies answers"]
 
     MAN["📄 Liebherr Technical Manual
@@ -66,9 +66,9 @@ flowchart TD
         EDB["errorcodes.json\ndata/"]
     end
 
-    CLAUDE["☁️ Anthropic Claude API\nclaude-haiku-4-5\nAnswer + Verifier calls"]
+    CLAUDE["☁️ Anthropic Claude API\nclaude-haiku-4-5-20251001\nAnswer + Verifier calls"]
 
-    USER -- "browser" --> FE
+    USER -- "browser / iPad PWA" --> FE
     FE -- "fetch / JSON" --> BE
     BE --> SE
     BE --> EC
@@ -78,11 +78,13 @@ flowchart TD
     PRE -- "parses" --> HTML
     PRE -- "writes" --> IDX
     PRE -- "writes" --> EDB
-    FE -- "static link" --> HTML
+    FE -- "static link /manuals/" --> HTML
 ```
 
 **How to read this diagram:**
 "Container" in C4 terminology means any independently deployable unit — a running process, a web app, or a data store. It is not related to Docker. The `APP` subgraph is everything that runs on the server; `STORE` is the data that lives on disk. Arrows inside the app boundary are in-process function calls (no network hop); arrows crossing to `CLAUDE` are real HTTPS requests to Anthropic's servers.
+
+**Deployment (current):** Railway (cloud PaaS). Auto-deploys on push to `main`. Frontend and backend run in the same process — FastAPI mounts `/frontend`, `/design-system`, and `/manuals` as static directories.
 
 ### Request flow — POST /ask
 
@@ -91,10 +93,11 @@ Browser → POST /ask {"question": "..."}
   └─ search.py       retrieves top-5 pages from content_index.json (in-memory)
   └─ claude_client.answer()   → Anthropic API (2-block prompt with caching)
   └─ claude_client.verify()   → Anthropic API (same context, cached)
-  └─ AskResponse { answer, grounding, sources }
+  └─ AskResponse { answer, grounding, sources[] }
 Browser ← JSON
   └─ renderMarkdown() renders answer
-  └─ Source links open manuals/<filename>.html (static file)
+  └─ renderAnswer() renders source list: title, filename, score
+  └─ Source links open /manuals/<filename> in new tab (static file)
 ```
 
 Total latency: ~1–2 s (Haiku), dominated by two sequential Anthropic API calls.
@@ -127,7 +130,7 @@ A single LLM call could hallucinate without knowing it. The second call is an in
 POST https://api.anthropic.com/v1/messages
 
 {
-  "model": "claude-haiku-4-5",
+  "model": "claude-haiku-4-5-20251001",
   "max_tokens": 1024,
 
   "system": [
@@ -163,7 +166,7 @@ POST https://api.anthropic.com/v1/messages
 POST https://api.anthropic.com/v1/messages
 
 {
-  "model": "claude-haiku-4-5",
+  "model": "claude-haiku-4-5-20251001",
   "max_tokens": 10,
 
   "system": [
@@ -302,14 +305,13 @@ The fastest paths to show value in a demo:
 
 ## iPad / tablet deployment
 
-### Short path (6–8 hours of work)
+### Status: implemented
 
-The frontend already runs in Safari on iPad. Two changes unlock a good experience:
+1. **Responsive layout** — `@media (max-width: 768px)` hides the sidebar and shows a fixed bottom navigation bar with the same two tabs. `env(safe-area-inset-bottom)` padding prevents content from hiding behind the iPhone home indicator.
+2. **PWA manifest** — `frontend/manifest.json` with `display: standalone`. Meta tags `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, and `apple-mobile-web-app-title` are set in `<head>`. Safari on iOS shows "Add to Home Screen" → installs as full-screen app with icon.
+3. **Icons** — placeholder PNGs (`icon-192.png`, `icon-512.png`, solid `#1a1f2e`) are committed. Replace with branded Liebherr assets before production.
 
-1. **Responsive layout** — the sidebar is currently fixed at 216 px. Add a CSS breakpoint (`@media (max-width: 768px)`) to switch to bottom tabs. No JS changes needed.
-2. **PWA manifest** — add a `manifest.json` and `<link rel="manifest">` to the HTML. The user can then "Add to Home Screen" → full-screen, icon on home screen, no browser chrome. No App Store required for internal enterprise distribution (MDM push or link-based install).
-
-The backend stays unchanged and can run on any server the tablet reaches (LAN, VPN, or cloud).
+The backend stays unchanged and can run on any server the tablet reaches (LAN, VPN, or Railway cloud).
 
 ### Voice input on iOS (Web Speech API)
 
@@ -325,6 +327,10 @@ User speaks
 ```
 
 **Limitation:** iOS requires user gesture to start `SpeechRecognition` and shows a microphone permission prompt once. The current implementation handles this correctly.
+
+### Corporate SSL proxy (Windows local dev)
+
+On corporate networks with SSL inspection (e.g. Liebherr internal), Python's `httpx` client cannot verify the proxy's re-signed certificate because it does not use the Windows certificate store. Fix: install `truststore` (`pip install truststore`). `backend/main.py` calls `truststore.inject_into_ssl()` at startup inside a `try/except ImportError` — no effect on Railway (Linux, no proxy).
 
 ### True offline operation
 
@@ -401,12 +407,15 @@ The differentiator here is the **grounding verifier** — the system explicitly 
 
 ## Recommended next steps (prioritised)
 
-| Priority | Item | Effort |
-|----------|------|--------|
-| 1 | Upload full manual, validate Q&A quality | 2 h |
-| 2 | Responsive CSS for tablet / iPad | 4 h |
-| 3 | PWA manifest for home-screen install | 1 h |
-| 4 | Inline question input on error code result | 3 h |
-| 5 | `/admin/reload` endpoint for hot manual sync | 2 h |
-| 6 | Authentication (API key header) | 4 h |
-| 7 | Conversation history (last 2 turns) | 4 h |
+| Priority | Item | Effort | Status |
+|----------|------|--------|--------|
+| 1 | Upload full manual, validate Q&A quality | 2 h | Manuals deployed (HTML+CSS, ohne Bilder) |
+| 2 | Responsive CSS for tablet / iPad | 4 h | **Erledigt** |
+| 3 | PWA manifest for home-screen install | 1 h | **Erledigt** |
+| 4 | Inline question input on error code result | 3 h | **Erledigt** |
+| 5 | Quellenlinks unter KI-Antworten | 1 h | **Erledigt** |
+| 6 | `/admin/reload` endpoint for hot manual sync | 2 h | Offen |
+| 7 | Authentication (API key header) | 4 h | Offen |
+| 8 | Conversation history (last 2 turns) | 4 h | Offen |
+| 9 | Manual images hosting (Cloudflare R2 o. ä.) | 3 h | Offen — 240 MB zu groß für Git |
+| 10 | Branded PWA icons (192 + 512 px) | 1 h | Offen — Platzhalter aktiv |
