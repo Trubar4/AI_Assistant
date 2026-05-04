@@ -719,6 +719,23 @@ function renderAnswer(question, data) {
       </div>
     </div>` : '';
 
+  const sources = (data.sources || []);
+  const sourcesHtml = sources.length ? `
+    <div>
+      <div class="answer-section-label">Quellen im Manual</div>
+      <div class="source-list">
+        ${sources.map(s => `
+          <a class="source-item" href="/manuals/${escHtml(s.filename)}" target="_blank" rel="noopener">
+            <div class="icon">${icon('doc', 16)}</div>
+            <div class="source-item__info">
+              <div class="source-item__title">${escHtml(s.title)}</div>
+              <div class="source-item__crumb">${escHtml(s.filename)}</div>
+            </div>
+            <div class="source-item__score">${Math.round((s.score || 0) * 10) / 10}</div>
+          </a>`).join('')}
+      </div>
+    </div>` : '';
+
   return `
     <div class="answer-card">
       <div class="answer-card__head">
@@ -728,6 +745,7 @@ function renderAnswer(question, data) {
       <div class="answer-card__body">
         ${disclaimer}
         <div class="answer-text">${renderMarkdown(data.answer || '')}</div>
+        ${sourcesHtml}
       </div>
       <div class="answer-card__foot">
         <button class="lds-btn lds-btn--ghost" onclick="speak(this)" data-text="${escHtml(data.answer||'')}">
