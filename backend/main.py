@@ -13,6 +13,15 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+# Inject Windows/macOS system cert store so Python's httpx trusts
+# corporate SSL-inspection proxies (no effect on Railway/Linux).
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
