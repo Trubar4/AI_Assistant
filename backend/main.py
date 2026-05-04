@@ -9,10 +9,18 @@ Endpoints:
 
 import json
 import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+# Use Windows/system certificate store (needed behind corporate SSL proxies)
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
