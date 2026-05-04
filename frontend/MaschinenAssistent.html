@@ -473,6 +473,12 @@
         <div class="errorcode-row">
           <input class="lds-input" id="ec-input" type="text" placeholder="z. B. R-003 oder Hydraulik"
             onkeydown="if(event.key==='Enter')lookupCode()" />
+          <button class="lds-btn lds-btn--ghost lds-btn--icon" title="Spracheingabe" onclick="toggleVoice('ec-input')">
+            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <rect x="9" y="3" width="6" height="12" rx="3"/>
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>
+            </svg>
+          </button>
           <button class="lds-btn lds-btn--primary" onclick="lookupCode()">Nachschlagen</button>
         </div>
         <div id="errorcode-result"></div>
@@ -713,6 +719,23 @@ function renderAnswer(question, data) {
       </div>
     </div>` : '';
 
+  const sources = (data.sources || []);
+  const sourcesHtml = sources.length ? `
+    <div>
+      <div class="answer-section-label">Quellen im Manual</div>
+      <div class="source-list">
+        ${sources.map(s => `
+          <a class="source-item" href="/manuals/${escHtml(s.filename)}" target="_blank" rel="noopener">
+            <div class="icon">${icon('doc', 16)}</div>
+            <div class="source-item__info">
+              <div class="source-item__title">${escHtml(s.title)}</div>
+              <div class="source-item__crumb">${escHtml(s.filename)}</div>
+            </div>
+            <div class="source-item__score">${Math.round((s.score || 0) * 10) / 10}</div>
+          </a>`).join('')}
+      </div>
+    </div>` : '';
+
   return `
     <div class="answer-card">
       <div class="answer-card__head">
@@ -722,6 +745,7 @@ function renderAnswer(question, data) {
       <div class="answer-card__body">
         ${disclaimer}
         <div class="answer-text">${renderMarkdown(data.answer || '')}</div>
+        ${sourcesHtml}
       </div>
       <div class="answer-card__foot">
         <button class="lds-btn lds-btn--ghost" onclick="speak(this)" data-text="${escHtml(data.answer||'')}">

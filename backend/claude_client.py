@@ -28,8 +28,8 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
-ANSWER_MODEL  = os.environ.get("ANSWER_MODEL",  "claude-haiku-4-5")
-VERIFIER_MODEL = os.environ.get("VERIFIER_MODEL", "claude-haiku-4-5")
+ANSWER_MODEL  = os.environ.get("ANSWER_MODEL",  "claude-haiku-4-5-20251001")
+VERIFIER_MODEL = os.environ.get("VERIFIER_MODEL", "claude-haiku-4-5-20251001")
 
 ANSWER_SYSTEM = """\
 Du bist ein Assistent für Liebherr-Maschinenführer und Servicetechniker.
