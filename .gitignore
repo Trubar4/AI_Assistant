@@ -13,3 +13,4 @@ metadata.rdf
 __pycache__/
 *.pyc
 .env
+*.pptx
