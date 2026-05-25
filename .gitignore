@@ -1,14 +1,5 @@
 # data/ — uncommit to keep JSON indexes out of repo
 # data/
-manuals/**/*.png
-manuals/**/*.jpg
-manuals/**/*.jpeg
-manuals/**/*.gif
-manuals/**/*.svg
-manuals/**/*.webp
-manuals/**/*.bmp
-manuals/**/*.tiff
-manuals/**/*.ico
 metadata.rdf
 __pycache__/
 *.pyc
