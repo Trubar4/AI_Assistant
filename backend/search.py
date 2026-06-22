@@ -11,11 +11,15 @@ Usage (standalone test):
 """
 
 import json
+import logging
 import re
 import sys
 from pathlib import Path
 
+import numpy as np
 from rapidfuzz import fuzz
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths (relative to repo root; overridable for tests)
@@ -74,6 +78,46 @@ def _tokenize(query: str) -> set[str]:
 
 
 # ---------------------------------------------------------------------------
+# Semantic search (optional — only active when embeddings are pre-built)
+# ---------------------------------------------------------------------------
+_ROOT = Path(__file__).parent.parent
+_EMB_NPY  = _ROOT / "data" / "embeddings.npy"
+_EMB_IDS  = _ROOT / "data" / "embedding_ids.json"
+
+_sem_model   = None
+_sem_matrix  = None   # float32 np.ndarray [N, D], L2-normalised
+_sem_ids     = None   # list[str] — filenames in same order as rows
+
+
+def _load_semantic() -> bool:
+    """Load embeddings + model once. Returns True if semantic search is available."""
+    global _sem_model, _sem_matrix, _sem_ids
+    if _sem_matrix is not None:
+        return True
+    if not (_EMB_NPY.exists() and _EMB_IDS.exists()):
+        return False
+    try:
+        from sentence_transformers import SentenceTransformer
+        _sem_matrix = np.load(str(_EMB_NPY))          # already normalised
+        _sem_ids    = json.loads(_EMB_IDS.read_text(encoding="utf-8"))
+        _sem_model  = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+        logger.info("Semantic search geladen: %d Dokumente", len(_sem_ids))
+        return True
+    except Exception as exc:
+        logger.warning("Semantic search nicht verfügbar: %s", exc)
+        return False
+
+
+def _semantic_scores(query: str) -> dict[str, float]:
+    """Return cosine-similarity scores keyed by filename (0–1)."""
+    if not _load_semantic():
+        return {}
+    q_vec = _sem_model.encode([query], normalize_embeddings=True)[0]  # [D]
+    sims  = (_sem_matrix @ q_vec).tolist()                             # [N]
+    return {fname: float(sim) for fname, sim in zip(_sem_ids, sims)}
+
+
+# ---------------------------------------------------------------------------
 # Index loading (lazy, cached at module level)
 # ---------------------------------------------------------------------------
 _index: list[dict] | None = None
@@ -123,8 +167,9 @@ def _load_index(
 
 
 def reset_index() -> None:
-    global _index
+    global _index, _sem_model, _sem_matrix, _sem_ids
     _index = None
+    _sem_model = _sem_matrix = _sem_ids = None
 
 
 # ---------------------------------------------------------------------------
@@ -149,13 +194,22 @@ def search(
     index = _load_index(metadata_path, content_path)
     query_words = _tokenize(query)
 
+    sem = _semantic_scores(query)   # empty dict if not available
+    use_sem = bool(sem)
+
     scored = []
     for entry in index:
         ts = _title_score(query, entry["title"])
         ks = _keyword_score(query_words, entry["text"], entry["word_count"])
         pb = _phase_boost(query_words, entry["lifecycle_phases"], entry["topic_type"])
-        # Title match dominates; keyword and phase scores break ties
-        score = ts * 0.55 + ks * 0.30 + pb * 0.15
+
+        if use_sem:
+            ss = sem.get(entry["filename"], 0.0) * 100.0  # scale to 0–100
+            # Semantic replaces keyword score when available; phase boost still applies
+            score = ts * 0.40 + ss * 0.45 + pb * 0.15
+        else:
+            score = ts * 0.55 + ks * 0.30 + pb * 0.15
+
         if score > 10:
             scored.append({**entry, "score": round(score, 2)})
 

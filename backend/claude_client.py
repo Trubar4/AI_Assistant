@@ -9,11 +9,14 @@ Returns a VerifiedAnswer dataclass with the answer text, source links,
 and a grounding status: BELEGT | TEILWEISE | NICHT_BELEGT.
 """
 
+import logging
 import os
 from dataclasses import dataclass, field
 
 import anthropic
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 _client: anthropic.Anthropic | None = None
 
@@ -37,16 +40,25 @@ Antworte ausschließlich auf Basis des gegebenen Kontext-Materials.
 Wenn die gesuchte Information nicht im Kontext steht, sage das explizit –
 erfinde keine Fakten.
 
-Antworte auf Deutsch, präzise und strukturiert:
-- Beginne mit einer kurzen Direktantwort (1–2 Sätze).
-- Liste Handlungsschritte als nummerierte Liste, falls vorhanden.
-- Hebe Sicherheitshinweise (WARNUNG / VORSICHT / GEFAHR) hervor.
-- Verweise am Ende auf die Quellseite(n).\
+Antworte auf Deutsch in GENAU EINEM Satz (maximal 2). Kein Fließtext,
+keine Listen. Die Quellen werden dem Nutzer separat angezeigt.\
 """
 
 VERIFIER_SYSTEM = """\
-Du prüfst, ob eine gegebene Antwort vollständig durch den bereitgestellten
-Kontext belegt ist. Antworte ausschließlich mit einem der drei Wörter:
+Du prüfst, ob eine KI-Antwort korrekt und vollständig durch den gegebenen
+Kontext belegt ist – bezogen auf die gestellte Frage.
+
+Regeln:
+- BELEGT: Kontext enthält die gesuchte Information, Antwort gibt sie korrekt wieder.
+- TEILWEISE: Kontext enthält nur einen Teil der Antwort, oder Antwort ist vage.
+- NICHT_BELEGT: Kontext enthält die Information NICHT, ABER die Antwort behauptet
+  trotzdem etwas (erfindet Fakten) – ODER der Kontext enthält die Info, die Antwort
+  sagt aber fälschlicherweise "nicht im Kontext gefunden".
+
+Sonderfall: Wenn die Antwort korrekt aussagt, dass die Information nicht im Kontext
+vorhanden ist, und der Kontext sie tatsächlich nicht enthält → BELEGT.
+
+Antworte ausschließlich mit einem der drei Wörter:
 BELEGT
 TEILWEISE
 NICHT_BELEGT\
@@ -93,14 +105,13 @@ def answer(query: str, results: list[dict]) -> str:
     try:
         response = _get_client().messages.create(
             model=ANSWER_MODEL,
-            max_tokens=1024,
+            max_tokens=256,
             system=[{
                 "type": "text",
                 "text": ANSWER_SYSTEM,
                 "cache_control": {"type": "ephemeral"},
             }],
             messages=[{"role": "user", "content": [
-                # Context is cached: same query → same search results → cache hit
                 {
                     "type": "text",
                     "text": f"Kontext-Material:\n\n{context}",
@@ -113,10 +124,12 @@ def answer(query: str, results: list[dict]) -> str:
         raise HTTPException(status_code=401, detail="Ungültiger Anthropic API-Key. Bitte ANTHROPIC_API_KEY in .env prüfen.")
     except anthropic.APIConnectionError:
         raise HTTPException(status_code=503, detail="Keine Verbindung zur Anthropic API. Internetverbindung prüfen.")
-    return response.content[0].text.strip()
+    answer_text = response.content[0].text.strip()
+    logger.info("ANSWER [%s]: %s", query[:60], answer_text[:120])
+    return answer_text
 
 
-def verify(answer_text: str, results: list[dict]) -> str:
+def verify(query: str, answer_text: str, results: list[dict]) -> str:
     context = _build_context(results)
 
     response = _get_client().messages.create(
@@ -128,16 +141,16 @@ def verify(answer_text: str, results: list[dict]) -> str:
             "cache_control": {"type": "ephemeral"},
         }],
         messages=[{"role": "user", "content": [
-            # Same context as answer() → shares cache entry for repeated questions
             {
                 "type": "text",
                 "text": f"Kontext-Material:\n\n{context}",
                 "cache_control": {"type": "ephemeral"},
             },
-            {"type": "text", "text": f"Antwort:\n{answer_text}"},
+            {"type": "text", "text": f"Frage: {query}\n\nAntwort:\n{answer_text}"},
         ]}],
     )
     raw = response.content[0].text.strip().upper()
+    logger.info("VERIFY [%s] → raw=%r", query[:60], raw)
     for status in ("BELEGT", "TEILWEISE", "NICHT_BELEGT"):
         if status in raw:
             return status
@@ -145,16 +158,21 @@ def verify(answer_text: str, results: list[dict]) -> str:
 
 
 def ask(query: str, results: list[dict]) -> VerifiedAnswer:
-    """
-    Full pipeline: generate answer, verify grounding, apply fallback if needed.
-    """
+    """Full pipeline: generate answer, verify grounding, apply fallback if needed."""
     sources = [
-        {"title": r["title"], "filename": r["filename"], "score": r.get("score", 0)}
+        {
+            "title": r["title"],
+            "filename": r["filename"],
+            "score": r.get("score", 0),
+            "snippet": _extract_snippet(query, r),
+        }
         for r in results
     ]
 
     answer_text = answer(query, results)
-    grounding   = verify(answer_text, results)
+    grounding   = verify(query, answer_text, results)
+
+    logger.info("ASK grounding=%s fallback=%s", grounding, grounding == "NICHT_BELEGT")
 
     fallback_used = False
     if grounding == "NICHT_BELEGT":
@@ -167,3 +185,21 @@ def ask(query: str, results: list[dict]) -> VerifiedAnswer:
         sources=sources,
         fallback_used=fallback_used,
     )
+
+
+def _extract_snippet(query: str, result: dict, max_len: int = 160) -> str:
+    """Extract a short text passage from result that best matches the query words."""
+    import re
+    text = result.get("text", "")
+    if not text:
+        steps = result.get("steps", [])
+        return steps[0][:max_len] if steps else ""
+
+    query_words = {w.lower() for w in re.split(r"\W+", query) if len(w) > 3}
+    # Score each sentence by how many query words it contains
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if len(s.strip()) > 20]
+    if not sentences:
+        return text[:max_len]
+
+    best = max(sentences, key=lambda s: sum(w in s.lower() for w in query_words))
+    return best[:max_len]

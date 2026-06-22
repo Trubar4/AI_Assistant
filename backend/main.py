@@ -100,6 +100,7 @@ class SourceLink(BaseModel):
     title: str
     filename: str
     score: float
+    snippet: str = ""
 
 
 class AskResponse(BaseModel):
