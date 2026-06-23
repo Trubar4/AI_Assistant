@@ -157,6 +157,23 @@ def verify(query: str, answer_text: str, results: list[dict]) -> str:
     return "TEILWEISE"
 
 
+_NOT_FOUND_PHRASES = (
+    "nicht im kontext",
+    "nicht enthalten",
+    "nicht gefunden",
+    "nicht vorhanden",
+    "nicht im manual",
+    "keine information",
+    "konnte ich nicht finden",
+    "konnte nicht gefunden",
+)
+
+
+def _is_not_found(text: str) -> bool:
+    t = text.lower()
+    return any(p in t for p in _NOT_FOUND_PHRASES)
+
+
 def ask(query: str, results: list[dict]) -> VerifiedAnswer:
     """Full pipeline: generate answer, verify grounding, apply fallback if needed."""
     sources = [
@@ -172,12 +189,14 @@ def ask(query: str, results: list[dict]) -> VerifiedAnswer:
     answer_text = answer(query, results)
     grounding   = verify(query, answer_text, results)
 
-    logger.info("ASK grounding=%s fallback=%s", grounding, grounding == "NICHT_BELEGT")
+    # Programmatisch erkennen wenn das Modell "nicht im Kontext" antwortet –
+    # dann immer Fallback, unabhängig davon was der Verifier sagt.
+    fallback_used = grounding == "NICHT_BELEGT" or _is_not_found(answer_text)
+    if fallback_used:
+        answer_text = FALLBACK_ANSWER
+        grounding   = "NICHT_BELEGT"
 
-    fallback_used = False
-    if grounding == "NICHT_BELEGT":
-        answer_text  = FALLBACK_ANSWER
-        fallback_used = True
+    logger.info("ASK grounding=%s fallback=%s", grounding, fallback_used)
 
     return VerifiedAnswer(
         answer=answer_text,

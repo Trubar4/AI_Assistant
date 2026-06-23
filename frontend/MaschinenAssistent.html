@@ -802,8 +802,10 @@ function renderAnswer(question, data) {
       <div class="source-list">
         ${sources.map(s => `
           <div class="source-item" role="button" tabindex="0"
-            onclick="openManual('/manuals/${escHtml(s.filename)}', ${JSON.stringify(escHtml(s.title))})"
-            onkeydown="if(event.key==='Enter')openManual('/manuals/${escHtml(s.filename)}', ${JSON.stringify(escHtml(s.title))})">
+            data-url="/manuals/${escHtml(s.filename)}"
+            data-title="${escHtml(s.title)}"
+            onclick="openManual(this.dataset.url, this.dataset.title)"
+            onkeydown="if(event.key==='Enter')openManual(this.dataset.url, this.dataset.title)">
             <div class="icon">${icon('doc', 16)}</div>
             <div class="source-item__info">
               <div class="source-item__title">${escHtml(s.title)}</div>
