@@ -260,7 +260,7 @@ def search(
         else:
             score = ts * 0.30 + ks * 0.50 + pb * 0.20
 
-        if score > 10:
+        if score > 5:
             scored.append({**entry, "score": round(score, 2)})
 
     scored.sort(key=lambda x: x["score"], reverse=True)
