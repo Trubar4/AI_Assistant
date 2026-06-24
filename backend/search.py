@@ -70,7 +70,32 @@ def _keyword_score(query_words: set[str], text: str, word_count: int) -> float:
 
 
 def _title_score(query: str, title: str) -> float:
-    return fuzz.partial_ratio(query.lower(), title.lower())
+    q_lower = query.lower()
+    t_lower = title.lower()
+    q_words = set(re.split(r"\W+", q_lower)) - {""}
+    t_words = set(re.split(r"\W+", t_lower)) - {""}
+
+    # Stufe 1: Exakte Wort-Übereinstimmung (höchste Priorität)
+    common = q_words & t_words
+    if common:
+        return len(common) / max(len(q_words), len(t_words)) * 100
+
+    # Stufe 2: Wort-Paar-Fuzzy (fuzz.ratio, nicht partial_ratio)
+    # Verhindert False-Positives wie "leckage"≈"klimaanlage" über shared Substring "lage"
+    # fuzz.ratio vergleicht ganze Wörter → "leckage" vs "klimaanlage" ≈ 30, nicht 50
+    best_word_pair = 0.0
+    for qw in q_words:
+        for tw in t_words:
+            s = fuzz.ratio(qw, tw)
+            if s > best_word_pair:
+                best_word_pair = s
+
+    # Stufe 3: Für Multi-Wort-Queries zusätzlich gedämpftes partial_ratio
+    if len(q_words) > 2:
+        overall = fuzz.partial_ratio(q_lower, t_lower) * 0.5
+        return max(best_word_pair * 0.7, overall)
+
+    return best_word_pair * 0.7
 
 
 def _tokenize(query: str) -> set[str]:
@@ -216,13 +241,12 @@ def search(
             ss = sem.get(entry["filename"], 0.0)
             if ss >= _SEM_PER_DOC_THRESHOLD:
                 # Hybrid: Keyword-Basis (65%) + semantischer Bonus (35%)
-                # Keyword findet exakte Treffer, Semantic überbrückt Synonyme ("tropft" → "Leckage")
-                kw = ts * 0.55 + ks * 0.30 + pb * 0.15
+                kw = ts * 0.30 + ks * 0.50 + pb * 0.20
                 score = kw * 0.65 + ss * 100 * 0.35
             else:
-                score = ts * 0.55 + ks * 0.30 + pb * 0.15
+                score = ts * 0.30 + ks * 0.50 + pb * 0.20
         else:
-            score = ts * 0.55 + ks * 0.30 + pb * 0.15
+            score = ts * 0.30 + ks * 0.50 + pb * 0.20
 
         if score > 10:
             scored.append({**entry, "score": round(score, 2)})
