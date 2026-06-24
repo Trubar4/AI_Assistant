@@ -13,8 +13,25 @@ Dauer: ~2 min für 2.180 Seiten auf CPU.
 """
 
 import json
+import os
 import sys
 from pathlib import Path
+
+# Inject Windows/macOS system cert store so requests trusts corporate proxies
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
+
+# Fallback: wenn truststore nicht hilft, SSL-Verifikation über Umgebungsvariable deaktivieren
+# (nur wenn DISABLE_SSL_VERIFY=1 gesetzt ist)
+if os.environ.get("DISABLE_SSL_VERIFY") == "1":
+    import ssl
+    ssl._create_default_https_context = ssl._create_unverified_context
+    os.environ.setdefault("CURL_CA_BUNDLE", "")
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", "")
+    print("WARNUNG: SSL-Verifikation deaktiviert.")
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
