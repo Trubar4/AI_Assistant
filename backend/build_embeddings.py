@@ -46,11 +46,19 @@ MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 
 
 def _build_doc_text(filename: str, meta: dict, content: dict) -> str:
-    """Combine title + breadcrumb + first 500 chars of text for embedding."""
+    """Combine title (3×) + warnings + steps + body text for embedding.
+
+    Titel wird dreifach wiederholt damit er bei der Ähnlichkeitsberechnung
+    stärker gewichtet wird. Warnungen und Schritte kommen vor dem Fließtext
+    weil sie die wichtigsten Informationen enthalten.
+    """
     title = meta.get("title") or content.get("title", "")
     breadcrumb = " > ".join(content.get("breadcrumb", []))
-    text = content.get("text", "")[:500]
-    return f"{title}\n{breadcrumb}\n{text}".strip()
+    warnings = " ".join(content.get("warnings", []))[:300]
+    steps = " ".join(content.get("steps", [])[:10])[:400]
+    text = content.get("text", "")[:800]
+    # Titel dreifach: erhöht Gewicht im Embedding-Raum
+    return f"{title}\n{title}\n{title}\n{breadcrumb}\n{warnings}\n{steps}\n{text}".strip()
 
 
 def main() -> None:

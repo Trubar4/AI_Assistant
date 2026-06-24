@@ -108,12 +108,23 @@ def _load_semantic() -> bool:
         return False
 
 
+_SEM_MIN_THRESHOLD = 0.50  # Unter diesem Max-Score: Semantic nicht verwenden
+
 def _semantic_scores(query: str) -> dict[str, float]:
-    """Return cosine-similarity scores keyed by filename (0–1)."""
+    """Return cosine-similarity scores keyed by filename (0–1).
+
+    Gibt leeres dict zurück wenn der beste Score unter _SEM_MIN_THRESHOLD liegt –
+    dann greift der keyword-basierte Fallback, der für Einzelwörter und
+    spezifische Fachbegriffe zuverlässiger ist.
+    """
     if not _load_semantic():
         return {}
-    q_vec = _sem_model.encode([query], normalize_embeddings=True)[0]  # [D]
-    sims  = (_sem_matrix @ q_vec).tolist()                             # [N]
+    q_vec = _sem_model.encode([query], normalize_embeddings=True)[0]
+    sims  = (_sem_matrix @ q_vec).tolist()
+    max_sim = max(sims) if sims else 0.0
+    if max_sim < _SEM_MIN_THRESHOLD:
+        logger.info("Semantic max_sim=%.3f < threshold → keyword fallback", max_sim)
+        return {}
     return {fname: float(sim) for fname, sim in zip(_sem_ids, sims)}
 
 

@@ -166,6 +166,12 @@ _NOT_FOUND_PHRASES = (
     "keine information",
     "konnte ich nicht finden",
     "konnte nicht gefunden",
+    "nicht im bereitgestellten",
+    "bereitgestellten kontext",
+    "steht nicht im",
+    "nicht eindeutig finden",
+    "nicht eindeutig belegt",
+    "nicht auffindbar",
 )
 
 
