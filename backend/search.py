@@ -61,11 +61,11 @@ def _phase_boost(query_words: set[str], lifecycle_phases: list[str], topic_type:
 
 
 def _keyword_score(query_words: set[str], text: str, word_count: int) -> float:
-    if word_count == 0:
+    if word_count == 0 or not query_words:
         return 0.0
     text_lower = text.lower()
-    hits = sum(text_lower.count(w) for w in query_words if len(w) > 3)
-    # Normalise: cap at 20 hits to avoid huge maintenance-table pages dominating
+    # query_words already filtered by _tokenize (no stopwords, len > 3)
+    hits = sum(text_lower.count(w) for w in query_words)
     return min(hits, 20) / 20 * 40.0
 
 
@@ -98,8 +98,20 @@ def _title_score(query: str, title: str) -> float:
     return best_word_pair * 0.7
 
 
+_STOPWORDS_DE = {
+    "der", "die", "das", "den", "dem", "des", "ein", "eine", "einen", "einem",
+    "eines", "und", "oder", "aber", "wenn", "dann", "also", "weil", "dass",
+    "sich", "ist", "sind", "war", "wird", "werden", "hat", "haben", "sein",
+    "tun", "was", "wie", "wer", "man", "kann", "muss", "soll", "darf",
+    "nicht", "kein", "keine", "bei", "mit", "von", "aus", "nach", "vor",
+    "über", "unter", "durch", "für", "ohne", "gegen", "bis", "seit",
+    "noch", "auch", "schon", "nur", "sehr", "mehr", "alle", "hier",
+}
+
+
 def _tokenize(query: str) -> set[str]:
-    return {t.lower() for t in re.split(r"\W+", query) if t}
+    tokens = {t.lower() for t in re.split(r"\W+", query) if t}
+    return {t for t in tokens if len(t) > 3 and t not in _STOPWORDS_DE}
 
 
 # ---------------------------------------------------------------------------
@@ -252,6 +264,14 @@ def search(
             scored.append({**entry, "score": round(score, 2)})
 
     scored.sort(key=lambda x: x["score"], reverse=True)
+
+    if scored:
+        logger.info(
+            "TOP-5 für '%s' (sem=%s): %s",
+            query[:50],
+            use_sem,
+            " | ".join(f"{r['title'][:20]}={r['score']}" for r in scored[:5]),
+        )
 
     # Deduplizieren: pro Titel nur den höchsten Score behalten.
     # Passiert wenn das Manual ein Thema auf mehreren Unterseiten mit
