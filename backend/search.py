@@ -214,7 +214,20 @@ def search(
             scored.append({**entry, "score": round(score, 2)})
 
     scored.sort(key=lambda x: x["score"], reverse=True)
-    return scored[:top_n]
+
+    # Deduplizieren: pro Titel nur den höchsten Score behalten.
+    # Passiert wenn das Manual ein Thema auf mehreren Unterseiten mit
+    # identischem Titel aufteilt – Semantic Search findet alle gleich.
+    seen_titles: set[str] = set()
+    deduped = []
+    for entry in scored:
+        t = entry["title"].strip().lower()
+        if t not in seen_titles:
+            seen_titles.add(t)
+            deduped.append(entry)
+        if len(deduped) == top_n:
+            break
+    return deduped
 
 
 # ---------------------------------------------------------------------------
