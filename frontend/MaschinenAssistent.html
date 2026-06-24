@@ -798,7 +798,10 @@ function renderAnswer(question, data) {
   const sources = (data.sources || []);
   const sourcesHtml = sources.length ? `
     <div>
-      <div class="answer-section-label">Quellen im Manual</div>
+      <div style="display:flex;align-items:baseline;gap:var(--s-3);margin-bottom:var(--s-2)">
+        <div class="answer-section-label" style="margin-bottom:0">Quellen im Manual</div>
+        <div style="font:400 11px/14px var(--font-text);color:var(--r-on-surface-muted)">Relevanz-Score (0–100)</div>
+      </div>
       <div class="source-list">
         ${sources.map(s => `
           <div class="source-item" role="button" tabindex="0"
@@ -811,7 +814,10 @@ function renderAnswer(question, data) {
               <div class="source-item__title">${escHtml(s.title)}</div>
               ${s.snippet ? `<div class="source-item__snippet">${escHtml(s.snippet)}</div>` : ''}
             </div>
-            <div class="source-item__score">${Math.round((s.score || 0) * 10) / 10}</div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">
+              <div style="font:600 13px/16px var(--font-text-m);color:var(--r-on-surface-default)">${Math.round(s.score || 0)}</div>
+              <div style="font:400 10px/12px var(--font-text);color:var(--r-on-surface-muted);text-transform:uppercase;letter-spacing:0.04em">Relevanz</div>
+            </div>
           </div>`).join('')}
       </div>
     </div>` : '';
