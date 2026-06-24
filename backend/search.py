@@ -145,7 +145,7 @@ def _load_semantic() -> bool:
         return False
 
 
-_SEM_PER_DOC_THRESHOLD = 0.28  # Unter diesem Wert: kein semantischer Bonus für dieses Dokument
+_SEM_PER_DOC_THRESHOLD = 0.55  # Unter diesem Wert: kein semantischer Bonus
 
 def _semantic_scores(query: str) -> dict[str, float]:
     """Return cosine-similarity scores (0–1) keyed by filename.

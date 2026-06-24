@@ -54,11 +54,10 @@ def _build_doc_text(filename: str, meta: dict, content: dict) -> str:
     """
     title = meta.get("title") or content.get("title", "")
     breadcrumb = " > ".join(content.get("breadcrumb", []))
-    warnings = " ".join(content.get("warnings", []))[:300]
-    steps = " ".join(content.get("steps", [])[:10])[:400]
-    text = content.get("text", "")[:800]
-    # Titel dreifach: erhöht Gewicht im Embedding-Raum
-    return f"{title}\n{title}\n{title}\n{breadcrumb}\n{warnings}\n{steps}\n{text}".strip()
+    warnings = " ".join(content.get("warnings", []))[:400]
+    steps = " ".join(content.get("steps", [])[:10])[:300]
+    text = content.get("text", "")[:600]
+    return f"{title}\n{breadcrumb}\n{warnings}\n{steps}\n{text}".strip()
 
 
 def main() -> None:
