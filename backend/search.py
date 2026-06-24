@@ -108,23 +108,21 @@ def _load_semantic() -> bool:
         return False
 
 
-_SEM_MIN_THRESHOLD = 0.50  # Unter diesem Max-Score: Semantic nicht verwenden
+_SEM_PER_DOC_THRESHOLD = 0.28  # Unter diesem Wert: kein semantischer Bonus für dieses Dokument
 
 def _semantic_scores(query: str) -> dict[str, float]:
-    """Return cosine-similarity scores keyed by filename (0–1).
+    """Return cosine-similarity scores (0–1) keyed by filename.
 
-    Gibt leeres dict zurück wenn der beste Score unter _SEM_MIN_THRESHOLD liegt –
-    dann greift der keyword-basierte Fallback, der für Einzelwörter und
-    spezifische Fachbegriffe zuverlässiger ist.
+    Kein globaler Threshold mehr – Semantic läuft immer wenn Embeddings
+    vorhanden sind. Die Entscheidung ob ein Dokument den Bonus bekommt
+    fällt per-Dokument in search() anhand _SEM_PER_DOC_THRESHOLD.
     """
     if not _load_semantic():
         return {}
     q_vec = _sem_model.encode([query], normalize_embeddings=True)[0]
     sims  = (_sem_matrix @ q_vec).tolist()
     max_sim = max(sims) if sims else 0.0
-    if max_sim < _SEM_MIN_THRESHOLD:
-        logger.info("Semantic max_sim=%.3f < threshold → keyword fallback", max_sim)
-        return {}
+    logger.info("Semantic max_sim=%.3f query='%s'", max_sim, query[:50])
     return {fname: float(sim) for fname, sim in zip(_sem_ids, sims)}
 
 
@@ -215,9 +213,14 @@ def search(
         pb = _phase_boost(query_words, entry["lifecycle_phases"], entry["topic_type"])
 
         if use_sem:
-            ss = sem.get(entry["filename"], 0.0) * 100.0  # scale to 0–100
-            # Semantic replaces keyword score when available; phase boost still applies
-            score = ts * 0.40 + ss * 0.45 + pb * 0.15
+            ss = sem.get(entry["filename"], 0.0)
+            if ss >= _SEM_PER_DOC_THRESHOLD:
+                # Hybrid: Keyword-Basis (65%) + semantischer Bonus (35%)
+                # Keyword findet exakte Treffer, Semantic überbrückt Synonyme ("tropft" → "Leckage")
+                kw = ts * 0.55 + ks * 0.30 + pb * 0.15
+                score = kw * 0.65 + ss * 100 * 0.35
+            else:
+                score = ts * 0.55 + ks * 0.30 + pb * 0.15
         else:
             score = ts * 0.55 + ks * 0.30 + pb * 0.15
 
