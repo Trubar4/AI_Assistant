@@ -8,9 +8,15 @@ Endpoints:
 """
 
 import json
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s:%(name)s: %(message)s",
+)
 
 from dotenv import load_dotenv
 

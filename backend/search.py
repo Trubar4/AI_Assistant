@@ -267,11 +267,16 @@ def search(
 
     if scored:
         logger.info(
-            "TOP-5 für '%s' (sem=%s): %s",
+            "TOP-10 für '%s' (sem=%s): %s",
             query[:50],
             use_sem,
-            " | ".join(f"{r['title'][:20]}={r['score']}" for r in scored[:5]),
+            " | ".join(f"{r['title'][:25]}={r['score']}" for r in scored[:10]),
         )
+        # Gesondert: Score für Umwelt/Leckage-Seite (Diagnose)
+        for r in scored:
+            if r["title"].strip() in ("Umwelt", "Hydraulische Energie"):
+                logger.info("  DIAGNOSE %s: score=%.1f", r["title"], r["score"])
+                break
 
     # Deduplizieren: pro Titel nur den höchsten Score behalten.
     # Passiert wenn das Manual ein Thema auf mehreren Unterseiten mit
