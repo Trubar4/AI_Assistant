@@ -1,13 +1,16 @@
 """
 search.py
 
-Retrieval layer: given a German user question, returns the top-N most
-relevant manual topics by combining fuzzy title matching, keyword
-frequency in body text, and a semantic phase boost.
+Retrieval layer: Hybrid BM25 + Semantic Search mit Reciprocal Rank Fusion (RRF).
+
+BM25 deckt exakte Keyword-Matches ab (z. B. "Leckage" → Umwelt-Seite).
+Semantic Search deckt Synonyme und Umschreibungen ab (z. B. "tropft" → Leckage).
+RRF kombiniert beide Rankings skalenfrei.
 
 Usage (standalone test):
     python backend/search.py "Getriebeölstand prüfen"
-    python backend/search.py "Fehler Hydraulikdruck"
+    python backend/search.py "Leckage"
+    python backend/search.py "Was tun wenn es tropft?"
 """
 
 import json
@@ -17,87 +20,24 @@ import sys
 from pathlib import Path
 
 import numpy as np
-from rapidfuzz import fuzz
+from rank_bm25 import BM25Okapi
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Paths (relative to repo root; overridable for tests)
+# Paths
 # ---------------------------------------------------------------------------
 _ROOT = Path(__file__).parent.parent
 METADATA_INDEX = _ROOT / "data" / "metadata_index.json"
 CONTENT_INDEX  = _ROOT / "data" / "content_index.json"
 TOC_INDEX      = _ROOT / "data" / "toc_index.json"
 
+_EMB_NPY = _ROOT / "data" / "embeddings.npy"
+_EMB_IDS = _ROOT / "data" / "embedding_ids.json"
+
 # ---------------------------------------------------------------------------
-# Keyword sets for semantic phase boosting
+# Tokenization
 # ---------------------------------------------------------------------------
-_FAULT_KW = {
-    "fehler", "störung", "defekt", "alarm", "warnung", "meldung",
-    "ausfall", "problem", "error", "fault", "diagnose",
-}
-_MAINTENANCE_KW = {
-    "wartung", "inspektion", "service", "öl", "filter", "wechsel",
-    "prüfen", "reinigen", "schmieren", "intervall",
-}
-_ASSEMBLY_KW = {
-    "aufrüsten", "aufbau", "montage", "demontage", "transport",
-    "einrichten", "aufstellen",
-}
-
-
-def _phase_boost(query_words: set[str], lifecycle_phases: list[str], topic_type: str) -> float:
-    phases = set(lifecycle_phases)
-    if query_words & _FAULT_KW:
-        if phases & {"Fault", "Diagnostics"} or topic_type == "GenericTroubleshooting":
-            return 25.0
-    if query_words & _MAINTENANCE_KW:
-        if "Maintenance" in phases:
-            return 15.0
-    if query_words & _ASSEMBLY_KW:
-        if phases & {"Assembly", "GenericPuttingToUse"}:
-            return 15.0
-    return 0.0
-
-
-def _keyword_score(query_words: set[str], text: str, word_count: int) -> float:
-    if word_count == 0 or not query_words:
-        return 0.0
-    text_lower = text.lower()
-    # query_words already filtered by _tokenize (no stopwords, len > 3)
-    hits = sum(text_lower.count(w) for w in query_words)
-    return min(hits, 20) / 20 * 40.0
-
-
-def _title_score(query: str, title: str) -> float:
-    q_lower = query.lower()
-    t_lower = title.lower()
-    q_words = set(re.split(r"\W+", q_lower)) - {""}
-    t_words = set(re.split(r"\W+", t_lower)) - {""}
-
-    # Stufe 1: Exakte Wort-Übereinstimmung (höchste Priorität)
-    common = q_words & t_words
-    if common:
-        return len(common) / max(len(q_words), len(t_words)) * 100
-
-    # Stufe 2: Wort-Paar-Fuzzy (fuzz.ratio, nicht partial_ratio)
-    # Verhindert False-Positives wie "leckage"≈"klimaanlage" über shared Substring "lage"
-    # fuzz.ratio vergleicht ganze Wörter → "leckage" vs "klimaanlage" ≈ 30, nicht 50
-    best_word_pair = 0.0
-    for qw in q_words:
-        for tw in t_words:
-            s = fuzz.ratio(qw, tw)
-            if s > best_word_pair:
-                best_word_pair = s
-
-    # Stufe 3: Für Multi-Wort-Queries zusätzlich gedämpftes partial_ratio
-    if len(q_words) > 2:
-        overall = fuzz.partial_ratio(q_lower, t_lower) * 0.5
-        return max(best_word_pair * 0.7, overall)
-
-    return best_word_pair * 0.7
-
-
 _STOPWORDS_DE = {
     "der", "die", "das", "den", "dem", "des", "ein", "eine", "einen", "einem",
     "eines", "und", "oder", "aber", "wenn", "dann", "also", "weil", "dass",
@@ -109,25 +49,88 @@ _STOPWORDS_DE = {
 }
 
 
-def _tokenize(query: str) -> set[str]:
-    tokens = {t.lower() for t in re.split(r"\W+", query) if t}
-    return {t for t in tokens if len(t) > 3 and t not in _STOPWORDS_DE}
+def _tokenize(text: str) -> list[str]:
+    tokens = re.split(r"\W+", text.lower())
+    return [t for t in tokens if len(t) > 2 and t not in _STOPWORDS_DE]
+
+
+# ---------------------------------------------------------------------------
+# Index loading (lazy, cached)
+# ---------------------------------------------------------------------------
+_index: list[dict] | None = None
+_bm25: BM25Okapi | None = None
+_bm25_filenames: list[str] | None = None
+
+
+def _load_index(
+    metadata_path: Path = METADATA_INDEX,
+    content_path: Path = CONTENT_INDEX,
+) -> list[dict]:
+    global _index, _bm25, _bm25_filenames
+    if _index is not None:
+        return _index
+
+    meta    = json.loads(metadata_path.read_text(encoding="utf-8"))
+    content = json.loads(content_path.read_text(encoding="utf-8"))
+
+    toc_by_file: dict = {}
+    if TOC_INDEX.exists():
+        for entry in json.loads(TOC_INDEX.read_text(encoding="utf-8")):
+            toc_by_file[entry["filename"]] = entry
+
+    merged = []
+    for filename, m in meta.items():
+        c = content.get(filename)
+        if c is None:
+            continue
+        toc = toc_by_file.get(filename, {})
+        breadcrumb = toc.get("breadcrumb") or c.get("breadcrumb", [])
+        merged.append({
+            "filename":         filename,
+            "title":            m.get("title") or c.get("title", ""),
+            "topic_type":       m.get("topic_type", ""),
+            "lifecycle_phases": m.get("lifecycle_phases", []),
+            "breadcrumb":       breadcrumb,
+            "depth":            toc.get("depth", 0),
+            "text":             c.get("text", ""),
+            "warnings":         c.get("warnings", []),
+            "steps":            c.get("steps", []),
+            "word_count":       c.get("word_count", 0),
+        })
+
+    _index = merged
+
+    # Build BM25 index: title (3x weight) + warnings + steps + body
+    corpus = []
+    _bm25_filenames = []
+    for entry in merged:
+        title_tokens = _tokenize(entry["title"]) * 3
+        warn_tokens  = _tokenize(" ".join(entry["warnings"]))
+        step_tokens  = _tokenize(" ".join(entry["steps"][:15]))
+        body_tokens  = _tokenize(entry["text"])
+        corpus.append(title_tokens + warn_tokens + step_tokens + body_tokens)
+        _bm25_filenames.append(entry["filename"])
+
+    _bm25 = BM25Okapi(corpus)
+    logger.info("BM25 index gebaut: %d Dokumente", len(merged))
+    return _index
+
+
+def reset_index() -> None:
+    global _index, _bm25, _bm25_filenames, _sem_model, _sem_matrix, _sem_ids
+    _index = _bm25 = _bm25_filenames = None
+    _sem_model = _sem_matrix = _sem_ids = None
 
 
 # ---------------------------------------------------------------------------
 # Semantic search (optional — only active when embeddings are pre-built)
 # ---------------------------------------------------------------------------
-_ROOT = Path(__file__).parent.parent
-_EMB_NPY  = _ROOT / "data" / "embeddings.npy"
-_EMB_IDS  = _ROOT / "data" / "embedding_ids.json"
-
-_sem_model   = None
-_sem_matrix  = None   # float32 np.ndarray [N, D], L2-normalised
-_sem_ids     = None   # list[str] — filenames in same order as rows
+_sem_model  = None
+_sem_matrix = None
+_sem_ids    = None
 
 
 def _load_semantic() -> bool:
-    """Load embeddings + model once. Returns True if semantic search is available."""
     global _sem_model, _sem_matrix, _sem_ids
     if _sem_matrix is not None:
         return True
@@ -135,7 +138,7 @@ def _load_semantic() -> bool:
         return False
     try:
         from sentence_transformers import SentenceTransformer
-        _sem_matrix = np.load(str(_EMB_NPY))          # already normalised
+        _sem_matrix = np.load(str(_EMB_NPY))
         _sem_ids    = json.loads(_EMB_IDS.read_text(encoding="utf-8"))
         _sem_model  = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
         logger.info("Semantic search geladen: %d Dokumente", len(_sem_ids))
@@ -145,77 +148,50 @@ def _load_semantic() -> bool:
         return False
 
 
-_SEM_PER_DOC_THRESHOLD = 0.55  # Unter diesem Wert: kein semantischer Bonus
-
-def _semantic_scores(query: str) -> dict[str, float]:
-    """Return cosine-similarity scores (0–1) keyed by filename.
-
-    Kein globaler Threshold mehr – Semantic läuft immer wenn Embeddings
-    vorhanden sind. Die Entscheidung ob ein Dokument den Bonus bekommt
-    fällt per-Dokument in search() anhand _SEM_PER_DOC_THRESHOLD.
-    """
+def _semantic_ranking(query: str, top_k: int = 50) -> list[tuple[str, float]]:
+    """Returns [(filename, similarity), ...] sorted descending."""
     if not _load_semantic():
-        return {}
+        return []
     q_vec = _sem_model.encode([query], normalize_embeddings=True)[0]
     sims  = (_sem_matrix @ q_vec).tolist()
     max_sim = max(sims) if sims else 0.0
     logger.info("Semantic max_sim=%.3f query='%s'", max_sim, query[:50])
-    return {fname: float(sim) for fname, sim in zip(_sem_ids, sims)}
+    ranked = sorted(zip(_sem_ids, sims), key=lambda x: x[1], reverse=True)
+    return ranked[:top_k]
 
 
 # ---------------------------------------------------------------------------
-# Index loading (lazy, cached at module level)
+# BM25 ranking
 # ---------------------------------------------------------------------------
-_index: list[dict] | None = None
+
+def _bm25_ranking(query: str, top_k: int = 50) -> list[tuple[str, float]]:
+    """Returns [(filename, bm25_score), ...] sorted descending."""
+    _load_index()
+    tokens = _tokenize(query)
+    if not tokens:
+        return []
+    scores = _bm25.get_scores(tokens)
+    ranked = sorted(
+        zip(_bm25_filenames, scores),
+        key=lambda x: x[1],
+        reverse=True,
+    )
+    return [r for r in ranked[:top_k] if r[1] > 0]
 
 
-def _load_index(
-    metadata_path: Path = METADATA_INDEX,
-    content_path: Path  = CONTENT_INDEX,
-) -> list[dict]:
-    global _index
-    if _index is not None:
-        return _index
-
-    meta    = json.loads(metadata_path.read_text(encoding="utf-8"))
-    content = json.loads(content_path.read_text(encoding="utf-8"))
-
-    # TOC index is optional — provides authoritative breadcrumbs when present
-    toc_by_file: dict = {}
-    toc_path = TOC_INDEX
-    if toc_path.exists():
-        for entry in json.loads(toc_path.read_text(encoding="utf-8")):
-            toc_by_file[entry["filename"]] = entry
-
-    merged = []
-    for filename, m in meta.items():
-        c = content.get(filename)
-        if c is None:
-            continue
-        toc = toc_by_file.get(filename, {})
-        # TOC breadcrumb is authoritative; fall back to HTML-extracted one
-        breadcrumb = toc.get("breadcrumb") or c.get("breadcrumb", [])
-        merged.append({
-            "filename":        filename,
-            "title":           m.get("title") or c.get("title", ""),
-            "topic_type":      m.get("topic_type", ""),
-            "lifecycle_phases": m.get("lifecycle_phases", []),
-            "breadcrumb":      breadcrumb,
-            "depth":           toc.get("depth", 0),
-            "text":            c.get("text", ""),
-            "warnings":        c.get("warnings", []),
-            "steps":           c.get("steps", []),
-            "word_count":      c.get("word_count", 0),
-        })
-
-    _index = merged
-    return _index
+# ---------------------------------------------------------------------------
+# Reciprocal Rank Fusion
+# ---------------------------------------------------------------------------
+_RRF_K = 60
 
 
-def reset_index() -> None:
-    global _index, _sem_model, _sem_matrix, _sem_ids
-    _index = None
-    _sem_model = _sem_matrix = _sem_ids = None
+def _rrf(rankings: list[list[tuple[str, float]]]) -> dict[str, float]:
+    """Combine ranked lists via RRF. Each list is [(filename, score), ...]."""
+    scores: dict[str, float] = {}
+    for ranking in rankings:
+        for rank, (fname, _) in enumerate(ranking):
+            scores[fname] = scores.get(fname, 0.0) + 1.0 / (_RRF_K + rank)
+    return scores
 
 
 # ---------------------------------------------------------------------------
@@ -226,71 +202,56 @@ def search(
     query: str,
     top_n: int = 5,
     metadata_path: Path = METADATA_INDEX,
-    content_path: Path  = CONTENT_INDEX,
+    content_path: Path = CONTENT_INDEX,
 ) -> list[dict]:
     """
-    Return the top_n most relevant index entries for query.
-
-    Each result dict contains: filename, title, breadcrumb, text,
-    warnings, steps, topic_type, lifecycle_phases, score.
+    Return top_n most relevant index entries for query.
+    Hybrid BM25 + Semantic Search combined via Reciprocal Rank Fusion.
     """
     if not query.strip():
         return []
 
     index = _load_index(metadata_path, content_path)
-    query_words = _tokenize(query)
+    index_by_filename = {e["filename"]: e for e in index}
 
-    sem = _semantic_scores(query)   # empty dict if not available
-    use_sem = bool(sem)
+    bm25_rank = _bm25_ranking(query, top_k=50)
+    sem_rank  = _semantic_ranking(query, top_k=50)
 
-    scored = []
-    for entry in index:
-        ts = _title_score(query, entry["title"])
-        ks = _keyword_score(query_words, entry["text"], entry["word_count"])
-        pb = _phase_boost(query_words, entry["lifecycle_phases"], entry["topic_type"])
+    use_sem = bool(sem_rank)
+    rankings = [r for r in [bm25_rank, sem_rank] if r]
 
-        if use_sem:
-            ss = sem.get(entry["filename"], 0.0)
-            if ss >= _SEM_PER_DOC_THRESHOLD:
-                # Hybrid: Keyword-Basis (65%) + semantischer Bonus (35%)
-                kw = ts * 0.30 + ks * 0.50 + pb * 0.20
-                score = kw * 0.65 + ss * 100 * 0.35
-            else:
-                score = ts * 0.30 + ks * 0.50 + pb * 0.20
-        else:
-            score = ts * 0.30 + ks * 0.50 + pb * 0.20
+    rrf_scores = _rrf(rankings)
+    if not rrf_scores:
+        return []
 
-        if score > 5:
-            scored.append({**entry, "score": round(score, 2)})
+    sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 
-    scored.sort(key=lambda x: x["score"], reverse=True)
+    logger.info(
+        "TOP-10 für '%s' (sem=%s): %s",
+        query[:50],
+        use_sem,
+        " | ".join(
+            f"{index_by_filename[f]['title'][:20]}={rrf_scores[f]:.4f}"
+            for f in sorted_filenames[:10]
+            if f in index_by_filename
+        ),
+    )
 
-    if scored:
-        logger.info(
-            "TOP-10 für '%s' (sem=%s): %s",
-            query[:50],
-            use_sem,
-            " | ".join(f"{r['title'][:25]}={r['score']}" for r in scored[:10]),
-        )
-        # Gesondert: Score für Umwelt/Leckage-Seite (Diagnose)
-        for r in scored:
-            if r["title"].strip() in ("Umwelt", "Hydraulische Energie"):
-                logger.info("  DIAGNOSE %s: score=%.1f", r["title"], r["score"])
-                break
-
-    # Deduplizieren: pro Titel nur den höchsten Score behalten.
-    # Passiert wenn das Manual ein Thema auf mehreren Unterseiten mit
-    # identischem Titel aufteilt – Semantic Search findet alle gleich.
+    # Deduplizieren: pro Titel nur den höchsten RRF-Score behalten
     seen_titles: set[str] = set()
-    deduped = []
-    for entry in scored:
+    results = []
+    for fname in sorted_filenames:
+        entry = index_by_filename.get(fname)
+        if entry is None:
+            continue
         t = entry["title"].strip().lower()
         if t not in seen_titles:
             seen_titles.add(t)
-            deduped.append(entry)
-        if len(deduped) == top_n:
+            results.append({**entry, "score": round(rrf_scores[fname] * 1000, 2)})
+        if len(results) == top_n:
             break
-    return deduped
+
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -307,6 +268,7 @@ def _print_result(r: dict, rank: int) -> None:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     query = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else "Getriebeölstand prüfen"
     print(f'Query: "{query}"')
     results = search(query)

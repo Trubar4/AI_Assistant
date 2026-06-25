@@ -12,6 +12,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Pre-download sentence-transformers model so runtime needs no outbound HF access
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
+
 # Cloud Run injects PORT; uvicorn binds to it
 ENV PORT=8080
 EXPOSE 8080
