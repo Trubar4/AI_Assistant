@@ -37,7 +37,7 @@ from pydantic import BaseModel
 load_dotenv()
 
 from backend.search import search, reset_index
-from backend.claude_client import ask, VerifiedAnswer
+from backend.claude_client import ask, expand_query, VerifiedAnswer
 
 # ---------------------------------------------------------------------------
 # Error code database (optional — loaded once at startup)
@@ -160,7 +160,8 @@ async def ask_question(req: AskRequest) -> AskResponse:
     if not q:
         raise HTTPException(status_code=422, detail="question must not be empty")
 
-    results = search(q, top_n=req.top_n)
+    expanded_q = expand_query(q)
+    results = search(expanded_q, top_n=req.top_n)
     if not results:
         return AskResponse(
             answer=(
@@ -172,7 +173,7 @@ async def ask_question(req: AskRequest) -> AskResponse:
             sources=[],
         )
 
-    va: VerifiedAnswer = ask(q, results)
+    va: VerifiedAnswer = ask(q, results)  # original query for answer quality
     return AskResponse(
         answer=va.answer,
         grounding=va.grounding,

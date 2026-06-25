@@ -31,8 +31,41 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
-ANSWER_MODEL  = os.environ.get("ANSWER_MODEL",  "claude-haiku-4-5-20251001")
+ANSWER_MODEL   = os.environ.get("ANSWER_MODEL",   "claude-haiku-4-5-20251001")
 VERIFIER_MODEL = os.environ.get("VERIFIER_MODEL", "claude-haiku-4-5-20251001")
+EXPAND_MODEL   = os.environ.get("EXPAND_MODEL",   "claude-haiku-4-5-20251001")
+
+EXPAND_SYSTEM = """\
+Du bist ein Suchmaschinen-Assistent für Liebherr-Kranbedienungsanleitungen.
+Deine Aufgabe: Erweitere eine Benutzeranfrage um technische Fachbegriffe und Synonyme,
+damit eine Volltextsuche im Manual bessere Treffer findet.
+
+Regeln:
+- Gib NUR die erweiterte Suchanfrage zurück, keine Erklärungen.
+- Maximal 12 Wörter.
+- Verwende deutsche Fachbegriffe aus dem Maschinenbau/Kranbau.
+- Behalte die originalen Wörter bei, ergänze nur relevante Synonyme.\
+"""
+
+
+def expand_query(query: str) -> str:
+    """Expand a user query with technical synonyms for better retrieval.
+
+    Returns the expanded query string, or the original query on any error.
+    """
+    try:
+        response = _get_client().messages.create(
+            model=EXPAND_MODEL,
+            max_tokens=60,
+            system=EXPAND_SYSTEM,
+            messages=[{"role": "user", "content": f"Anfrage: {query}"}],
+        )
+        expanded = response.content[0].text.strip()
+        logger.info("EXPAND '%s' → '%s'", query[:60], expanded[:80])
+        return expanded
+    except Exception as exc:
+        logger.warning("Query expansion fehlgeschlagen: %s", exc)
+        return query
 
 ANSWER_SYSTEM = """\
 Du bist ein Assistent für Liebherr-Maschinenführer und Servicetechniker.
