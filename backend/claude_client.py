@@ -262,30 +262,15 @@ def verify(query: str, answer_text: str, results: list[dict]) -> str:
     return "TEILWEISE"
 
 
-_NOT_FOUND_PHRASES = (
-    "nicht im kontext",
-    "nicht enthalten",
-    "nicht gefunden",
-    "nicht vorhanden",
-    "nicht im manual",
-    "keine information",
-    "konnte ich nicht finden",
-    "konnte nicht gefunden",
-    "nicht im bereitgestellten",
-    "steht nicht im",
-    "nicht eindeutig finden",
-    "nicht eindeutig belegt",
-    "nicht auffindbar",
-)
+# Threshold für "wahrscheinlich relevante Treffer" (RRF-Score × 1000)
+_HIGH_CONFIDENCE_THRESHOLD = 18.0
 
-
-def _is_not_found(text: str) -> bool:
-    t = text.lower()
-    return any(p in t for p in _NOT_FOUND_PHRASES)
+MSG_HIGH = "Wahrscheinlich relevante Seiten gefunden — bitte direkt nachschlagen:"
+MSG_LOW  = "Keine eindeutige Übereinstimmung — diese Seiten könnten trotzdem helfen:"
 
 
 def ask(query: str, results: list[dict]) -> VerifiedAnswer:
-    """Full pipeline: generate answer, verify grounding, apply fallback if needed."""
+    """Score-based confidence message. No LLM calls — answer/verify removed."""
     sources = [
         {
             "title": r["title"],
@@ -296,17 +281,14 @@ def ask(query: str, results: list[dict]) -> VerifiedAnswer:
         for r in results
     ]
 
-    answer_text = answer(query, results)
-    grounding   = verify(query, answer_text, results)
+    top_score = results[0].get("score", 0) if results else 0
+    high = top_score >= _HIGH_CONFIDENCE_THRESHOLD
 
-    # _is_not_found() immer prüfen — der Verifier sagt BELEGT wenn die Antwort korrekt
-    # "nicht gefunden" meldet, aber für den Nutzer ist das trotzdem ein Fallback.
-    fallback_used = grounding == "NICHT_BELEGT" or _is_not_found(answer_text)
-    if fallback_used:
-        answer_text = FALLBACK_ANSWER
-        grounding   = "NICHT_BELEGT"
+    answer_text   = MSG_HIGH if high else MSG_LOW
+    grounding     = "BELEGT" if high else "NICHT_BELEGT"
+    fallback_used = not high
 
-    logger.info("ASK grounding=%s fallback=%s", grounding, fallback_used)
+    logger.info("ASK score=%.1f confidence=%s", top_score, "HOCH" if high else "NIEDRIG")
 
     return VerifiedAnswer(
         answer=answer_text,

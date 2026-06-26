@@ -782,26 +782,14 @@ async function sendQuestion() {
 }
 
 function renderAnswer(question, data) {
-  const grounding = data.grounding || 'TEILWEISE';
-  const badgeCls = grounding === 'BELEGT' ? 'lds-badge--success'
-    : grounding === 'NICHT_BELEGT' ? 'lds-badge--error' : 'lds-badge--warning';
-
-  const disclaimer = data.fallback_used ? `
-    <div class="disclaimer">
-      <div>${icon('alert', 18)}</div>
-      <div>
-        <div class="disclaimer__title">Antwort nicht eindeutig belegt</div>
-        <div class="disclaimer__text">Bitte direkt im Manual nachschlagen oder Liebherr-Service kontaktieren. Die unten verlinkte Quelle ist die nächstbeste Übereinstimmung.</div>
-      </div>
-    </div>` : '';
+  const high = data.grounding === 'BELEGT';
+  const confidenceCls = high ? 'lds-badge--success' : 'lds-badge--warning';
+  const confidenceLabel = high ? 'Gute Übereinstimmung' : 'Niedrige Übereinstimmung';
 
   const sources = (data.sources || []);
   const sourcesHtml = sources.length ? `
     <div>
-      <div style="display:flex;align-items:baseline;gap:var(--s-3);margin-bottom:var(--s-2)">
-        <div class="answer-section-label" style="margin-bottom:0">Quellen im Manual</div>
-        <div style="font:400 11px/14px var(--font-text);color:var(--r-on-surface-muted)">Relevanz-Score (0–100)</div>
-      </div>
+      <div class="answer-section-label" style="margin-bottom:var(--s-2)">Seiten im Manual</div>
       <div class="source-list">
         ${sources.map(s => `
           <div class="source-item" role="button" tabindex="0"
@@ -814,10 +802,6 @@ function renderAnswer(question, data) {
               <div class="source-item__title">${escHtml(s.title)}</div>
               ${s.snippet ? `<div class="source-item__snippet">${escHtml(s.snippet)}</div>` : ''}
             </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">
-              <div style="font:600 13px/16px var(--font-text-m);color:var(--r-on-surface-default)">${Math.round(s.score || 0)}</div>
-              <div style="font:400 10px/12px var(--font-text);color:var(--r-on-surface-muted);text-transform:uppercase;letter-spacing:0.04em">Relevanz</div>
-            </div>
           </div>`).join('')}
       </div>
     </div>` : '';
@@ -825,18 +809,14 @@ function renderAnswer(question, data) {
   return `
     <div class="answer-card">
       <div class="answer-card__head">
-        <span class="lds-badge ${badgeCls}">${escHtml(grounding)}</span>
+        <span class="lds-badge ${confidenceCls}">${confidenceLabel}</span>
         <span style="font:400 13px/18px var(--font-text);color:var(--r-on-surface-muted)">${escHtml(question)}</span>
       </div>
       <div class="answer-card__body">
-        ${disclaimer}
-        <div class="answer-text">${renderMarkdown(data.answer || '')}</div>
+        <div class="answer-text">${escHtml(data.answer || '')}</div>
         ${sourcesHtml}
       </div>
       <div class="answer-card__foot">
-        <button class="lds-btn lds-btn--ghost" onclick="speak(this)" data-text="${escHtml(data.answer||'')}">
-          ${icon('speaker',16)} Vorlesen
-        </button>
         <div class="spacer"></div>
         <button class="lds-btn lds-btn--ghost lds-btn--icon" title="Kopieren" onclick="copyAnswer(this)" data-text="${escHtml(data.answer||'')}">
           ${icon('copy',16)}
