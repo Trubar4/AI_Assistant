@@ -35,37 +35,37 @@ ANSWER_MODEL   = os.environ.get("ANSWER_MODEL",   "claude-haiku-4-5-20251001")
 VERIFIER_MODEL = os.environ.get("VERIFIER_MODEL", "claude-haiku-4-5-20251001")
 EXPAND_MODEL   = os.environ.get("EXPAND_MODEL",   "claude-haiku-4-5-20251001")
 
-EXPAND_SYSTEM = """\
-Du bist ein Suchmaschinen-Assistent für Liebherr-Kranbedienungsanleitungen.
-Deine Aufgabe: Erweitere eine Benutzeranfrage um direkte Synonyme und Fachbegriffe,
-damit eine Volltextsuche im Manual bessere Treffer findet.
+HYDE_SYSTEM = """\
+Du bist ein Liebherr-Kran-Experte mit tiefem Wissen über Kranbedienungsanleitungen.
+
+Schreibe einen kurzen Textausschnitt (2-3 Sätze) genau so, wie er in einer
+Liebherr-Bedienungsanleitung stehen würde, der die gestellte Frage beantwortet.
 
 Regeln:
-- Gib NUR die erweiterte Suchanfrage zurück, keine Erklärungen.
-- Maximal 10 Wörter.
-- Behalte die originalen Wörter bei.
-- Ergänze NUR direkte Synonyme oder Umschreibungen des gleichen Konzepts.
-- Erfinde KEINE neuen Konzepte oder verwandte Themen.
-- Beispiel: "tropft" → "tropft Leckage auslaufende Betriebsmittel"
-- Beispiel: "Mindestgewicht Lasthaken" → "Mindestgewicht Lasthaken Unterflasche Hakengeschirr"\
+- Verwende Liebherr-typischen technischen Fachstil und Fachvokabular.
+- Keine Einleitungen, keine Erklärungen — nur den Textausschnitt selbst.
+- Falls Tabellenwerte gefragt sind: beschreibe kurz welche Tabelle und welche Parameter.
+- Maximal 60 Wörter.\
 """
 
 
 def expand_query(query: str) -> str:
-    """Expand a user query with technical synonyms for better retrieval.
+    """Generate a hypothetical document (HyDE) to improve BM25+semantic retrieval.
 
-    Returns the expanded query string, or the original query on any error.
+    Instead of expanding synonyms, we generate a short text passage in the style
+    of the manual. BM25 then finds pages with the same vocabulary.
+    Falls back to original query on any error.
     """
     try:
         response = _get_client().messages.create(
             model=EXPAND_MODEL,
-            max_tokens=60,
-            system=EXPAND_SYSTEM,
-            messages=[{"role": "user", "content": f"Anfrage: {query}"}],
+            max_tokens=120,
+            system=HYDE_SYSTEM,
+            messages=[{"role": "user", "content": f"Frage: {query}"}],
         )
-        expanded = response.content[0].text.strip()
-        logger.info("EXPAND '%s' → '%s'", query[:60], expanded[:80])
-        return expanded
+        hypothesis = response.content[0].text.strip()
+        logger.info("HYDE '%s' → '%s'", query[:60], hypothesis[:100])
+        return hypothesis
     except Exception as exc:
         logger.warning("Query expansion fehlgeschlagen: %s", exc)
         return query
