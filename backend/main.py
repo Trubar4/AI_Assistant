@@ -37,7 +37,7 @@ from pydantic import BaseModel
 load_dotenv()
 
 from backend.search import search, reset_index
-from backend.claude_client import ask, expand_query, VerifiedAnswer
+from backend.claude_client import ask, expand_query, rerank, VerifiedAnswer
 
 # ---------------------------------------------------------------------------
 # Error code database (optional — loaded once at startup)
@@ -99,7 +99,7 @@ async def root():
 # ---------------------------------------------------------------------------
 class AskRequest(BaseModel):
     question: str
-    top_n: int = 8
+    top_n: int = 5
 
 
 class SourceLink(BaseModel):
@@ -161,8 +161,8 @@ async def ask_question(req: AskRequest) -> AskResponse:
         raise HTTPException(status_code=422, detail="question must not be empty")
 
     expanded_q = expand_query(q)
-    results = search(expanded_q, top_n=req.top_n)
-    if not results:
+    candidates = search(expanded_q, top_n=20)   # Triple-RRF → 20 candidates
+    if not candidates:
         return AskResponse(
             answer=(
                 "Zu dieser Frage wurden keine passenden Seiten im Manual gefunden. "
@@ -173,7 +173,8 @@ async def ask_question(req: AskRequest) -> AskResponse:
             sources=[],
         )
 
-    va: VerifiedAnswer = ask(q, results)  # original query for answer quality
+    results = rerank(q, candidates, top_n=req.top_n)  # LLM picks best 5
+    va: VerifiedAnswer = ask(q, results)               # original query for answer
     return AskResponse(
         answer=va.answer,
         grounding=va.grounding,

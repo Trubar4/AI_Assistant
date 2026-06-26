@@ -82,6 +82,63 @@ def expand_query(query: str) -> str:
         logger.warning("HyDE fehlgeschlagen: %s", exc)
         return query
 
+
+RERANKER_SYSTEM = """\
+Du bist ein Relevanz-Filter für Liebherr-Kranbedienungsanleitungen.
+
+Dir wird eine Benutzerfrage und eine nummerierte Liste von Seitenüberschriften
+mit kurzem Textauszug gezeigt. Wähle die 5 Seiten aus, die die Frage am
+wahrscheinlichsten beantworten.
+
+Antworte NUR mit den Nummern der 5 besten Seiten, kommagetrennt, in absteigender
+Relevanz. Beispiel: 3,7,1,12,5\
+"""
+
+
+def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
+    """LLM-based reranker: selects top_n from candidates by reading title+snippet.
+
+    Falls back to returning candidates[:top_n] on any error.
+    """
+    if len(candidates) <= top_n:
+        return candidates
+    try:
+        lines = []
+        for i, c in enumerate(candidates, 1):
+            snippet = c.get("text", "")[:120].replace("\n", " ")
+            lines.append(f"{i}. {c['title']} — {snippet}")
+        candidates_block = "\n".join(lines)
+
+        user_msg = f"Frage: {query}\n\nSeiten:\n{candidates_block}"
+        response = _get_client().messages.create(
+            model=EXPAND_MODEL,
+            max_tokens=30,
+            system=RERANKER_SYSTEM,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        raw = response.content[0].text.strip()
+        indices = [int(x.strip()) - 1 for x in raw.split(",") if x.strip().isdigit()]
+        # Keep only valid indices, deduplicate, limit to top_n
+        seen: set[int] = set()
+        selected = []
+        for idx in indices:
+            if 0 <= idx < len(candidates) and idx not in seen:
+                seen.add(idx)
+                selected.append(candidates[idx])
+            if len(selected) == top_n:
+                break
+        # Fill remaining slots from original order if LLM returned fewer than top_n
+        for c in candidates:
+            if len(selected) == top_n:
+                break
+            if c not in selected:
+                selected.append(c)
+        logger.info("RERANK '%s' → %s", query[:60], raw[:40])
+        return selected
+    except Exception as exc:
+        logger.warning("Reranker fehlgeschlagen: %s", exc)
+        return candidates[:top_n]
+
 ANSWER_SYSTEM = """\
 Du bist ein Assistent für Liebherr-Maschinenführer und Servicetechniker.
 Antworte ausschließlich auf Basis des gegebenen Kontext-Materials.

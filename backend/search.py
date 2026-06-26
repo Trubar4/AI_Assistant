@@ -58,7 +58,8 @@ def _tokenize(text: str) -> list[str]:
 # Index loading (lazy, cached)
 # ---------------------------------------------------------------------------
 _index: list[dict] | None = None
-_bm25: BM25Okapi | None = None
+_bm25: BM25Okapi | None = None           # full-text BM25 (title×3 + body)
+_bm25_title: BM25Okapi | None = None     # title-only BM25
 _bm25_filenames: list[str] | None = None
 
 
@@ -100,25 +101,27 @@ def _load_index(
 
     _index = merged
 
-    # Build BM25 index: title (3x weight) + warnings + steps + body
-    corpus = []
+    corpus_full  = []
+    corpus_title = []
     _bm25_filenames = []
     for entry in merged:
-        title_tokens = _tokenize(entry["title"]) * 3
+        title_tokens = _tokenize(entry["title"])
         warn_tokens  = _tokenize(" ".join(entry["warnings"]))
         step_tokens  = _tokenize(" ".join(entry["steps"][:15]))
         body_tokens  = _tokenize(entry["text"])
-        corpus.append(title_tokens + warn_tokens + step_tokens + body_tokens)
+        corpus_full.append(title_tokens * 3 + warn_tokens + step_tokens + body_tokens)
+        corpus_title.append(title_tokens)
         _bm25_filenames.append(entry["filename"])
 
-    _bm25 = BM25Okapi(corpus)
-    logger.info("BM25 index gebaut: %d Dokumente", len(merged))
+    _bm25       = BM25Okapi(corpus_full)
+    _bm25_title = BM25Okapi(corpus_title)
+    logger.info("BM25 indices gebaut: %d Dokumente (full + title)", len(merged))
     return _index
 
 
 def reset_index() -> None:
-    global _index, _bm25, _bm25_filenames, _sem_model, _sem_matrix, _sem_ids
-    _index = _bm25 = _bm25_filenames = None
+    global _index, _bm25, _bm25_title, _bm25_filenames, _sem_model, _sem_matrix, _sem_ids
+    _index = _bm25 = _bm25_title = _bm25_filenames = None
     _sem_model = _sem_matrix = _sem_ids = None
 
 
@@ -140,7 +143,7 @@ def _load_semantic() -> bool:
         from sentence_transformers import SentenceTransformer
         _sem_matrix = np.load(str(_EMB_NPY))
         _sem_ids    = json.loads(_EMB_IDS.read_text(encoding="utf-8"))
-        _sem_model  = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+        _sem_model  = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
         logger.info("Semantic search geladen: %d Dokumente", len(_sem_ids))
         return True
     except Exception as exc:
@@ -165,17 +168,24 @@ def _semantic_ranking(query: str, top_k: int = 50) -> list[tuple[str, float]]:
 # ---------------------------------------------------------------------------
 
 def _bm25_ranking(query: str, top_k: int = 50) -> list[tuple[str, float]]:
-    """Returns [(filename, bm25_score), ...] sorted descending."""
+    """Full-text BM25 ranking (title×3 + body)."""
     _load_index()
     tokens = _tokenize(query)
     if not tokens:
         return []
     scores = _bm25.get_scores(tokens)
-    ranked = sorted(
-        zip(_bm25_filenames, scores),
-        key=lambda x: x[1],
-        reverse=True,
-    )
+    ranked = sorted(zip(_bm25_filenames, scores), key=lambda x: x[1], reverse=True)
+    return [r for r in ranked[:top_k] if r[1] > 0]
+
+
+def _bm25_title_ranking(query: str, top_k: int = 50) -> list[tuple[str, float]]:
+    """Title-only BM25 ranking — high precision, surfaces exact title matches."""
+    _load_index()
+    tokens = _tokenize(query)
+    if not tokens:
+        return []
+    scores = _bm25_title.get_scores(tokens)
+    ranked = sorted(zip(_bm25_filenames, scores), key=lambda x: x[1], reverse=True)
     return [r for r in ranked[:top_k] if r[1] > 0]
 
 
@@ -223,13 +233,17 @@ def _rrf(rankings: list[list[tuple[str, float]]]) -> dict[str, float]:
 
 def search(
     query: str,
-    top_n: int = 5,
+    top_n: int = 20,
     metadata_path: Path = METADATA_INDEX,
     content_path: Path = CONTENT_INDEX,
 ) -> list[dict]:
     """
-    Return top_n most relevant index entries for query.
-    Hybrid BM25 + Semantic Search combined via Reciprocal Rank Fusion.
+    Return top_n candidates via Triple-RRF:
+      1. Title-only BM25   — high precision for title matches
+      2. Full-text BM25    — broad keyword recall
+      3. Semantic search   — synonym / paraphrase matching
+
+    top_n defaults to 20 so the LLM reranker in main.py can select the best 5.
     """
     if not query.strip():
         return []
@@ -237,11 +251,12 @@ def search(
     index = _load_index(metadata_path, content_path)
     index_by_filename = {e["filename"]: e for e in index}
 
-    bm25_rank = _bm25_ranking(query, top_k=50)
-    sem_rank  = _semantic_ranking(query, top_k=50)
+    title_rank = _bm25_title_ranking(query, top_k=50)
+    full_rank  = _bm25_ranking(query, top_k=50)
+    sem_rank   = _semantic_ranking(query, top_k=50)
 
-    use_sem = bool(sem_rank)
-    rankings = [r for r in [bm25_rank, sem_rank] if r]
+    use_sem  = bool(sem_rank)
+    rankings = [r for r in [title_rank, full_rank, sem_rank] if r]
 
     rrf_scores = _rrf(rankings)
     if not rrf_scores:
@@ -250,11 +265,13 @@ def search(
     sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 
     logger.info(
-        "TOP-10 für '%s' (sem=%s): %s",
+        "TOP-10 für '%s' (title=%d full=%d sem=%s): %s",
         query[:50],
+        len(title_rank),
+        len(full_rank),
         use_sem,
         " | ".join(
-            f"{index_by_filename[f]['title'][:20]}={rrf_scores[f]:.4f}"
+            f"{index_by_filename[f]['title'][:18]}={rrf_scores[f]:.4f}"
             for f in sorted_filenames[:10]
             if f in index_by_filename
         ),

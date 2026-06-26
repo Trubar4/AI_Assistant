@@ -42,7 +42,7 @@ METADATA_INDEX = ROOT / "data" / "metadata_index.json"
 OUT_NPY = ROOT / "data" / "embeddings.npy"
 OUT_IDS = ROOT / "data" / "embedding_ids.json"
 
-MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
+MODEL_NAME = "paraphrase-multilingual-mpnet-base-v2"
 
 
 def _build_doc_text(filename: str, meta: dict, content: dict) -> str:
