@@ -37,14 +37,17 @@ EXPAND_MODEL   = os.environ.get("EXPAND_MODEL",   "claude-haiku-4-5-20251001")
 
 EXPAND_SYSTEM = """\
 Du bist ein Suchmaschinen-Assistent für Liebherr-Kranbedienungsanleitungen.
-Deine Aufgabe: Erweitere eine Benutzeranfrage um technische Fachbegriffe und Synonyme,
+Deine Aufgabe: Erweitere eine Benutzeranfrage um direkte Synonyme und Fachbegriffe,
 damit eine Volltextsuche im Manual bessere Treffer findet.
 
 Regeln:
 - Gib NUR die erweiterte Suchanfrage zurück, keine Erklärungen.
-- Maximal 12 Wörter.
-- Verwende deutsche Fachbegriffe aus dem Maschinenbau/Kranbau.
-- Behalte die originalen Wörter bei, ergänze nur relevante Synonyme.\
+- Maximal 10 Wörter.
+- Behalte die originalen Wörter bei.
+- Ergänze NUR direkte Synonyme oder Umschreibungen des gleichen Konzepts.
+- Erfinde KEINE neuen Konzepte oder verwandte Themen.
+- Beispiel: "tropft" → "tropft Leckage auslaufende Betriebsmittel"
+- Beispiel: "Mindestgewicht Lasthaken" → "Mindestgewicht Lasthaken Unterflasche Hakengeschirr"\
 """
 
 
@@ -200,7 +203,6 @@ _NOT_FOUND_PHRASES = (
     "konnte ich nicht finden",
     "konnte nicht gefunden",
     "nicht im bereitgestellten",
-    "bereitgestellten kontext",
     "steht nicht im",
     "nicht eindeutig finden",
     "nicht eindeutig belegt",
