@@ -67,8 +67,8 @@ def _load_index(
     metadata_path: Path = METADATA_INDEX,
     content_path: Path = CONTENT_INDEX,
 ) -> list[dict]:
-    global _index, _bm25, _bm25_filenames
-    if _index is not None:
+    global _index, _bm25, _bm25_title, _bm25_filenames
+    if _index is not None and _bm25_title is not None:
         return _index
 
     meta    = json.loads(metadata_path.read_text(encoding="utf-8"))
