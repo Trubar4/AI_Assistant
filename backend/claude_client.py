@@ -230,9 +230,11 @@ def ask(query: str, results: list[dict]) -> VerifiedAnswer:
     answer_text = answer(query, results)
     grounding   = verify(query, answer_text, results)
 
-    # Programmatisch erkennen wenn das Modell "nicht im Kontext" antwortet –
-    # dann immer Fallback, unabhängig davon was der Verifier sagt.
-    fallback_used = grounding == "NICHT_BELEGT" or _is_not_found(answer_text)
+    # _is_not_found() nur als Sicherheitsnetz wenn Verifier nicht BELEGT sagt.
+    # Wenn Verifier explizit BELEGT sagt, vertrauen wir ihm — er hat die Antwort gelesen.
+    fallback_used = grounding == "NICHT_BELEGT" or (
+        grounding != "BELEGT" and _is_not_found(answer_text)
+    )
     if fallback_used:
         answer_text = FALLBACK_ANSWER
         grounding   = "NICHT_BELEGT"

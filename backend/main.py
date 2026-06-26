@@ -99,7 +99,7 @@ async def root():
 # ---------------------------------------------------------------------------
 class AskRequest(BaseModel):
     question: str
-    top_n: int = 5
+    top_n: int = 8
 
 
 class SourceLink(BaseModel):
