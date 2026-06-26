@@ -38,36 +38,48 @@ EXPAND_MODEL   = os.environ.get("EXPAND_MODEL",   "claude-haiku-4-5-20251001")
 HYDE_SYSTEM = """\
 Du bist ein Liebherr-Kran-Experte mit tiefem Wissen über Kranbedienungsanleitungen.
 
-Schreibe einen kurzen Textausschnitt (2-3 Sätze) genau so, wie er in einer
-Liebherr-Bedienungsanleitung stehen würde, der die gestellte Frage beantwortet.
+Dir wird eine Liste möglicher relevanter Seitenüberschriften aus dem Manual gezeigt
+sowie eine Benutzerfrage. Schreibe einen kurzen Textausschnitt (2-3 Sätze) genau so,
+wie er in der Liebherr-Bedienungsanleitung stehen würde, der die Frage beantwortet.
 
 Regeln:
-- Verwende Liebherr-typischen technischen Fachstil und Fachvokabular.
+- Verwende die Fachbegriffe und Seitenüberschriften aus der gegebenen Liste wenn passend.
 - Keine Einleitungen, keine Erklärungen — nur den Textausschnitt selbst.
-- Falls Tabellenwerte gefragt sind: beschreibe kurz welche Tabelle und welche Parameter.
+- Falls Tabellenwerte gefragt sind: nenne die Tabellen-/Seitenüberschrift und Parameter.
 - Maximal 60 Wörter.\
 """
 
 
 def expand_query(query: str) -> str:
-    """Generate a hypothetical document (HyDE) to improve BM25+semantic retrieval.
+    """Generate a TOC-guided hypothetical document (HyDE) for BM25+semantic retrieval.
 
-    Instead of expanding synonyms, we generate a short text passage in the style
-    of the manual. BM25 then finds pages with the same vocabulary.
+    1. BM25 title-scan gives the LLM vocabulary hints (exact page titles from the manual)
+    2. LLM generates a short passage in the style of the manual using those titles
+    3. BM25+Semantic searches for that passage → finds pages with matching vocabulary
+
     Falls back to original query on any error.
     """
+    from backend.search import bm25_candidate_titles
     try:
+        titles = bm25_candidate_titles(query, top_k=25)
+        titles_block = "\n".join(f"- {t}" for t in titles) if titles else "(keine Kandidaten)"
+
+        user_msg = (
+            f"Mögliche relevante Seitenüberschriften aus dem Manual:\n"
+            f"{titles_block}\n\n"
+            f"Frage: {query}"
+        )
         response = _get_client().messages.create(
             model=EXPAND_MODEL,
             max_tokens=120,
             system=HYDE_SYSTEM,
-            messages=[{"role": "user", "content": f"Frage: {query}"}],
+            messages=[{"role": "user", "content": user_msg}],
         )
         hypothesis = response.content[0].text.strip()
-        logger.info("HYDE '%s' → '%s'", query[:60], hypothesis[:100])
+        logger.info("HYDE '%s' → '%s'", query[:60], hypothesis[:120])
         return hypothesis
     except Exception as exc:
-        logger.warning("Query expansion fehlgeschlagen: %s", exc)
+        logger.warning("HyDE fehlgeschlagen: %s", exc)
         return query
 
 ANSWER_SYSTEM = """\

@@ -179,6 +179,29 @@ def _bm25_ranking(query: str, top_k: int = 50) -> list[tuple[str, float]]:
     return [r for r in ranked[:top_k] if r[1] > 0]
 
 
+def bm25_candidate_titles(query: str, top_k: int = 25) -> list[str]:
+    """Return up to top_k unique page titles ranked by BM25 score.
+
+    Used by HyDE to give the LLM vocabulary hints from the actual manual index.
+    """
+    index = _load_index()
+    index_by_filename = {e["filename"]: e for e in index}
+    ranking = _bm25_ranking(query, top_k=top_k * 2)  # fetch extra to survive dedup
+    seen: set[str] = set()
+    titles: list[str] = []
+    for fname, _ in ranking:
+        entry = index_by_filename.get(fname)
+        if entry is None:
+            continue
+        t = entry["title"].strip()
+        if t and t not in seen:
+            seen.add(t)
+            titles.append(t)
+        if len(titles) == top_k:
+            break
+    return titles
+
+
 # ---------------------------------------------------------------------------
 # Reciprocal Rank Fusion
 # ---------------------------------------------------------------------------
