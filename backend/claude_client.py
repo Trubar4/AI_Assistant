@@ -36,17 +36,17 @@ VERIFIER_MODEL = os.environ.get("VERIFIER_MODEL", "claude-haiku-4-5-20251001")
 EXPAND_MODEL   = os.environ.get("EXPAND_MODEL",   "claude-haiku-4-5-20251001")
 
 HYDE_SYSTEM = """\
-Du bist ein Liebherr-Kran-Experte mit tiefem Wissen über Kranbedienungsanleitungen.
+Du bist ein Liebherr-Kran-Experte. Deine einzige Aufgabe: Schreibe einen kurzen
+hypothetischen Textausschnitt (2-3 Sätze) so, wie er in einer Liebherr-Bedienungs-
+anleitung stehen könnte, um die gestellte Frage zu beantworten.
 
-Dir wird eine Liste möglicher relevanter Seitenüberschriften aus dem Manual gezeigt
-sowie eine Benutzerfrage. Schreibe einen kurzen Textausschnitt (2-3 Sätze) genau so,
-wie er in der Liebherr-Bedienungsanleitung stehen würde, der die Frage beantwortet.
+WICHTIG: Schreibe IMMER einen Textausschnitt — auch wenn du die exakte Antwort
+nicht kennst. Verwende dann Platzhalter wie "[Wert laut Tabelle]" oder beschreibe
+welche Tabelle/Seite die Information enthalten würde.
 
-Regeln:
-- Verwende die Fachbegriffe und Seitenüberschriften aus der gegebenen Liste wenn passend.
-- Keine Einleitungen, keine Erklärungen — nur den Textausschnitt selbst.
-- Falls Tabellenwerte gefragt sind: nenne die Tabellen-/Seitenüberschrift und Parameter.
-- Maximal 60 Wörter.\
+Nutze die gegebenen Seitenüberschriften als Vokabular-Hilfe.
+Keine Einleitungen, keine Erklärungen — nur den Textausschnitt.
+Maximal 60 Wörter.\
 """
 
 
@@ -299,11 +299,9 @@ def ask(query: str, results: list[dict]) -> VerifiedAnswer:
     answer_text = answer(query, results)
     grounding   = verify(query, answer_text, results)
 
-    # _is_not_found() nur als Sicherheitsnetz wenn Verifier nicht BELEGT sagt.
-    # Wenn Verifier explizit BELEGT sagt, vertrauen wir ihm — er hat die Antwort gelesen.
-    fallback_used = grounding == "NICHT_BELEGT" or (
-        grounding != "BELEGT" and _is_not_found(answer_text)
-    )
+    # _is_not_found() immer prüfen — der Verifier sagt BELEGT wenn die Antwort korrekt
+    # "nicht gefunden" meldet, aber für den Nutzer ist das trotzdem ein Fallback.
+    fallback_used = grounding == "NICHT_BELEGT" or _is_not_found(answer_text)
     if fallback_used:
         answer_text = FALLBACK_ANSWER
         grounding   = "NICHT_BELEGT"
