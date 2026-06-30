@@ -36,7 +36,7 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-from backend.search import search, reset_index
+from backend.search import search, reset_index, extract_facets
 from backend.claude_client import ask, expand_query, rerank, VerifiedAnswer
 
 # ---------------------------------------------------------------------------
@@ -109,11 +109,17 @@ class SourceLink(BaseModel):
     snippet: str = ""
 
 
+class Facet(BaseModel):
+    label: str
+    options: list[str]
+
+
 class AskResponse(BaseModel):
     answer: str
     grounding: str          # BELEGT | TEILWEISE | NICHT_BELEGT
     fallback_used: bool
     sources: list[SourceLink]
+    facets: list[Facet] = []
 
 
 class ErrorCodeRequest(BaseModel):
@@ -173,6 +179,7 @@ async def ask_question(req: AskRequest) -> AskResponse:
             sources=[],
         )
 
+    facets = extract_facets(candidates, top_k=10)       # before reranking down to top_n
     results = rerank(q, candidates, top_n=req.top_n)  # LLM picks best 5
     va: VerifiedAnswer = ask(q, results)               # original query for answer
     return AskResponse(
@@ -180,6 +187,7 @@ async def ask_question(req: AskRequest) -> AskResponse:
         grounding=va.grounding,
         fallback_used=va.fallback_used,
         sources=[SourceLink(**s) for s in va.sources],
+        facets=[Facet(**f) for f in facets],
     )
 
 

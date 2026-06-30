@@ -295,6 +295,35 @@ def search(
 
 
 # ---------------------------------------------------------------------------
+# Facet extraction (for "Suche verfeinern" UI)
+# ---------------------------------------------------------------------------
+
+def extract_facets(candidates: list[dict], top_k: int = 10, min_values: int = 2) -> list[dict]:
+    """Derive refine-search checkbox options from breadcrumb divergence.
+
+    Looks at the breadcrumb path of the top_k candidates and finds the
+    shallowest breadcrumb depth at which the candidates disagree — that's
+    the most useful place to offer a distinguishing choice (e.g. "Hauptausleger"
+    vs "Nadelausleger"). Returns [] if the top_k share an identical path
+    (no useful facet) or have no common depth at all.
+    """
+    subset = candidates[:top_k]
+    breadcrumbs = [c.get("breadcrumb") or [] for c in subset if c.get("breadcrumb")]
+    if len(breadcrumbs) < min_values:
+        return []
+
+    max_depth = max(len(b) for b in breadcrumbs)
+    for depth in range(max_depth):
+        values_at_depth = [b[depth] for b in breadcrumbs if len(b) > depth]
+        unique = sorted(set(values_at_depth))
+        if len(unique) >= min_values and len(unique) < len(values_at_depth):
+            # Skip if every value is unique (no shared grouping → not a real facet)
+            return [{"label": "Bereich", "options": unique}]
+
+    return []
+
+
+# ---------------------------------------------------------------------------
 # CLI test
 # ---------------------------------------------------------------------------
 
