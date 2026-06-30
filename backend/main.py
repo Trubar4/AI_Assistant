@@ -167,7 +167,7 @@ async def ask_question(req: AskRequest) -> AskResponse:
         raise HTTPException(status_code=422, detail="question must not be empty")
 
     expanded_q = expand_query(q)
-    candidates = search(expanded_q, top_n=20)   # Triple-RRF → 20 candidates
+    candidates = search(expanded_q, top_n=50)   # Triple-RRF → 50 candidates
     if not candidates:
         return AskResponse(
             answer=(
