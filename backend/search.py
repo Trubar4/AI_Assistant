@@ -298,29 +298,99 @@ def search(
 # Facet extraction (for "Suche verfeinern" UI)
 # ---------------------------------------------------------------------------
 
-def extract_facets(candidates: list[dict], top_k: int = 10, min_values: int = 2) -> list[dict]:
-    """Derive refine-search checkbox options from breadcrumb divergence.
+# Titelwörter die im Manual als Dokumenttyp-Indikatoren fungieren aber nie
+# in Suchanfragen vorkommen — als Facetten-Kandidaten explizit zulassen.
+_TITLE_FACET_WORDS = {
+    "zusammenstellung", "montage", "demontage", "inspektion", "prüfung",
+    "einscherung", "ausscherung", "schmierung", "wartung", "inbetriebnahme",
+    "außerbetriebnahme", "transport", "lagerung", "entsorgung",
+    "sicherheitshinweise", "fehlersuche", "störung", "einstellung",
+    "justierung", "kalibrierung", "überprüfung", "kontrolle",
+}
 
-    Looks at the breadcrumb path of the top_k candidates and finds the
-    shallowest breadcrumb depth at which the candidates disagree — that's
-    the most useful place to offer a distinguishing choice (e.g. "Hauptausleger"
-    vs "Nadelausleger"). Returns [] if the top_k share an identical path
-    (no useful facet) or have no common depth at all.
+# Wörter die in fast allen Titeln vorkommen und keine Unterscheidung liefern
+_TITLE_NOISE = _STOPWORDS_DE | {
+    "des", "der", "die", "und", "mit", "für", "beim", "zur", "zum",
+    "nach", "vor", "am", "im", "an", "auf", "in",
+}
+
+
+def _title_facets(subset: list[dict], min_count: int = 2) -> list[str]:
+    """Findet Titelwörter, die in manchen (nicht allen) Kandidaten-Titeln vorkommen.
+
+    Bevorzugt bekannte Dokumenttyp-Wörter (Zusammenstellung, Montage, …),
+    fällt auf allgemeine unterscheidende Nomen zurück wenn keine bekannten gefunden.
     """
-    subset = candidates[:top_k]
-    breadcrumbs = [c.get("breadcrumb") or [] for c in subset if c.get("breadcrumb")]
-    if len(breadcrumbs) < min_values:
+    titles = [c.get("title", "") for c in subset]
+    n = len(titles)
+    if n < min_count:
         return []
 
-    max_depth = max(len(b) for b in breadcrumbs)
-    for depth in range(max_depth):
-        values_at_depth = [b[depth] for b in breadcrumbs if len(b) > depth]
-        unique = sorted(set(values_at_depth))
-        if len(unique) >= min_values and len(unique) < len(values_at_depth):
-            # Skip if every value is unique (no shared grouping → not a real facet)
-            return [{"label": "Bereich", "options": unique}]
+    # Wortfrequenz über alle Titel
+    word_counts: dict[str, int] = {}
+    for title in titles:
+        words = set(re.split(r"\W+", title.lower()))
+        for w in words:
+            if len(w) >= 4 and w not in _TITLE_NOISE:
+                word_counts[w] = word_counts.get(w, 0) + 1
 
-    return []
+    # Wörter die in 2..n-1 Titeln vorkommen (nicht universal, nicht einmalig)
+    distinguishing = {w for w, cnt in word_counts.items() if min_count <= cnt < n}
+
+    # Nur bekannte Dokumenttypen — allgemeine Nomen sind zu unspezifisch
+    known = sorted(w for w in distinguishing if w in _TITLE_FACET_WORDS)
+    if not known:
+        return []
+    candidates_words = known[:6]
+
+    # Originalschreibweise aus erstem Trefftitel wiederherstellen
+    result = []
+    for w in candidates_words:
+        for title in titles:
+            for token in re.split(r"\W+", title):
+                if token.lower() == w:
+                    result.append(token)
+                    break
+            else:
+                continue
+            break
+
+    return result
+
+
+def extract_facets(candidates: list[dict], top_k: int = 10, min_values: int = 2) -> list[dict]:
+    """Derive refine-search checkbox options from two sources:
+
+    1. Breadcrumb divergence — findet die flachste Tiefe, an der die Top-k
+       Kandidaten auseinandergehen (z. B. Hauptausleger vs. Nadelausleger).
+    2. Titelwort-Facetten — Dokumenttyp-Wörter (Zusammenstellung, Montage, …)
+       die in manchen aber nicht allen Titeln vorkommen.
+
+    Gibt bis zu zwei Facetten-Gruppen zurück.
+    """
+    subset = candidates[:top_k]
+    facets = []
+
+    # 1. Breadcrumb-Facette
+    breadcrumbs = [c.get("breadcrumb") or [] for c in subset if c.get("breadcrumb")]
+    if len(breadcrumbs) >= min_values:
+        max_depth = max(len(b) for b in breadcrumbs)
+        for depth in range(max_depth):
+            values_at_depth = [b[depth] for b in breadcrumbs if len(b) > depth]
+            unique = sorted(set(values_at_depth))
+            if len(unique) >= min_values and len(unique) < len(values_at_depth):
+                facets.append({"label": "Bereich", "options": unique})
+                break
+
+    # 2. Titelwort-Facette
+    title_opts = _title_facets(subset, min_count=min_values)
+    # Optionen, die bereits in Breadcrumb-Facetten stecken, nicht wiederholen
+    bc_values = {v.lower() for f in facets for v in f["options"]}
+    title_opts = [o for o in title_opts if o.lower() not in bc_values]
+    if title_opts:
+        facets.append({"label": "Dokumenttyp", "options": title_opts})
+
+    return facets
 
 
 # ---------------------------------------------------------------------------
