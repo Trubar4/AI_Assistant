@@ -49,9 +49,28 @@ _STOPWORDS_DE = {
 }
 
 
+_UNIT_RE = re.compile(r"^(\d+)(m|ft|t|kg|h|hz|kw|kn|bar|mm|cm|rpm)$")
+
+
 def _tokenize(text: str) -> list[str]:
-    tokens = re.split(r"\W+", text.lower())
-    return [t for t in tokens if len(t) > 2 and t not in _STOPWORDS_DE]
+    """Tokenisiert Text für BM25-Index und Queries.
+
+    Besonderheiten:
+    - Zahl+Einheit wie "74m" oder "12t" wird als "74m" UND "74" emittiert,
+      damit "74m" (Query) und "74 m" (Manual-Text) einander matchen.
+    - Bindestriche innerhalb alphanumerischer Cluster bleiben erhalten
+      ("6-fach", "Hauptausleger-Zwischenstück").
+    """
+    raw = re.findall(r"[a-zäöüß0-9]+(?:[-][a-zäöüß0-9]+)*", text.lower())
+    result = []
+    for t in raw:
+        if len(t) <= 1 or t in _STOPWORDS_DE:
+            continue
+        result.append(t)
+        m = _UNIT_RE.match(t)
+        if m:
+            result.append(m.group(1))   # "74m" → auch "74" emittieren
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -301,11 +320,16 @@ def search(
 # Titelwörter die im Manual als Dokumenttyp-Indikatoren fungieren aber nie
 # in Suchanfragen vorkommen — als Facetten-Kandidaten explizit zulassen.
 _TITLE_FACET_WORDS = {
-    "zusammenstellung", "montage", "demontage", "inspektion", "prüfung",
-    "einscherung", "ausscherung", "schmierung", "wartung", "inbetriebnahme",
-    "außerbetriebnahme", "transport", "lagerung", "entsorgung",
-    "sicherheitshinweise", "fehlersuche", "störung", "einstellung",
-    "justierung", "kalibrierung", "überprüfung", "kontrolle",
+    "zusammenstellung", "übersicht",                        # Tabellen / Konfigurationsseiten
+    "montage", "demontage", "einbau", "ausbau",            # Montage-Verfahren
+    "inspektion", "prüfung", "überprüfung", "kontrolle",   # Prüfung / Wartung
+    "einscherung", "ausscherung",                          # Seil-Operationen
+    "schmierung", "wartung",                               # Wartung
+    "inbetriebnahme", "außerbetriebnahme",
+    "transport", "lagerung", "entsorgung",
+    "sicherheitshinweise", "fehlersuche", "störung",
+    "einstellung", "justierung", "kalibrierung",
+    "parkposition", "zusammenbauen",                       # Auf-/Abbau
 }
 
 # Wörter die in fast allen Titeln vorkommen und keine Unterscheidung liefern
@@ -371,7 +395,7 @@ def extract_facets(candidates: list[dict], top_k: int = 10, min_values: int = 2)
     subset = candidates[:top_k]
     facets = []
 
-    # 1. Breadcrumb-Facette
+    # 1. Breadcrumb-Facette (nur top_k)
     breadcrumbs = [c.get("breadcrumb") or [] for c in subset if c.get("breadcrumb")]
     if len(breadcrumbs) >= min_values:
         max_depth = max(len(b) for b in breadcrumbs)
@@ -382,8 +406,10 @@ def extract_facets(candidates: list[dict], top_k: int = 10, min_values: int = 2)
                 facets.append({"label": "Bereich", "options": unique})
                 break
 
-    # 2. Titelwort-Facette
-    title_opts = _title_facets(subset, min_count=min_values)
+    # 2. Titelwort-Facette — scannt alle Kandidaten (nicht nur top_k),
+    #    damit Dokumenttypen wie "Zusammenstellung" auch gefunden werden,
+    #    wenn sie erst auf Rang 20–50 liegen.
+    title_opts = _title_facets(candidates, min_count=min_values)
     # Optionen, die bereits in Breadcrumb-Facetten stecken, nicht wiederholen
     bc_values = {v.lower() for f in facets for v in f["options"]}
     title_opts = [o for o in title_opts if o.lower() not in bc_values]
