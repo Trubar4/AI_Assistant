@@ -410,11 +410,22 @@ def extract_facets(candidates: list[dict], top_k: int = 10, min_values: int = 2)
     #    damit Dokumenttypen wie "Zusammenstellung" auch gefunden werden,
     #    wenn sie erst auf Rang 20–50 liegen.
     title_opts = _title_facets(candidates, min_count=min_values)
-    # Optionen, die bereits in Breadcrumb-Facetten stecken, nicht wiederholen
+    # 3. Tab./Fig.-Erkennung: wenn Kandidaten-Texte auf Tabellen oder
+    #    Abbildungen verweisen, diese als explizite Schlüsselwörter anbieten.
+    tab_found = any("Tab." in (c.get("text") or "") or "Tabelle" in (c.get("text") or "") for c in candidates)
+    fig_found = any("Fig." in (c.get("text") or "") for c in candidates)
+    content_type_opts = []
+    if tab_found:
+        content_type_opts.append("Tabelle")
+    if fig_found:
+        content_type_opts.append("Abbildung")
+
+    # Titelwort-Facetten + Inhaltstypen zusammenführen
     bc_values = {v.lower() for f in facets for v in f["options"]}
     title_opts = [o for o in title_opts if o.lower() not in bc_values]
-    if title_opts:
-        facets.append({"label": "Dokumenttyp", "options": title_opts})
+    kw_opts = title_opts + [o for o in content_type_opts if o.lower() not in bc_values]
+    if kw_opts:
+        facets.append({"label": "Schlüsselwörter", "options": kw_opts})
 
     return facets
 
