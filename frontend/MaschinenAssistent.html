@@ -302,6 +302,65 @@
       text-align: center;
     }
 
+    /* ── Kontext-Panel ──────────────────────────────────────── */
+    .context-toggle-row {
+      max-width: 760px;
+      margin: 0 auto var(--s-2);
+    }
+    .context-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-1);
+      padding: 3px 10px;
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-pill);
+      background: transparent;
+      cursor: pointer;
+      font: 400 12px/18px var(--font-text);
+      color: var(--r-on-surface-muted);
+      transition: background var(--motion-fast), color var(--motion-fast);
+    }
+    .context-toggle-btn:hover {
+      background: var(--r-surface-high);
+      color: var(--r-on-surface-default);
+    }
+    .context-active-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--r-state-info-subtle, #e8f4fd);
+      color: var(--r-state-info, #1a6fa8);
+      font: 500 10px/14px var(--font-text-m);
+    }
+    .context-panel {
+      max-width: 760px;
+      margin: 0 auto var(--s-3);
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-high);
+      overflow: hidden;
+    }
+    .context-panel__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--s-2) var(--s-3);
+      border-bottom: 1px solid var(--r-outline-bright);
+    }
+    .context-panel__textarea {
+      width: 100%;
+      box-sizing: border-box;
+      resize: none;
+      padding: var(--s-2) var(--s-3);
+      background: transparent;
+      color: var(--r-on-surface-default);
+      border: none;
+      font: 400 13px/20px var(--font-text);
+      outline: none;
+    }
+    .context-panel__textarea::placeholder { color: var(--r-on-surface-muted); }
+
     /* ── Voice overlay ──────────────────────────────────────── */
     .voice-overlay {
       display: none;
@@ -542,6 +601,31 @@
 
     <!-- Composer (always visible) -->
     <div class="app-composer" id="composer-wrap">
+
+      <!-- Kontext-Panel -->
+      <div class="context-panel" id="context-panel" style="display:none">
+        <div class="context-panel__head">
+          <span style="font:500 12px/16px var(--font-text-m);color:var(--r-on-surface-default)">Aktiver Kontext</span>
+          <button class="lds-btn lds-btn--ghost lds-btn--icon" style="width:24px;height:24px;padding:0"
+            title="Kontext entfernen" onclick="clearContext()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <textarea class="context-panel__textarea" id="context-input"
+          placeholder="z. B. Hauptausleger 74m / 124t Heckballast / 6-fach Einscherung / 160t Lasthaken"
+          rows="2"
+          oninput="onContextInput()"></textarea>
+      </div>
+
+      <!-- Kontext-Toggle-Zeile -->
+      <div class="context-toggle-row">
+        <button class="context-toggle-btn" id="context-toggle-btn" onclick="toggleContextPanel()" title="Maschinenkonfiguration als Suchkontext setzen">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          Konfiguration
+          <span class="context-active-badge" id="context-active-badge" style="display:none">aktiv</span>
+        </button>
+      </div>
+
       <div class="composer-row">
         <textarea class="composer-textarea" id="question-input"
           placeholder='Frage zur Maschine stellen…  z. B. „Welche Schritte beim Aufrüsten mit 60 m?"'
@@ -728,6 +812,47 @@ async function checkHealth() {
   } catch { /* stays offline */ }
 }
 
+// ── Kontext-Panel ─────────────────────────────────────────────────────────
+
+const CONTEXT_KEY = 'ma_context';
+
+function _getContext() {
+  return (document.getElementById('context-input')?.value || '').trim();
+}
+
+function toggleContextPanel() {
+  const panel = document.getElementById('context-panel');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  if (open) document.getElementById('context-input').focus();
+}
+
+function clearContext() {
+  document.getElementById('context-input').value = '';
+  document.getElementById('context-panel').style.display = 'none';
+  document.getElementById('context-active-badge').style.display = 'none';
+  localStorage.removeItem(CONTEXT_KEY);
+}
+
+function onContextInput() {
+  const val = _getContext();
+  document.getElementById('context-active-badge').style.display = val ? 'inline-flex' : 'none';
+  if (val) localStorage.setItem(CONTEXT_KEY, val);
+  else localStorage.removeItem(CONTEXT_KEY);
+}
+
+// Kontext aus localStorage wiederherstellen
+(function restoreContext() {
+  const saved = localStorage.getItem(CONTEXT_KEY);
+  if (saved) {
+    const el = document.getElementById('context-input');
+    if (el) {
+      el.value = saved;
+      document.getElementById('context-active-badge').style.display = 'inline-flex';
+    }
+  }
+})();
+
 // ── Ask ───────────────────────────────────────────────────────────────────
 
 async function sendQuestion() {
@@ -767,7 +892,7 @@ async function sendQuestion() {
     const resp = await fetch(API + '/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q }),
+      body: JSON.stringify({ question: q, context: _getContext() }),
     });
     data = await resp.json();
   } catch (err) {

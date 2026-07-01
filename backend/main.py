@@ -100,6 +100,7 @@ async def root():
 class AskRequest(BaseModel):
     question: str
     top_n: int = 5
+    context: str = ""   # persistenter Maschinen-/Konfigurations-Kontext
 
 
 class SourceLink(BaseModel):
@@ -166,7 +167,11 @@ async def ask_question(req: AskRequest) -> AskResponse:
     if not q:
         raise HTTPException(status_code=422, detail="question must not be empty")
 
-    expanded_q = expand_query(q)
+    # Kontext wird dem Query vorangestellt für HyDE + Suche + Reranker,
+    # aber nicht für die Anzeige (va.answer / sources bleiben auf q bezogen).
+    effective_q = f"{req.context.strip()}\n\n{q}" if req.context.strip() else q
+
+    expanded_q = expand_query(effective_q)
     candidates = search(expanded_q, top_n=50)   # Triple-RRF → 50 candidates
     if not candidates:
         return AskResponse(
@@ -179,9 +184,9 @@ async def ask_question(req: AskRequest) -> AskResponse:
             sources=[],
         )
 
-    facets = extract_facets(candidates, top_k=10)       # before reranking down to top_n
-    results = rerank(q, candidates, top_n=req.top_n)  # LLM picks best 5
-    va: VerifiedAnswer = ask(q, results)               # original query for answer
+    facets = extract_facets(candidates, top_k=10)
+    results = rerank(effective_q, candidates, top_n=req.top_n)  # kontext-bewusst
+    va: VerifiedAnswer = ask(q, results)                         # original query für Anzeige
     return AskResponse(
         answer=va.answer,
         grounding=va.grounding,
