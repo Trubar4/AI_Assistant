@@ -42,16 +42,11 @@ METADATA_INDEX = ROOT / "data" / "metadata_index.json"
 OUT_NPY = ROOT / "data" / "embeddings.npy"
 OUT_IDS = ROOT / "data" / "embedding_ids.json"
 
-MODEL_NAME = "paraphrase-multilingual-mpnet-base-v2"
+MODEL_NAME = "BAAI/bge-m3"
 
 
 def _build_doc_text(filename: str, meta: dict, content: dict) -> str:
-    """Combine title (3×) + warnings + steps + body text for embedding.
-
-    Titel wird dreifach wiederholt damit er bei der Ähnlichkeitsberechnung
-    stärker gewichtet wird. Warnungen und Schritte kommen vor dem Fließtext
-    weil sie die wichtigsten Informationen enthalten.
-    """
+    """Combine title (3×) + warnings + steps + body text for embedding."""
     title = meta.get("title") or content.get("title", "")
     breadcrumb = " > ".join(content.get("breadcrumb", []))
     warnings = " ".join(content.get("warnings", []))[:400]

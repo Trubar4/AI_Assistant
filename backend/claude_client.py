@@ -50,12 +50,13 @@ Maximal 60 Wörter.\
 """
 
 
-def expand_query(query: str) -> str:
+def expand_query(query: str, context: str = "") -> str:
     """Generate a TOC-guided hypothetical document (HyDE) for BM25+semantic retrieval.
 
-    1. BM25 title-scan gives the LLM vocabulary hints (exact page titles from the manual)
-    2. LLM generates a short passage in the style of the manual using those titles
-    3. BM25+Semantic searches for that passage → finds pages with matching vocabulary
+    1. BM25 title-scan gives the LLM vocabulary hints — uses only the actual question
+       (not the machine context) so context tokens don't pollute the title-scan scoring.
+    2. LLM generates a short passage using those titles + the machine context as background.
+    3. BM25+Semantic searches for that passage → finds pages with matching vocabulary.
 
     Falls back to original query on any error.
     """
@@ -63,10 +64,12 @@ def expand_query(query: str) -> str:
     try:
         titles = bm25_candidate_titles(query, top_k=25)
         titles_block = "\n".join(f"- {t}" for t in titles) if titles else "(keine Kandidaten)"
+        context_block = f"\nMaschinenkonfiguration: {context}\n" if context else ""
 
         user_msg = (
             f"Mögliche relevante Seitenüberschriften aus dem Manual:\n"
-            f"{titles_block}\n\n"
+            f"{titles_block}\n"
+            f"{context_block}\n"
             f"Frage: {query}"
         )
         response = _get_client().messages.create(

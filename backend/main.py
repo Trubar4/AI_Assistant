@@ -167,11 +167,13 @@ async def ask_question(req: AskRequest) -> AskResponse:
     if not q:
         raise HTTPException(status_code=422, detail="question must not be empty")
 
-    # Kontext wird dem Query vorangestellt für HyDE + Suche + Reranker,
-    # aber nicht für die Anzeige (va.answer / sources bleiben auf q bezogen).
-    effective_q = f"{req.context.strip()}\n\n{q}" if req.context.strip() else q
+    ctx = req.context.strip()
 
-    expanded_q = expand_query(effective_q)
+    # HyDE: BM25-Titelscan nur gegen die echte Frage — Kontext-Tokens würden
+    # die Titeltreffer verzerren. Kontext fließt aber in den HyDE-Prompt ein,
+    # damit die hypothetische Passage konfigurationsrelevant ist.
+    expanded_q = expand_query(q, context=ctx)
+
     candidates = search(expanded_q, top_n=50)   # Triple-RRF → 50 candidates
     if not candidates:
         return AskResponse(
@@ -185,7 +187,10 @@ async def ask_question(req: AskRequest) -> AskResponse:
         )
 
     facets = extract_facets(candidates, top_k=10)
-    results = rerank(effective_q, candidates, top_n=req.top_n)  # kontext-bewusst
+    # Reranker bekommt Kontext + Frage explizit, damit konfigurationsrelevante
+    # Seiten (z. B. "74m Hauptausleger") höher bewertet werden.
+    rerank_q = f"{ctx}\n\n{q}" if ctx else q
+    results = rerank(rerank_q, candidates, top_n=req.top_n)
     va: VerifiedAnswer = ask(q, results)                         # original query für Anzeige
     return AskResponse(
         answer=va.answer,

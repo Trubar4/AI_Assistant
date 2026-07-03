@@ -135,6 +135,7 @@ def _load_index(
     _bm25       = BM25Okapi(corpus_full)
     _bm25_title = BM25Okapi(corpus_title)
     logger.info("BM25 indices gebaut: %d Dokumente (full + title)", len(merged))
+    _build_dynamic_title_facet_words(merged)
     return _index
 
 
@@ -162,7 +163,7 @@ def _load_semantic() -> bool:
         from sentence_transformers import SentenceTransformer
         _sem_matrix = np.load(str(_EMB_NPY))
         _sem_ids    = json.loads(_EMB_IDS.read_text(encoding="utf-8"))
-        _sem_model  = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
+        _sem_model  = SentenceTransformer("BAAI/bge-m3")
         logger.info("Semantic search geladen: %d Dokumente", len(_sem_ids))
         return True
     except Exception as exc:
@@ -317,9 +318,9 @@ def search(
 # Facet extraction (for "Suche verfeinern" UI)
 # ---------------------------------------------------------------------------
 
-# Titelwörter die im Manual als Dokumenttyp-Indikatoren fungieren aber nie
-# in Suchanfragen vorkommen — als Facetten-Kandidaten explizit zulassen.
-_TITLE_FACET_WORDS = {
+# Seed-Whitelist: Dokumenttyp-Wörter die sicher als Facetten taugen.
+# Wird beim ersten Index-Load mit Wörtern aus den echten Titeln erweitert.
+_TITLE_FACET_WORDS_SEED = {
     "zusammenstellung", "übersicht",                        # Tabellen / Konfigurationsseiten
     "montage", "demontage", "einbau", "ausbau",            # Montage-Verfahren
     "inspektion", "prüfung", "überprüfung", "kontrolle",   # Prüfung / Wartung
@@ -332,11 +333,38 @@ _TITLE_FACET_WORDS = {
     "parkposition", "zusammenbauen",                       # Auf-/Abbau
 }
 
+_TITLE_FACET_WORDS: set[str] = set(_TITLE_FACET_WORDS_SEED)
+
 # Wörter die in fast allen Titeln vorkommen und keine Unterscheidung liefern
 _TITLE_NOISE = _STOPWORDS_DE | {
     "des", "der", "die", "und", "mit", "für", "beim", "zur", "zum",
     "nach", "vor", "am", "im", "an", "auf", "in",
 }
+
+
+def _build_dynamic_title_facet_words(index: list[dict]) -> None:
+    """Extend _TITLE_FACET_WORDS with words found in 2–15 % of all titles.
+
+    Words in this frequency band are specific enough to be useful filters
+    (not universal headings like "Hauptausleger") but common enough to produce
+    multiple hits when selected as a facet.
+    """
+    global _TITLE_FACET_WORDS
+    n = len(index)
+    if n < 10:
+        return
+    word_counts: dict[str, int] = {}
+    for entry in index:
+        words = set(re.split(r"\W+", entry["title"].lower()))
+        for w in words:
+            if len(w) >= 5 and w not in _TITLE_NOISE:
+                word_counts[w] = word_counts.get(w, 0) + 1
+    low, high = max(2, int(n * 0.02)), int(n * 0.15)
+    dynamic = {w for w, cnt in word_counts.items() if low <= cnt <= high}
+    _TITLE_FACET_WORDS = _TITLE_FACET_WORDS_SEED | dynamic
+    logger.info("Titel-Facet-Wörter: %d seed + %d dynamisch = %d gesamt",
+                len(_TITLE_FACET_WORDS_SEED), len(dynamic - _TITLE_FACET_WORDS_SEED),
+                len(_TITLE_FACET_WORDS))
 
 
 def _title_facets(subset: list[dict], min_count: int = 2) -> list[str]:
