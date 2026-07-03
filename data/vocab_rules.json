@@ -60,6 +60,13 @@
       "beschreibung": "Seile, Seilstränge, Seillagen",
       "beispiele": ["Grundseil", "Einscherseil", "Hubseil", "1 Seilstrang", "2 Seilstränge"],
       "hinweis": "Anzahl immer als Zahl vor dem Begriff. 'Seillagen' ist ein Wicklungsbegriff (auf der Trommel), nicht die Einscherung."
+    },
+    {
+      "feld": "Zusammengesetzte Bauteil-Bezeichnungen",
+      "beschreibung": "Komposita werden im Manual IMMER mit Bindestrich geschrieben",
+      "beispiele": ["Hauptausleger-Kopf", "Nadelausleger-Haltestange", "Auslegerkopf-Seilrolle", "Hubwerk-Endschalter", "Seilfixpunkt-Schäkel"],
+      "nicht_verwenden": ["Hauptauslegerkopf", "Nadelauslegerhaltestange", "Hubwerkendschalter"],
+      "hinweis": "Zusammengesetzte Substantive immer mit Bindestrich trennen: 'Hauptausleger-Kopf' statt 'Hauptauslegerkopf'. Gilt für alle Baugruppen-Komposita."
     }
   ],
 

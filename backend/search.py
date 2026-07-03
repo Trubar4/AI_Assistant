@@ -70,6 +70,10 @@ def _tokenize(text: str) -> list[str]:
         m = _UNIT_RE.match(t)
         if m:
             result.append(m.group(1))   # "74m" → auch "74" emittieren
+        if "-" in t:
+            # "hauptausleger-kopf" → auch "hauptauslegerkopf" emittieren,
+            # damit Queries ohne Bindestrich auf bindestrich-indizierte Begriffe treffen.
+            result.append(t.replace("-", ""))
     return result
 
 
