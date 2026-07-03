@@ -360,6 +360,64 @@
       outline: none;
     }
     .context-panel__textarea::placeholder { color: var(--r-on-surface-muted); }
+    .context-panel__actions {
+      display: flex;
+      gap: var(--s-2);
+      padding: var(--s-2) var(--s-3);
+      border-top: 1px solid var(--r-outline-bright);
+      align-items: center;
+    }
+    .context-panel__actions .spacer { flex: 1; }
+    /* Parsed chips view */
+    .ctx-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--s-2);
+      padding: var(--s-3);
+    }
+    .ctx-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-1);
+      padding: 4px 8px 4px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--r-outline-bright);
+      background: var(--r-surface-default);
+      font: 400 12px/18px var(--font-text);
+      color: var(--r-on-surface-default);
+    }
+    .ctx-chip--invalid {
+      border-color: var(--r-state-danger, #c0392b);
+      background: var(--r-state-danger-subtle, #fdf0ef);
+    }
+    .ctx-chip__key {
+      font: 500 11px/14px var(--font-text-m);
+      color: var(--r-on-surface-muted);
+      margin-right: 2px;
+    }
+    .ctx-chip__del {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: var(--r-on-surface-muted);
+      padding: 0;
+      margin-left: 2px;
+    }
+    .ctx-chip__del:hover { background: var(--r-surface-high); color: var(--r-on-surface-default); }
+    .ctx-chip--invalid .ctx-chip__key,
+    .ctx-chip--invalid .ctx-chip__del { color: var(--r-state-danger, #c0392b); }
+    .ctx-analyse-spinner { display: none; }
+    .ctx-analyse-spinner.is-spinning {
+      display: inline-block;
+      animation: ctx-spin 0.8s linear infinite;
+    }
+    @keyframes ctx-spin { to { transform: rotate(360deg); } }
 
     /* ── Voice overlay ──────────────────────────────────────── */
     .voice-overlay {
@@ -605,16 +663,42 @@
       <!-- Kontext-Panel -->
       <div class="context-panel" id="context-panel" style="display:none">
         <div class="context-panel__head">
-          <span style="font:500 12px/16px var(--font-text-m);color:var(--r-on-surface-default)">Aktiver Kontext</span>
+          <span style="font:500 12px/16px var(--font-text-m);color:var(--r-on-surface-default)">Maschinenkonfiguration</span>
           <button class="lds-btn lds-btn--ghost lds-btn--icon" style="width:24px;height:24px;padding:0"
             title="Kontext entfernen" onclick="clearContext()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-        <textarea class="context-panel__textarea" id="context-input"
-          placeholder="z. B. Hauptausleger 74m / 124t Heckballast / 6-fach Einscherung / 160t Lasthaken"
-          rows="2"
-          oninput="onContextInput()"></textarea>
+
+        <!-- State 1: Freitext-Eingabe -->
+        <div id="ctx-input-view">
+          <textarea class="context-panel__textarea" id="context-input"
+            placeholder="z. B. Hauptausleger 74 m / Heckballast 124 t / Einscherung 6x / Lasthaken 160 t"
+            rows="2"
+            oninput="onContextInput()"></textarea>
+          <div class="context-panel__actions">
+            <span style="font:400 11px/16px var(--font-text);color:var(--r-on-surface-muted)">Konfiguration eingeben, dann analysieren</span>
+            <span class="spacer"></span>
+            <button class="lds-btn lds-btn--secondary" style="font-size:12px;padding:4px 12px"
+              onclick="analyseContext()" id="ctx-analyse-btn" disabled>
+              <svg class="ctx-analyse-spinner" id="ctx-spinner" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
+              Analysieren
+            </button>
+          </div>
+        </div>
+
+        <!-- State 2: Analysierte Felder als Chips -->
+        <div id="ctx-parsed-view" style="display:none">
+          <div class="ctx-fields" id="ctx-fields"></div>
+          <div class="context-panel__actions">
+            <span id="ctx-warn-text" style="font:400 11px/16px var(--font-text);color:var(--r-state-danger,#c0392b);display:none"></span>
+            <span class="spacer"></span>
+            <button class="lds-btn lds-btn--ghost" style="font-size:12px;padding:4px 10px"
+              onclick="editContext()">Bearbeiten</button>
+            <button class="lds-btn lds-btn--primary" style="font-size:12px;padding:4px 12px"
+              onclick="acceptContext()">Übernehmen</button>
+          </div>
+        </div>
       </div>
 
       <!-- Kontext-Toggle-Zeile -->
@@ -812,44 +896,155 @@ async function checkHealth() {
   } catch { /* stays offline */ }
 }
 
-// ── Kontext-Panel ─────────────────────────────────────────────────────────
+// ── Kontext-Panel (Ansatz C: Freitext → LLM-Parse → Chip-Bestätigung) ────
 
-const CONTEXT_KEY = 'ma_context';
+const CONTEXT_KEY     = 'ma_context';          // canonical string für /ask
+const CONTEXT_RAW_KEY = 'ma_context_raw';      // original Freitext für Bearbeiten
+
+// Interne State
+let _ctxFields = [];   // [{key, value, hits, valid}, ...]
 
 function _getContext() {
-  return (document.getElementById('context-input')?.value || '').trim();
+  return localStorage.getItem(CONTEXT_KEY) || '';
 }
 
 function toggleContextPanel() {
   const panel = document.getElementById('context-panel');
-  const open = panel.style.display === 'none';
+  const open  = panel.style.display === 'none';
   panel.style.display = open ? 'block' : 'none';
-  if (open) document.getElementById('context-input').focus();
+  if (open) {
+    // Zeige gespeicherten Rohtext in der Textarea
+    const raw = localStorage.getItem(CONTEXT_RAW_KEY) || '';
+    document.getElementById('context-input').value = raw;
+    _updateAnalyseBtn();
+    // Wenn bereits akzeptierte Felder existieren, Chip-View zeigen
+    if (_ctxFields.length && raw) {
+      _showParsedView();
+    } else {
+      _showInputView();
+    }
+  }
+}
+
+function _showInputView() {
+  document.getElementById('ctx-input-view').style.display = 'block';
+  document.getElementById('ctx-parsed-view').style.display = 'none';
+  document.getElementById('context-input').focus();
+}
+
+function _showParsedView() {
+  document.getElementById('ctx-input-view').style.display = 'none';
+  document.getElementById('ctx-parsed-view').style.display = 'block';
+  _renderChips();
+}
+
+function _renderChips() {
+  const container = document.getElementById('ctx-fields');
+  container.innerHTML = '';
+  _ctxFields.forEach((f, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'ctx-chip' + (f.valid ? '' : ' ctx-chip--invalid');
+    chip.title = f.valid ? `${f.hits} Treffer im Manual` : 'Begriff nicht im Manual gefunden';
+    chip.innerHTML =
+      `<span class="ctx-chip__key">${escHtml(f.key)}:</span>${escHtml(f.value)}` +
+      `<button class="ctx-chip__del" onclick="removeCtxField(${i})" title="Entfernen">` +
+      `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+    container.appendChild(chip);
+  });
+
+  // Warnung bei ungültigen Feldern
+  const invalid = _ctxFields.filter(f => !f.valid);
+  const warn = document.getElementById('ctx-warn-text');
+  if (invalid.length) {
+    warn.style.display = 'inline';
+    warn.textContent = `${invalid.length} Begriff(e) nicht im Manual gefunden (rot markiert).`;
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+function removeCtxField(idx) {
+  _ctxFields.splice(idx, 1);
+  if (_ctxFields.length === 0) {
+    _showInputView();
+  } else {
+    _renderChips();
+  }
 }
 
 function clearContext() {
+  _ctxFields = [];
   document.getElementById('context-input').value = '';
   document.getElementById('context-panel').style.display = 'none';
   document.getElementById('context-active-badge').style.display = 'none';
   localStorage.removeItem(CONTEXT_KEY);
+  localStorage.removeItem(CONTEXT_RAW_KEY);
+}
+
+function editContext() {
+  _showInputView();
+}
+
+function acceptContext() {
+  if (_ctxFields.length === 0) return;
+  const canonical = _ctxFields.map(f => `${f.key}: ${f.value}`).join(' / ');
+  localStorage.setItem(CONTEXT_KEY, canonical);
+  document.getElementById('context-active-badge').style.display = 'inline-flex';
+  document.getElementById('context-panel').style.display = 'none';
 }
 
 function onContextInput() {
-  const val = _getContext();
-  document.getElementById('context-active-badge').style.display = val ? 'inline-flex' : 'none';
-  if (val) localStorage.setItem(CONTEXT_KEY, val);
-  else localStorage.removeItem(CONTEXT_KEY);
+  _updateAnalyseBtn();
 }
 
-// Kontext aus localStorage wiederherstellen
+function _updateAnalyseBtn() {
+  const val = document.getElementById('context-input').value.trim();
+  document.getElementById('ctx-analyse-btn').disabled = !val;
+}
+
+async function analyseContext() {
+  const raw = document.getElementById('context-input').value.trim();
+  if (!raw) return;
+
+  const btn     = document.getElementById('ctx-analyse-btn');
+  const spinner = document.getElementById('ctx-spinner');
+  btn.disabled  = true;
+  spinner.classList.add('is-spinning');
+
+  try {
+    const resp = await fetch('/context/parse', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({raw}),
+    });
+    if (!resp.ok) throw new Error(resp.statusText);
+    const data = await resp.json();
+    _ctxFields = data.fields.map(f => ({
+      key: f.key, value: f.value, hits: f.hits, valid: f.valid
+    }));
+    localStorage.setItem(CONTEXT_RAW_KEY, raw);
+    _showParsedView();
+  } catch (e) {
+    alert('Analyse fehlgeschlagen: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    spinner.classList.remove('is-spinning');
+  }
+}
+
+// Kontext aus localStorage beim Laden wiederherstellen
 (function restoreContext() {
-  const saved = localStorage.getItem(CONTEXT_KEY);
-  if (saved) {
-    const el = document.getElementById('context-input');
-    if (el) {
-      el.value = saved;
-      document.getElementById('context-active-badge').style.display = 'inline-flex';
-    }
+  const canonical = localStorage.getItem(CONTEXT_KEY);
+  const raw       = localStorage.getItem(CONTEXT_RAW_KEY);
+  if (canonical) {
+    document.getElementById('context-active-badge').style.display = 'inline-flex';
+    // Felder aus canonical string rekonstruieren (key: value / key: value)
+    _ctxFields = canonical.split(' / ').map(part => {
+      const sep = part.indexOf(': ');
+      if (sep > 0) return {key: part.slice(0, sep), value: part.slice(sep + 2), hits: 1, valid: true};
+      return {key: 'Konfiguration', value: part, hits: 1, valid: true};
+    }).filter(f => f.value);
+    if (raw) document.getElementById('context-input').value = raw;
   }
 })();
 

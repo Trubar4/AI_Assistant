@@ -9,9 +9,12 @@ Returns a VerifiedAnswer dataclass with the answer text, source links,
 and a grounding status: BELEGT | TEILWEISE | NICHT_BELEGT.
 """
 
+import json
 import logging
 import os
+import re
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import anthropic
 from fastapi import HTTPException
@@ -141,6 +144,80 @@ def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
     except Exception as exc:
         logger.warning("Reranker fehlgeschlagen: %s", exc)
         return candidates[:top_n]
+
+_VOCAB_RULES_PATH = Path(__file__).parent.parent / "data" / "vocab_rules.json"
+
+PARSE_CONTEXT_SYSTEM = """\
+Du bist ein Konfigurations-Parser für Liebherr-Kranhandbücher (LR 1104).
+Zerlege den Freitext in strukturierte Felder und normalisiere die Schreibweise
+nach den Manual-Konventionen unten.
+
+WICHTIG:
+- Verwende IMMER die Manual-Schreibweise aus den Regeln (z. B. "6x" statt "6-fach").
+- Kombiniere Typ und Wert in einem Feld (z. B. "Hauptausleger 74 m", nicht zwei Felder).
+- Felder ohne klar erkennbaren Wert weglassen.
+- Antworte NUR als JSON-Array: [{"schluessel": "...", "wert": "..."}, ...]
+  Keine Erklärungen, kein Markdown, nur das JSON-Array.\
+"""
+
+
+def _vocab_rules_text() -> str:
+    try:
+        rules = json.loads(_VOCAB_RULES_PATH.read_text(encoding="utf-8"))
+        lines = ["Manual-Konventionen (LR 1104):"]
+        for k in rules.get("konventionen", []):
+            ex = ", ".join(k.get("beispiele", [])[:4])
+            avoid = ", ".join(k.get("nicht_verwenden", [])[:3])
+            line = f"- {k['feld']}: Beispiele: {ex}"
+            if avoid:
+                line += f" | NICHT: {avoid}"
+            if k.get("hinweis"):
+                line += f" | {k['hinweis']}"
+            lines.append(line)
+        return "\n".join(lines)
+    except Exception:
+        return ""
+
+
+def parse_context(raw: str) -> list[dict]:
+    """LLM-based context parser: free text → structured fields with canonical vocabulary.
+
+    Returns list of {"schluessel": ..., "wert": ...} dicts.
+    Falls back to splitting by / on any error.
+    """
+    vocab = _vocab_rules_text()
+    system = PARSE_CONTEXT_SYSTEM
+    if vocab:
+        system += f"\n\n{vocab}"
+
+    try:
+        response = _get_client().messages.create(
+            model=EXPAND_MODEL,
+            max_tokens=300,
+            system=system,
+            messages=[{"role": "user", "content": f"Konfigurationstext:\n{raw}"}],
+        )
+        text = response.content[0].text.strip()
+        # Strip markdown code fences if present
+        text = re.sub(r"^```[a-z]*\n?", "", text).rstrip("`").strip()
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            return [
+                {"schluessel": str(d.get("schluessel", "")), "wert": str(d.get("wert", ""))}
+                for d in parsed
+                if d.get("schluessel") and d.get("wert")
+            ]
+    except Exception as exc:
+        logger.warning("parse_context fehlgeschlagen: %s", exc)
+
+    # Fallback: split by /
+    fields = []
+    for part in re.split(r"[/,;]+", raw):
+        part = part.strip()
+        if part:
+            fields.append({"schluessel": "Konfiguration", "wert": part})
+    return fields
+
 
 ANSWER_SYSTEM = """\
 Du bist ein Assistent für Liebherr-Maschinenführer und Servicetechniker.

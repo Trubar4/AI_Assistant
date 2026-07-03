@@ -36,8 +36,8 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-from backend.search import search, reset_index, extract_facets
-from backend.claude_client import ask, expand_query, rerank, VerifiedAnswer
+from backend.search import search, reset_index, extract_facets, count_hits
+from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer
 
 # ---------------------------------------------------------------------------
 # Error code database (optional — loaded once at startup)
@@ -123,6 +123,22 @@ class AskResponse(BaseModel):
     facets: list[Facet] = []
 
 
+class ParseContextRequest(BaseModel):
+    raw: str
+
+
+class ParsedField(BaseModel):
+    key: str
+    value: str
+    hits: int = 0
+    valid: bool = True
+
+
+class ParseContextResponse(BaseModel):
+    fields: list[ParsedField]
+    canonical: str
+
+
 class ErrorCodeRequest(BaseModel):
     code: str
 
@@ -199,6 +215,28 @@ async def ask_question(req: AskRequest) -> AskResponse:
         sources=[SourceLink(**s) for s in va.sources],
         facets=[Facet(**f) for f in facets],
     )
+
+
+@app.post("/context/parse", response_model=ParseContextResponse)
+async def parse_context_endpoint(req: ParseContextRequest) -> ParseContextResponse:
+    raw = req.raw.strip()
+    if not raw:
+        raise HTTPException(status_code=422, detail="raw must not be empty")
+
+    parsed = parse_context(raw)
+
+    fields_out = []
+    for f in parsed:
+        hits = count_hits(f["wert"])
+        fields_out.append(ParsedField(
+            key=f["schluessel"],
+            value=f["wert"],
+            hits=hits,
+            valid=hits > 0,
+        ))
+
+    canonical = " / ".join(f"{f.key}: {f.value}" for f in fields_out)
+    return ParseContextResponse(fields=fields_out, canonical=canonical)
 
 
 @app.post("/errorcode", response_model=ErrorCodeResponse)

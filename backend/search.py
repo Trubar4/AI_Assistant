@@ -209,6 +209,16 @@ def _bm25_title_ranking(query: str, top_k: int = 50) -> list[tuple[str, float]]:
     return [r for r in ranked[:top_k] if r[1] > 0]
 
 
+def count_hits(term: str) -> int:
+    """How many index entries contain all BM25 tokens of the term (for context validation)."""
+    _load_index()
+    tokens = _tokenize(term)
+    if not tokens:
+        return 0
+    scores = _bm25.get_scores(tokens)
+    return int(sum(1 for s in scores if s > 0))
+
+
 def bm25_candidate_titles(query: str, top_k: int = 25) -> list[str]:
     """Return up to top_k unique page titles ranked by BM25 score.
 

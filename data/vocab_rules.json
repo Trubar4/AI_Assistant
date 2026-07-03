@@ -1,0 +1,69 @@
+{
+  "_info": "Manual-Vokabular-Regeln für LR 1104. Manuell pflegbar, wird als Spickzettel in den LLM-Kontext-Parser injiziert.",
+  "_update": "Analyse mit: python -m backend.validate_vocab",
+
+  "konventionen": [
+    {
+      "feld": "Einscherung",
+      "beschreibung": "Seilführung / Reeving-Faktor",
+      "format": "Zahl + 'x' (kein Leerzeichen, Großbuchstabe X optional)",
+      "beispiele": ["1x", "2x", "3x", "4x", "5x", "6x"],
+      "nicht_verwenden": ["6-fach", "6 fach", "sechsfach", "6-fach Einscherung"],
+      "hinweis": "Das Manual verwendet ausschließlich 'Nx'-Format in Tabellen. '6-fach' kommt nur in 4 Fließtext-Stellen vor, 'Nx' in 70+ Tabellenzellen."
+    },
+    {
+      "feld": "Länge",
+      "beschreibung": "Längenangaben (Ausleger, Seile, Abstände)",
+      "format": "Zahl + Leerzeichen + Einheit",
+      "beispiele": ["74 m", "51 m", "65 m", "83 m", "12 m"],
+      "nicht_verwenden": ["74m", "74M", "74Meter"],
+      "hinweis": "Immer Leerzeichen zwischen Zahl und Einheit. Häufige Ausleger-Längen im Manual: 51 m, 59 m, 62 m, 65 m, 68 m, 73 m, 74 m, 80 m, 83 m."
+    },
+    {
+      "feld": "Gewicht / Tragfähigkeit",
+      "beschreibung": "Lasten, Ballastgewichte, Tragfähigkeiten",
+      "format": "Zahl + Leerzeichen + 't' oder 'kg'",
+      "beispiele": ["124 t", "160 t", "36 t", "100 t", "250 t"],
+      "nicht_verwenden": ["124t", "160t", "124T"],
+      "hinweis": "Immer Leerzeichen. Häufige Werte im Manual: 36 t, 100 t, 160 t, 250 t."
+    },
+    {
+      "feld": "Ausleger-Typ",
+      "beschreibung": "Bezeichnung des verbauten Auslegers",
+      "beispiele": ["Hauptausleger", "Nadelausleger", "Derrickausleger"],
+      "kombiniert_mit": "Länge, z. B. 'Hauptausleger 74 m'",
+      "hinweis": "Compound-Begriff immer ausschreiben. 'Wippausleger' kommt im Manual nicht vor."
+    },
+    {
+      "feld": "Ballast",
+      "beschreibung": "Ballast-Baugruppen und Gewichte",
+      "beispiele": ["Heckballast", "Gegengewicht", "Superlift-Ballast"],
+      "kombiniert_mit": "Gewicht, z. B. 'Heckballast 124 t'",
+      "nicht_verwenden": ["Heckgewicht", "hinterer Ballast"]
+    },
+    {
+      "feld": "Lasthaken / Unterflasche",
+      "beschreibung": "Hakentyp und Tragfähigkeit",
+      "beispiele": ["Lasthaken 160 t", "Unterflasche", "Lasthaken und/oder Unterflaschen"],
+      "hinweis": "Das Manual nennt fast immer 'Lasthaken und/oder Unterflaschen' zusammen. Rollen werden als 'Seilrollen' bezeichnet, nicht als 'Rollen'."
+    },
+    {
+      "feld": "Haltestangen",
+      "beschreibung": "Stahl- oder Nadelausleger-Haltestangen",
+      "format": "Mit Bindestrich schreiben",
+      "beispiele": ["Stahl-Haltestangen", "Nadelausleger-Haltestange"],
+      "nicht_verwenden": ["Stahlhaltestangen", "Stahl Haltestangen", "steel stay bars"],
+      "hinweis": "Manual verwendet konsequent Bindestrich-Schreibweise."
+    },
+    {
+      "feld": "Seil",
+      "beschreibung": "Seile, Seilstränge, Seillagen",
+      "beispiele": ["Grundseil", "Einscherseil", "Hubseil", "1 Seilstrang", "2 Seilstränge"],
+      "hinweis": "Anzahl immer als Zahl vor dem Begriff. 'Seillagen' ist ein Wicklungsbegriff (auf der Trommel), nicht die Einscherung."
+    }
+  ],
+
+  "bekannte_konfigurationen": {
+    "LR1104_standard": "Hauptausleger 74 m / Einscherung 6x / Heckballast 124 t / Lasthaken 160 t / Stahl-Haltestangen"
+  }
+}
