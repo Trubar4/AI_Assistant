@@ -1271,12 +1271,16 @@ async function submitClarification(id) {
 function renderAgentAnswer(data) {
   const rounds = data.rounds > 1 ? `${data.rounds} Suchschritte` : '1 Suchschritt';
   const sourcesHtml = (data.sources || []).map(s => `
-    <a class="source-item" href="/manuals/${escHtml(s.filename)}" target="_blank" rel="noopener">
+    <div class="source-item" role="button" tabindex="0"
+      data-url="/manuals/${escHtml(s.filename)}"
+      data-title="${escHtml(s.title || s.filename)}"
+      onclick="openManual(this.dataset.url, this.dataset.title)"
+      onkeydown="if(event.key==='Enter')openManual(this.dataset.url, this.dataset.title)">
+      <div class="icon">${icon('doc', 16)}</div>
       <div class="source-item__info">
         <div class="source-item__title">${escHtml(s.title || s.filename)}</div>
       </div>
-      <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>
-    </a>`).join('');
+    </div>`).join('');
 
   return `
     <div class="agent-bubble">
@@ -1285,8 +1289,8 @@ function renderAgentAnswer(data) {
         Assistent
         <span class="agent-bubble__rounds">(${escHtml(rounds)})</span>
       </div>
-      <div class="agent-bubble__answer">${escHtml(data.answer)}</div>
-      ${sourcesHtml ? `<div class="answer-section-label">Quellen</div><div class="agent-bubble__sources">${sourcesHtml}</div>` : ''}
+      <div class="agent-bubble__answer">${renderMarkdown(data.answer)}</div>
+      ${sourcesHtml ? `<div class="answer-section-label">Quellen</div><div class="agent-bubble__sources source-list">${sourcesHtml}</div>` : ''}
     </div>`;
 }
 

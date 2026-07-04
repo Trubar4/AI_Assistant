@@ -53,11 +53,6 @@ Schreibe am Ende deiner finalen Antwort einen JSON-Block:
 ```
 """
 
-_FORCE_ANSWER_MSG = (
-    "Du hast genug Suchergebnisse. "
-    "Gib jetzt deine abschließende Antwort auf Deutsch mit dem JSON-Quellen-Block."
-)
-
 
 def _get_client() -> anthropic.Anthropic:
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -128,13 +123,18 @@ def run_agent(
     while rounds < MAX_ROUNDS:
         rounds += 1
 
-        response = client.messages.create(
+        # After hitting tool round limit, disable tools to force a text answer
+        call_kwargs: dict = dict(
             model=AGENT_MODEL,
             max_tokens=1024,
             system=AGENT_SYSTEM,
             tools=TOOL_SCHEMAS,
             messages=messages,
         )
+        if tool_rounds >= MAX_TOOL_ROUNDS:
+            call_kwargs["tool_choice"] = {"type": "none"}
+
+        response = client.messages.create(**call_kwargs)
 
         logger.info(
             "Agent Runde %d: stop_reason=%s tool_calls=%d",
@@ -163,11 +163,6 @@ def run_agent(
                 })
 
             messages.append({"role": "user", "content": tool_results})
-
-            # Enforce search limit — inject explicit instruction to stop searching
-            if tool_rounds >= MAX_TOOL_ROUNDS:
-                messages.append({"role": "user", "content": _FORCE_ANSWER_MSG})
-
             continue
 
         # Finale Textantwort
