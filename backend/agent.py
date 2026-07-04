@@ -95,6 +95,36 @@ def _clean_answer(text: str) -> str:
     return text.strip()
 
 
+def _fallback_sources(messages: list[dict]) -> list[dict]:
+    """Extract sources from read_page tool calls in message history."""
+    seen: dict[str, str] = {}
+    for msg in messages:
+        content = msg.get("content", "")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                # SDK object
+                try:
+                    if block.type == "tool_use" and block.name == "read_page":
+                        fn = block.input.get("filename", "")
+                        if fn and fn not in seen:
+                            seen[fn] = fn
+                except Exception:
+                    pass
+                continue
+            if block.get("type") == "tool_use" and block.get("name") == "read_page":
+                fn = block.get("input", {}).get("filename", "")
+                if fn and fn not in seen:
+                    seen[fn] = fn
+    try:
+        from backend.search import _index
+        title_map = {e["filename"]: e["title"] for e in (_index or [])}
+        return [{"filename": fn, "title": title_map.get(fn, fn)} for fn in seen]
+    except Exception:
+        return [{"filename": fn, "title": fn} for fn in seen]
+
+
 def run_agent(
     question: str,
     context: str = "",
@@ -120,18 +150,28 @@ def run_agent(
 
     rounds = 0
     tool_rounds = 0
+    forced_answer = False
     while rounds < MAX_ROUNDS:
         rounds += 1
 
-        # After hitting tool round limit, disable tools to force a text answer
+        # After hitting tool round limit, inject reminder then disable tools
         call_kwargs: dict = dict(
             model=AGENT_MODEL,
-            max_tokens=1024,
+            max_tokens=1500,
             system=AGENT_SYSTEM,
             tools=TOOL_SCHEMAS,
             messages=messages,
         )
-        if tool_rounds >= MAX_TOOL_ROUNDS:
+        if tool_rounds >= MAX_TOOL_ROUNDS and not forced_answer:
+            forced_answer = True
+            messages.append({
+                "role": "user",
+                "content": (
+                    "Genug Suchrunden. Fasse jetzt die Ergebnisse zusammen und antworte "
+                    "abschließend auf Deutsch. Vergiss nicht den JSON-Quellen-Block am Ende:\n"
+                    "```json\n{\"sources\": [{\"filename\": \"...\", \"title\": \"...\"}]}\n```"
+                ),
+            })
             call_kwargs["tool_choice"] = {"type": "none"}
 
         response = client.messages.create(**call_kwargs)
@@ -172,6 +212,8 @@ def run_agent(
                 answer_text += block.text
 
         sources = _extract_sources(answer_text)
+        if not sources:
+            sources = _fallback_sources(messages)
         cleaned = _clean_answer(answer_text)
 
         # Explicit marker takes priority; fall back to heuristic for older behaviour
