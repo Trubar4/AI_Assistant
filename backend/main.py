@@ -57,6 +57,12 @@ def _load_errorcodes() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _load_errorcodes()
+    # Pre-warm semantic model so first request isn't slow
+    try:
+        from backend.search import _load_semantic
+        _load_semantic()
+    except Exception:
+        pass
     yield
     reset_index()
 

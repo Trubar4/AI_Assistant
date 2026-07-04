@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 AGENT_MODEL   = os.environ.get("AGENT_MODEL", "claude-haiku-4-5-20251001")
 MAX_ROUNDS    = int(os.environ.get("AGENT_MAX_ROUNDS", "5"))
 
+MAX_TOOL_ROUNDS = int(os.environ.get("AGENT_MAX_TOOL_ROUNDS", "3"))
+
 AGENT_SYSTEM = """\
 Du bist ein Assistent für Liebherr-Kranbediener und Servicetechniker (LR 1104).
 Deine Aufgabe: Die EXAKTE Manual-Seite finden, die die gestellte Frage beantwortet.
@@ -32,6 +34,7 @@ Deine Aufgabe: Die EXAKTE Manual-Seite finden, die die gestellte Frage beantwort
 Vorgehen:
 1. Analysiere die Frage. Fehlt eine wichtige Information (z. B. Konfiguration, Ausleger-Typ)?
    → Stelle EINE gezielte Rückfrage, bevor du suchst.
+   → Beginne deine Rückfrage-Nachricht IMMER mit dem Marker: [RÜCKFRAGE]
 2. Suche mit dem relevantesten Query. Bewerte die Ergebnisse.
 3. Reicht der Textauszug nicht? Lies die Seite vollständig (read_page).
 4. Suchst du nach einem exakten Wert in einer Tabelle? Nutze grep_manual.
@@ -49,6 +52,11 @@ Schreibe am Ende deiner finalen Antwort einen JSON-Block:
 {"sources": [{"filename": "...", "title": "..."}]}
 ```
 """
+
+_FORCE_ANSWER_MSG = (
+    "Du hast genug Suchergebnisse. "
+    "Gib jetzt deine abschließende Antwort auf Deutsch mit dem JSON-Quellen-Block."
+)
 
 
 def _get_client() -> anthropic.Anthropic:
@@ -116,6 +124,7 @@ def run_agent(
     messages.append({"role": "user", "content": user_content})
 
     rounds = 0
+    tool_rounds = 0
     while rounds < MAX_ROUNDS:
         rounds += 1
 
@@ -136,6 +145,7 @@ def run_agent(
 
         # Tool-Calls ausführen
         if response.stop_reason == "tool_use":
+            tool_rounds += 1
             # Antwort in History aufnehmen
             messages.append({"role": "assistant", "content": response.content})
 
@@ -153,6 +163,11 @@ def run_agent(
                 })
 
             messages.append({"role": "user", "content": tool_results})
+
+            # Enforce search limit — inject explicit instruction to stop searching
+            if tool_rounds >= MAX_TOOL_ROUNDS:
+                messages.append({"role": "user", "content": _FORCE_ANSWER_MSG})
+
             continue
 
         # Finale Textantwort
@@ -161,23 +176,23 @@ def run_agent(
             if hasattr(block, "text"):
                 answer_text += block.text
 
-        # Prüfen ob Agent eine Rückfrage stellt
-        # Heuristik: kurze Antwort ohne Quellen = wahrscheinlich Rückfrage
         sources = _extract_sources(answer_text)
         cleaned = _clean_answer(answer_text)
 
-        is_clarification = (
+        # Explicit marker takes priority; fall back to heuristic for older behaviour
+        is_clarification = cleaned.startswith("[RÜCKFRAGE]") or (
             not sources
             and len(cleaned) < 300
             and any(cleaned.rstrip().endswith(c) for c in ["?", "?\"", "?'"])
         )
 
         if is_clarification:
-            logger.info("Agent stellt Rückfrage: %s", cleaned[:100])
+            question_text = cleaned.removeprefix("[RÜCKFRAGE]").strip()
+            logger.info("Agent stellt Rückfrage: %s", question_text[:100])
             return {
                 "type": "clarification",
-                "question": cleaned,
-                "messages": messages,   # für nächsten Call mitgeben
+                "question": question_text,
+                "messages": messages,
             }
 
         logger.info("Agent fertig: %d Quellen, %d Runden", len(sources), rounds)
