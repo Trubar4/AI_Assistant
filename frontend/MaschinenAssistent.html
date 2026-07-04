@@ -517,6 +517,90 @@
     }
     @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
+    /* ── Mode Toggle ────────────────────────────────────────── */
+    .mode-toggle {
+      display: inline-flex;
+      border: 1px solid var(--p-steel-600);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+      margin-left: var(--s-2);
+    }
+    .mode-toggle__btn {
+      padding: 3px 12px;
+      font: 400 12px/18px var(--font-text);
+      color: var(--p-steel-300);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: background var(--motion-fast), color var(--motion-fast);
+    }
+    .mode-toggle__btn:hover { background: var(--p-steel-800); }
+    .mode-toggle__btn--active {
+      background: var(--r-brand);
+      color: var(--r-on-brand);
+      font-family: var(--font-text-m);
+      font-weight: 500;
+    }
+
+    /* ── Agent-Bubble ───────────────────────────────────────── */
+    .agent-bubble {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .agent-bubble__head {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      margin-bottom: var(--s-2);
+      font: 500 12px/16px var(--font-text-m);
+      color: var(--r-on-surface-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .agent-bubble__rounds {
+      font: 400 11px/14px var(--font-text);
+      color: var(--r-on-surface-disabled);
+    }
+    .agent-bubble__answer {
+      font: 400 15px/24px var(--font-text);
+      color: var(--r-on-surface-default);
+      margin-bottom: var(--s-4);
+    }
+    .agent-bubble__sources {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-2);
+    }
+    /* Clarification input */
+    .agent-clarify {
+      max-width: 760px;
+      margin: 0 auto;
+      border: 1px solid var(--r-state-info, #1a6fa8);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-high);
+      padding: var(--s-4);
+    }
+    .agent-clarify__q {
+      font: 400 15px/24px var(--font-text);
+      color: var(--r-on-surface-default);
+      margin-bottom: var(--s-3);
+    }
+    .agent-clarify__row {
+      display: flex;
+      gap: var(--s-2);
+    }
+    .agent-clarify__input {
+      flex: 1;
+      padding: var(--s-2) var(--s-3);
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-default);
+      color: var(--r-on-surface-default);
+      font: 400 14px/20px var(--font-text);
+      outline: none;
+    }
+    .agent-clarify__input:focus { border-color: var(--r-brand); }
+
     /* ── Inline SVG icon helper ─────────────────────────────── */
     .icon { display: inline-flex; flex-shrink: 0; }
 
@@ -579,6 +663,11 @@
   <div style="flex:1"></div>
   <span style="font:400 13px/18px var(--font-text);color:var(--p-steel-400);padding:0 var(--s-3);border-left:1px solid var(--p-steel-700)">LR 1104.03.08</span>
   <span id="online-status" style="font:400 12px/16px var(--font-text);color:var(--p-steel-400);padding:0 var(--s-3)">Offline</span>
+  <!-- Mode Toggle -->
+  <div class="mode-toggle" id="mode-toggle" title="Suchmodus wechseln">
+    <button class="mode-toggle__btn mode-toggle__btn--active" id="mode-btn-classic" onclick="setMode('classic')">Klassisch</button>
+    <button class="mode-toggle__btn" id="mode-btn-agent" onclick="setMode('agent')">Assistent</button>
+  </div>
 </header>
 
 <!-- ═══ LAYOUT ════════════════════════════════════════════════════════════ -->
@@ -1048,57 +1137,157 @@ async function analyseContext() {
   }
 })();
 
+// ── Mode ──────────────────────────────────────────────────────────────────
+
+const MODE_KEY = 'ma_mode';
+let _mode = localStorage.getItem(MODE_KEY) || new URLSearchParams(location.search).get('mode') || 'classic';
+
+function setMode(m) {
+  _mode = m;
+  localStorage.setItem(MODE_KEY, m);
+  document.getElementById('mode-btn-classic').classList.toggle('mode-toggle__btn--active', m === 'classic');
+  document.getElementById('mode-btn-agent').classList.toggle('mode-toggle__btn--active', m === 'agent');
+}
+setMode(_mode);
+
 // ── Ask ───────────────────────────────────────────────────────────────────
 
-async function sendQuestion() {
+async function sendQuestion(opts = {}) {
   const el = document.getElementById('question-input');
-  const q = el.value.trim();
+  const q = (opts.question || el.value).trim();
   if (!q) return;
 
-  el.value = '';
-  autoResize(el);
+  if (!opts.question) { el.value = ''; autoResize(el); }
   document.getElementById('hero').style.display = 'none';
 
   const history = document.getElementById('chat-history');
 
-  // Question bubble
-  const qDiv = document.createElement('div');
-  qDiv.className = 'chat-question';
-  qDiv.innerHTML = `<div class="chat-question__bubble">${escHtml(q)}</div>`;
-  history.appendChild(qDiv);
+  if (!opts.isClarification) {
+    const qDiv = document.createElement('div');
+    qDiv.className = 'chat-question';
+    qDiv.innerHTML = `<div class="chat-question__bubble">${escHtml(q)}</div>`;
+    history.appendChild(qDiv);
+  }
 
-  // Loading card
+  // Loading placeholder
   const loadDiv = document.createElement('div');
-  loadDiv.innerHTML = `
-    <div class="answer-card">
-      <div class="answer-card__body" style="gap:var(--s-3)">
+  loadDiv.innerHTML = _mode === 'agent'
+    ? `<div class="agent-bubble"><div class="agent-bubble__head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Assistent sucht…</div>
+        <div class="skeleton" style="width:75%;margin-bottom:8px"></div>
+        <div class="skeleton" style="width:55%"></div></div>`
+    : `<div class="answer-card"><div class="answer-card__body" style="gap:var(--s-3)">
         <div class="skeleton" style="width:60%"></div>
         <div class="skeleton" style="width:90%"></div>
         <div class="skeleton" style="width:75%"></div>
-      </div>
-    </div>`;
+      </div></div>`;
   history.appendChild(loadDiv);
   loadDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
-
   document.getElementById('send-btn').disabled = true;
 
-  let data;
+  try {
+    if (_mode === 'agent') {
+      await _sendAgent(q, loadDiv, history, opts.conversation || []);
+    } else {
+      await _sendClassic(q, loadDiv);
+    }
+  } finally {
+    document.getElementById('send-btn').disabled = false;
+    loadDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+}
+
+async function _sendClassic(q, loadDiv) {
   try {
     const resp = await fetch(API + '/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question: q, context: _getContext() }),
     });
-    data = await resp.json();
+    const data = await resp.json();
+    loadDiv.innerHTML = renderAnswer(q, data);
   } catch (err) {
     loadDiv.innerHTML = renderError('Verbindung zum Backend fehlgeschlagen. Starten Sie den Server mit: uvicorn backend.main:app');
-    document.getElementById('send-btn').disabled = false;
-    return;
   }
+}
 
-  loadDiv.innerHTML = renderAnswer(q, data);
-  document.getElementById('send-btn').disabled = false;
-  loadDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+async function _sendAgent(q, loadDiv, history, conversation) {
+  try {
+    const resp = await fetch(API + '/ask_agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q, context: _getContext(), conversation }),
+    });
+    const data = await resp.json();
+
+    if (data.type === 'clarification') {
+      loadDiv.innerHTML = renderAgentClarification(data.question, data.conversation);
+    } else {
+      loadDiv.innerHTML = renderAgentAnswer(data);
+    }
+  } catch (err) {
+    loadDiv.innerHTML = renderError('Agent-Anfrage fehlgeschlagen: ' + err.message);
+  }
+}
+
+// Konversations-Store: id → conversation-Array (vermeidet HTML-Encoding von JSON)
+const _convStore = {};
+
+function renderAgentClarification(question, conversation) {
+  const id = 'clarify-' + Date.now();
+  _convStore[id] = conversation;
+  return `
+    <div class="agent-clarify" id="${id}-wrap">
+      <div class="agent-bubble__head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Assistent hat eine Rückfrage
+      </div>
+      <div class="agent-clarify__q">${escHtml(question)}</div>
+      <div class="agent-clarify__row">
+        <input class="agent-clarify__input" id="${id}" placeholder="Ihre Antwort…"
+          onkeydown="if(event.key==='Enter')submitClarification('${id}')">
+        <button class="lds-btn lds-btn--primary" style="font-size:13px"
+          onclick="submitClarification('${id}')">Senden</button>
+      </div>
+    </div>`;
+}
+
+async function submitClarification(id) {
+  const answer = document.getElementById(id).value.trim();
+  if (!answer) return;
+  const conversation = _convStore[id] || [];
+  delete _convStore[id];
+
+  const wrap = document.getElementById(id + '-wrap');
+  const qDiv = document.createElement('div');
+  qDiv.className = 'chat-question';
+  qDiv.innerHTML = `<div class="chat-question__bubble">${escHtml(answer)}</div>`;
+  wrap.parentNode.replaceChild(qDiv, wrap);
+
+  await sendQuestion({ question: answer, isClarification: true, conversation });
+}
+
+function renderAgentAnswer(data) {
+  const rounds = data.rounds > 1 ? `${data.rounds} Suchschritte` : '1 Suchschritt';
+  const sourcesHtml = (data.sources || []).map(s => `
+    <a class="source-item" href="/manuals/${escHtml(s.filename)}" target="_blank" rel="noopener">
+      <div class="source-item__info">
+        <div class="source-item__title">${escHtml(s.title || s.filename)}</div>
+      </div>
+      <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>
+    </a>`).join('');
+
+  return `
+    <div class="agent-bubble">
+      <div class="agent-bubble__head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Assistent
+        <span class="agent-bubble__rounds">(${escHtml(rounds)})</span>
+      </div>
+      <div class="agent-bubble__answer">${escHtml(data.answer)}</div>
+      ${sourcesHtml ? `<div class="answer-section-label">Quellen</div><div class="agent-bubble__sources">${sourcesHtml}</div>` : ''}
+    </div>`;
 }
 
 let _refineCardCounter = 0;

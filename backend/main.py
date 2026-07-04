@@ -38,6 +38,7 @@ load_dotenv()
 
 from backend.search import search, reset_index, extract_facets, count_hits
 from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer
+from backend.agent import run_agent
 
 # ---------------------------------------------------------------------------
 # Error code database (optional — loaded once at startup)
@@ -63,6 +64,9 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
+# AGENT_MODE=true setzt den Standard-Modus im Frontend auf "agent"
+_DEFAULT_MODE = "agent" if os.environ.get("AGENT_MODE", "").lower() in ("1", "true") else "classic"
+
 app = FastAPI(
     title="Maschinen-Assistent API",
     version="0.1.0",
@@ -91,7 +95,12 @@ if _manuals.exists():
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return RedirectResponse(url="/frontend/MaschinenAssistent.html")
+    return RedirectResponse(url=f"/frontend/MaschinenAssistent.html?mode={_DEFAULT_MODE}")
+
+
+@app.get("/config", include_in_schema=False)
+async def config() -> dict:
+    return {"default_mode": _DEFAULT_MODE}
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +146,26 @@ class ParsedField(BaseModel):
 class ParseContextResponse(BaseModel):
     fields: list[ParsedField]
     canonical: str
+
+
+class AgentRequest(BaseModel):
+    question: str
+    context: str = ""
+    conversation: list[dict] = []   # History für Clarification-Runden
+
+
+class AgentSource(BaseModel):
+    filename: str
+    title: str
+
+
+class AgentResponse(BaseModel):
+    type: str                        # "answer" | "clarification"
+    answer: str = ""
+    question: str = ""              # bei type="clarification"
+    sources: list[AgentSource] = []
+    rounds: int = 0
+    conversation: list[dict] = []   # zurück an Frontend für nächsten Call
 
 
 class ErrorCodeRequest(BaseModel):
@@ -237,6 +266,28 @@ async def parse_context_endpoint(req: ParseContextRequest) -> ParseContextRespon
 
     canonical = " / ".join(f"{f.key}: {f.value}" for f in fields_out)
     return ParseContextResponse(fields=fields_out, canonical=canonical)
+
+
+@app.post("/ask_agent", response_model=AgentResponse)
+async def ask_agent(req: AgentRequest) -> AgentResponse:
+    q = req.question.strip()
+    if not q:
+        raise HTTPException(status_code=422, detail="question must not be empty")
+
+    result = run_agent(
+        question=q,
+        context=req.context.strip(),
+        conversation=req.conversation or [],
+    )
+
+    return AgentResponse(
+        type=result["type"],
+        answer=result.get("answer", ""),
+        question=result.get("question", ""),
+        sources=[AgentSource(**s) for s in result.get("sources", [])],
+        rounds=result.get("rounds", 0),
+        conversation=result.get("messages", []),
+    )
 
 
 @app.post("/errorcode", response_model=ErrorCodeResponse)
