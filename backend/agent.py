@@ -27,25 +27,44 @@ MAX_ROUNDS    = int(os.environ.get("AGENT_MAX_ROUNDS", "5"))
 
 MAX_TOOL_ROUNDS = int(os.environ.get("AGENT_MAX_TOOL_ROUNDS", "3"))
 
+# Phase 1: decide clarification vs search (no tools)
+_TRIAGE_SYSTEM = """\
+Du bist ein Assistent für Liebherr-Kranbediener (LR 1104).
+
+Entscheide: Kann ich die Frage im Manual suchen, oder fehlt eine ESSENTIELLE Information?
+
+Essentielle Informationen die fehlen können:
+- Konfiguration (z. B. Ausleger-Länge, Einscherung), wenn die Frage explizit davon abhängt
+  Beispiel: "Welche Zwischenstücke brauche ich?" → Länge unbekannt → Rückfrage nötig
+- Ausleger-Typ (Hauptausleger / Nadelausleger), wenn relevant für die Antwort
+  Beispiel: "Was ist die Traglast?" → Konfiguration unbekannt → Rückfrage nötig
+
+NICHT nachfragen wenn:
+- Die Frage allgemein im Manual beantwortbar ist
+  Beispiel: "Welche Winde ist Winde 1?" → Suche direkt
+- Der Kontext bereits ausreichend ist
+
+Antworte in einem Wort:
+- "SUCHE" → direkt im Manual suchen
+- "FRAGE: <deine präzise Rückfrage auf Deutsch>" → fehlende Info einholen
+"""
+
 AGENT_SYSTEM = """\
 Du bist ein Assistent für Liebherr-Kranbediener und Servicetechniker (LR 1104).
 Deine Aufgabe: Die EXAKTE Manual-Seite finden, die die gestellte Frage beantwortet.
 
 Vorgehen:
-1. Analysiere die Frage. Fehlt eine wichtige Information (z. B. Konfiguration, Ausleger-Typ)?
-   → Stelle EINE gezielte Rückfrage, bevor du suchst.
-   → Beginne deine Rückfrage-Nachricht IMMER mit dem Marker: [RÜCKFRAGE]
-2. Suche mit dem relevantesten Query. Bewerte die Ergebnisse.
-3. Reicht der Textauszug nicht? Lies die Seite vollständig (read_page).
-4. Suchst du nach einem exakten Wert in einer Tabelle? Nutze grep_manual.
-5. Unsicher ob du die richtige Seite hast? Kreuzcheck mit bal_search.
-6. Wenn du 1–3 gute Seiten gefunden hast: Antworte abschließend.
+1. Suche mit dem relevantesten Query. Bewerte die Ergebnisse.
+2. Reicht der Textauszug nicht? Lies die Seite vollständig (read_page).
+3. Suchst du nach einem exakten Wert in einer Tabelle? Nutze grep_manual.
+4. Unsicher ob du die richtige Seite hast? Kreuzcheck mit bal_search.
+5. Wenn du 1–3 gute Seiten gefunden hast: Antworte abschließend.
 
 Regeln:
-- Maximal 2 Suchschritte, dann antworte.
-- Rückfragen nur wenn WIRKLICH nötig — nicht bei jeder Frage.
 - Antworte auf Deutsch, sachlich, knapp.
 - Erkläre in 1–2 Sätzen WARUM die gefundenen Seiten die Frage beantworten.
+- Hinweis zu Bildern: Das Manual enthält Abbildungen mit Nummern (z. B. "Fig. 1234: ...").
+  Wenn du eine relevante Abbildung siehst, nenne die Fig.-Nummer in deiner Antwort.
 
 Schreibe am Ende deiner finalen Antwort einen JSON-Block:
 ```json
@@ -146,6 +165,30 @@ def run_agent(
 
     # Konversations-History (für Clarification-Runden)
     messages: list[dict] = list(conversation or [])
+
+    # Phase 1: Triage — nur wenn keine laufende Clarification-Konversation
+    if not conversation:
+        triage_resp = client.messages.create(
+            model=AGENT_MODEL,
+            max_tokens=120,
+            system=_TRIAGE_SYSTEM,
+            messages=[{"role": "user", "content": user_content}],
+        )
+        triage_text = "".join(
+            b.text for b in triage_resp.content if hasattr(b, "text")
+        ).strip()
+        logger.info("Triage: %s", triage_text[:120])
+
+        if triage_text.upper().startswith("FRAGE"):
+            clarification = triage_text[triage_text.index(":")+1:].strip() if ":" in triage_text else triage_text
+            messages.append({"role": "user", "content": user_content})
+            messages.append({"role": "assistant", "content": triage_text})
+            return {
+                "type": "clarification",
+                "question": clarification,
+                "messages": messages,
+            }
+
     messages.append({"role": "user", "content": user_content})
 
     rounds = 0
@@ -215,22 +258,6 @@ def run_agent(
         if not sources:
             sources = _fallback_sources(messages)
         cleaned = _clean_answer(answer_text)
-
-        # Explicit marker takes priority; fall back to heuristic for older behaviour
-        is_clarification = cleaned.startswith("[RÜCKFRAGE]") or (
-            not sources
-            and len(cleaned) < 300
-            and any(cleaned.rstrip().endswith(c) for c in ["?", "?\"", "?'"])
-        )
-
-        if is_clarification:
-            question_text = cleaned.removeprefix("[RÜCKFRAGE]").strip()
-            logger.info("Agent stellt Rückfrage: %s", question_text[:100])
-            return {
-                "type": "clarification",
-                "question": question_text,
-                "messages": messages,
-            }
 
         logger.info("Agent fertig: %d Quellen, %d Runden", len(sources), rounds)
         return {
