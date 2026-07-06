@@ -43,9 +43,16 @@ def _table_to_markdown(table_html: str) -> str:
     rows = re.findall(r"<tr[^>]*>(.*?)</tr>", table_html, re.S | re.I)
     md_rows = []
     for row in rows:
-        cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S | re.I)
-        cells = [re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", c))).strip() or "—"
-                 for c in cells]
+        raw_cells = re.findall(r"(<t[dh][^>]*>)(.*?)</t[dh]>", row, re.S | re.I)
+        cells = []
+        for tag, content in raw_cells:
+            text = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", content))).strip() or "—"
+            # Expand colspan so column alignment is preserved
+            colspan_m = re.search(r'colspan=["\']?(\d+)["\']?', tag, re.I)
+            repeat = int(colspan_m.group(1)) if colspan_m else 1
+            cells.extend([text] + [""] * (repeat - 1))
+        # Replace trailing empty cells (from colspan expansion) with "—"
+        cells = [c if c else "—" for c in cells]
         md_rows.append("| " + " | ".join(cells) + " |")
     if len(md_rows) > 1:
         # Insert separator after header row
