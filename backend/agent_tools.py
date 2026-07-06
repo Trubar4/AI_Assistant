@@ -38,7 +38,39 @@ def _load_bal_index() -> None:
 _load_bal_index()
 
 
+def _table_to_markdown(table_html: str) -> str:
+    """Convert a single HTML table to a Markdown table, preserving empty cells as '—'."""
+    rows = re.findall(r"<tr[^>]*>(.*?)</tr>", table_html, re.S | re.I)
+    md_rows = []
+    for row in rows:
+        cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S | re.I)
+        cells = [re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", c))).strip() or "—"
+                 for c in cells]
+        md_rows.append("| " + " | ".join(cells) + " |")
+    if len(md_rows) > 1:
+        # Insert separator after header row
+        col_count = md_rows[0].count("|") - 1
+        separator = "|" + "|".join(["---"] * col_count) + "|"
+        md_rows.insert(1, separator)
+    return "\n".join(md_rows)
+
+
+def _html_to_text(raw: str) -> str:
+    """Convert HTML to readable text, preserving table structure as Markdown."""
+    # Replace each table block with its Markdown equivalent before stripping
+    def replace_table(m: re.Match) -> str:
+        return "\n\n" + _table_to_markdown(m.group(0)) + "\n\n"
+
+    processed = re.sub(r"<table[^>]*>.*?</table>", replace_table, raw, flags=re.S | re.I)
+    processed = re.sub(r"<[^>]+>", " ", processed)
+    processed = html.unescape(processed)
+    processed = re.sub(r" {2,}", " ", processed)
+    processed = re.sub(r"\n{3,}", "\n\n", processed)
+    return processed.strip()
+
+
 def _strip_html(text: str) -> str:
+    """Plain text extraction (used for search index snippets)."""
     text = re.sub(r"<[^>]+>", " ", text)
     text = html.unescape(text)
     text = re.sub(r"\s+", " ", text)
@@ -74,7 +106,7 @@ def read_page(filename: str, max_chars: int = 6000) -> dict:
     if not path.exists():
         return {"error": f"Datei nicht gefunden: {filename}"}
     raw = path.read_text(encoding="utf-8", errors="replace")
-    text = _strip_html(raw)
+    text = _html_to_text(raw)
     return {
         "filename": filename,
         "text": text[:max_chars],

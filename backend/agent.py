@@ -65,6 +65,10 @@ Regeln:
 - Erkläre in 1–2 Sätzen WARUM die gefundenen Seiten die Frage beantworten.
 - Hinweis zu Bildern: Das Manual enthält Abbildungen mit Nummern (z. B. "Fig. 1234: ...").
   Wenn du eine relevante Abbildung siehst, nenne die Fig.-Nummer in deiner Antwort.
+- KRITISCH bei Tabellenwerten: Tabellen werden als Markdown geliefert. Lies die Zeile und
+  Spalte EXAKT ab. Wenn die gesuchte Zelle "—" oder leer ist, antworte explizit:
+  "Für diese Konfiguration ist kein Wert in der Tabelle eingetragen."
+  NIEMALS einen Wert aus einer anderen Zeile oder Spalte als Ersatz angeben.
 
 Schreibe am Ende deiner finalen Antwort einen JSON-Block:
 ```json
