@@ -22,7 +22,8 @@ from backend.agent_tools import TOOL_SCHEMAS, TOOL_FN
 
 logger = logging.getLogger(__name__)
 
-AGENT_MODEL   = os.environ.get("AGENT_MODEL", "claude-haiku-4-5-20251001")
+AGENT_MODEL   = os.environ.get("AGENT_MODEL",   "claude-haiku-4-5-20251001")
+ANSWER_MODEL  = os.environ.get("ANSWER_MODEL",  "claude-sonnet-5")
 MAX_ROUNDS    = int(os.environ.get("AGENT_MAX_ROUNDS", "5"))
 
 MAX_TOOL_ROUNDS = int(os.environ.get("AGENT_MAX_TOOL_ROUNDS", "3"))
@@ -202,14 +203,20 @@ def run_agent(
         rounds += 1
 
         # After hitting tool round limit, inject reminder then disable tools
+        # Use ANSWER_MODEL (Sonnet) for the final synthesis — more reliable for
+        # table lookups and strict "no interpolation" compliance than Haiku.
+        is_forced_final = tool_rounds >= MAX_TOOL_ROUNDS
+        # Use Sonnet for any answer round that follows tool use — Haiku miscounts
+        # table columns and interpolates empty cells even when instructed not to.
+        use_answer_model = tool_rounds > 0
         call_kwargs: dict = dict(
-            model=AGENT_MODEL,
+            model=ANSWER_MODEL if use_answer_model else AGENT_MODEL,
             max_tokens=1500,
             system=AGENT_SYSTEM,
             tools=TOOL_SCHEMAS,
             messages=messages,
         )
-        if tool_rounds >= MAX_TOOL_ROUNDS and not forced_answer:
+        if is_forced_final and not forced_answer:
             forced_answer = True
             messages.append({
                 "role": "user",
