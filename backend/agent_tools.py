@@ -38,35 +38,84 @@ def _load_bal_index() -> None:
 _load_bal_index()
 
 
-def _table_to_markdown(table_html: str) -> str:
-    """Convert a single HTML table to a Markdown table, preserving empty cells as '—'."""
+def _extract_cells(row_html: str) -> list[tuple[str, int]]:
+    """Return list of (text, colspan) for each cell in a table row."""
+    result = []
+    for tag, content in re.findall(r"(<t[dh][^>]*>)(.*?)</t[dh]>", row_html, re.S | re.I):
+        text = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", content))).strip() or "—"
+        colspan_m = re.search(r'colspan=["\']?(\d+)["\']?', tag, re.I)
+        result.append((text, int(colspan_m.group(1)) if colspan_m else 1))
+    return result
+
+
+def _table_to_text(table_html: str) -> str:
+    """Convert an HTML table to annotated key=value rows so no column counting is needed.
+
+    Each data row is emitted as:
+      ROW <row_label>: <col_header_1>=<value> | <col_header_2>=<value> | ...
+
+    This eliminates off-by-one errors from multi-row or colspan headers.
+    Falls back to a simple pipe-delimited table when no clear header is found.
+    """
     rows = re.findall(r"<tr[^>]*>(.*?)</tr>", table_html, re.S | re.I)
-    md_rows = []
+    if not rows:
+        return ""
+
+    # Collect all rows as flat cell lists (expanding colspan)
+    parsed: list[list[str]] = []
     for row in rows:
-        raw_cells = re.findall(r"(<t[dh][^>]*>)(.*?)</t[dh]>", row, re.S | re.I)
-        cells = []
-        for tag, content in raw_cells:
-            text = re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", "", content))).strip() or "—"
-            # Expand colspan so column alignment is preserved
-            colspan_m = re.search(r'colspan=["\']?(\d+)["\']?', tag, re.I)
-            repeat = int(colspan_m.group(1)) if colspan_m else 1
-            cells.extend([text] + [""] * (repeat - 1))
-        # Replace trailing empty cells (from colspan expansion) with "—"
-        cells = [c if c else "—" for c in cells]
-        md_rows.append("| " + " | ".join(cells) + " |")
-    if len(md_rows) > 1:
-        # Insert separator after header row
-        col_count = md_rows[0].count("|") - 1
-        separator = "|" + "|".join(["---"] * col_count) + "|"
-        md_rows.insert(1, separator)
-    return "\n".join(md_rows)
+        cells_with_span = _extract_cells(row)
+        flat: list[str] = []
+        for text, span in cells_with_span:
+            flat.append(text)
+            flat.extend([""] * (span - 1))
+        parsed.append(flat)
+
+    if not parsed:
+        return ""
+
+    # Use the first row as column headers; skip any subsequent all-th sub-header rows
+    headers = parsed[0]
+    n_cols = len(headers)
+
+    # Find data rows: rows that aren't sub-headers (have real values, not all —/empty)
+    data_rows: list[list[str]] = []
+    for row_cells in parsed[1:]:
+        # Pad or trim to match header count
+        row_cells = (row_cells + ["—"] * n_cols)[:n_cols]
+        row_cells = [c if c else "—" for c in row_cells]
+        # Skip rows that look like sub-headers (no numeric/kg/m content)
+        content = " ".join(row_cells)
+        if not re.search(r'\d', content):
+            continue
+        data_rows.append(row_cells)
+
+    if not data_rows:
+        # Fallback: plain markdown
+        md = ["| " + " | ".join(headers) + " |",
+              "|" + "|".join(["---"] * n_cols) + "|"]
+        for r in parsed[1:]:
+            r = (r + ["—"] * n_cols)[:n_cols]
+            md.append("| " + " | ".join(c or "—" for c in r) + " |")
+        return "\n".join(md)
+
+    # Annotated format: ROW <label>: col2_header=value | col3_header=value | ...
+    row_label_header = headers[0] if headers else "Row"
+    col_headers = headers[1:]  # skip row-label column
+    lines = [f"[Tabelle: {row_label_header} × {' / '.join(col_headers[:6])}{'...' if len(col_headers) > 6 else ''}]"]
+    for row_cells in data_rows:
+        label = row_cells[0]
+        values = row_cells[1:]
+        parts = [f"{col_headers[i] if i < len(col_headers) else f'col{i+2}'}={values[i] if i < len(values) else '—'}"
+                 for i in range(len(col_headers))]
+        lines.append(f"  {label}: " + " | ".join(parts))
+    return "\n".join(lines)
 
 
 def _html_to_text(raw: str) -> str:
-    """Convert HTML to readable text, preserving table structure as Markdown."""
-    # Replace each table block with its Markdown equivalent before stripping
+    """Convert HTML to readable text, preserving table structure as annotated key=value rows."""
     def replace_table(m: re.Match) -> str:
-        return "\n\n" + _table_to_markdown(m.group(0)) + "\n\n"
+        return "\n\n" + _table_to_text(m.group(0)) + "\n\n"
 
     processed = re.sub(r"<table[^>]*>.*?</table>", replace_table, raw, flags=re.S | re.I)
     processed = re.sub(r"<[^>]+>", " ", processed)
