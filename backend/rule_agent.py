@@ -25,7 +25,7 @@ TOP_N_SEARCH        = 10
 TOP_N_SOURCES       = 3
 
 # Score-Gap: eine Quelle wird nur angezeigt wenn ihr Score ≥ GAP_RATIO * top_score
-SCORE_GAP_RATIO     = 0.50   # z. B. Top=0.045 → min=0.0225
+SCORE_GAP_RATIO     = 0.65   # z. B. Top=0.045 → min=0.029
 
 # Schwache-Suche-Schwelle: wenn top_score < LOW_SCORE → zweite Suche
 LOW_SCORE_THRESHOLD = 0.020
@@ -125,36 +125,88 @@ def _needs_clarification(question: str, context: str) -> str | None:
 # Snippet-Extraktion
 # ---------------------------------------------------------------------------
 
+def _page_to_plain(text: str) -> str:
+    """
+    Wandelt den annotierten Seitentext in lesbaren Klartext um:
+    - Überschrift/Breadcrumb-Header (erste Zeilen bis zum echten Inhalt) überspringen
+    - Markdown-Tabellenzeilen: zweite Zelle extrahieren (Aktionsschritte)
+    - Annotierte Tabellen (ROW-Format) in lesbare Zeilen umwandeln
+    """
+    lines = text.splitlines()
+    result = []
+    # Die erste nicht-leere Zeile ist immer der Breadcrumb-Header → überspringen.
+    first_content_skipped = False
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if not first_content_skipped:
+            first_content_skipped = True
+            continue   # Breadcrumb-Zeile überspringen
+        # UI-Navigation und Zwischenüberschriften überspringen
+        if re.search(r'\bHome\b.*\bFig\.\b|\bHome\b.{40,}', stripped) and not stripped.startswith("|"):
+            continue
+        if re.search(r'font bigger|font smaller|font-reset', stripped):
+            continue
+
+        # Markdown-Aktionszeile: | — | Text | oder | ❑ | Text |
+        m = re.match(r'^\|\s*[—–\-❑✓]\s*\|\s*(.+?)\s*\|?\s*$', stripped)
+        if m:
+            cell = m.group(1).strip()
+            if cell and cell != "---":
+                result.append(cell)
+            continue
+
+        # Separator-Zeile überspringen
+        if re.match(r'^\|[-|: ]+\|$', stripped):
+            continue
+
+        # Annotierte Tabellenzeile (aus _table_to_text): "  75 m: 1=380kg | 2=690kg ..."
+        if re.match(r'^\s+\S.*:\s+\d', stripped):
+            result.append(stripped.strip())
+            continue
+
+        # Tabellen-Header-Zeile [Tabelle: ...]
+        if stripped.startswith("[Tabelle:"):
+            result.append(stripped)
+            continue
+
+        # Normale Textzeile
+        if not stripped.startswith("|"):
+            result.append(stripped)
+
+    return "\n".join(result)
+
+
 def _extract_snippet(filename: str, keywords: list[str]) -> str:
     """
     Liest die Top-Seite und gibt den ersten Textabschnitt zurück, der ein
-    Keyword enthält. Kein LLM — reine String-Suche.
+    Keyword enthält. Kein LLM — reine String-Suche im Klartext.
     """
     try:
         from backend.agent_tools import read_page
         result = read_page(filename, max_chars=8000)
-        text = result.get("text", "")
-        if not text:
+        raw = result.get("text", "")
+        if not raw:
             return ""
+
+        text = _page_to_plain(raw)
+        if not text:
+            return raw[:300].strip()
+
         lower = text.lower()
-        # Ersten Treffer finden
         best_pos = len(text)
         for kw in keywords:
             pos = lower.find(kw.lower())
             if 0 <= pos < best_pos:
                 best_pos = pos
+
         if best_pos == len(text):
-            # Kein Keyword → erste 300 Zeichen
-            return text[:300].strip()
+            return text[:SNIPPET_AFTER].strip()
+
         start = max(0, best_pos - SNIPPET_BEFORE)
         end   = min(len(text), best_pos + SNIPPET_AFTER)
-        snippet = text[start:end].strip()
-        # Satz nicht mitten abschneiden
-        if start > 0 and not snippet[0].isupper():
-            dot = snippet.find(". ")
-            if dot != -1:
-                snippet = snippet[dot + 2:]
-        return snippet
+        return text[start:end].strip()
     except Exception:
         return ""
 
