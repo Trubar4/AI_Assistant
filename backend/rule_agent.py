@@ -124,20 +124,18 @@ def run_rule_agent(
                 "messages": messages,
             }
 
-    # Phase 2: Suchquery aufbauen
-    query_parts = []
-    if context:
-        query_parts.append(context)
-    query_parts.append(question)
-    # Bei Folgeantwort: auch Nutzerantwort auf die Rückfrage einbeziehen
+    # Phase 2: Suchquery aufbauen — NUR die Frage, nicht den Kontext.
+    # Der Kontext enthält Maschinendaten (z. B. "Heckballast: 124 t / Stahl-Haltestangen")
+    # die sonst die Suchergebnisse in die falsche Richtung lenken.
+    # Bei Folgeantwort auf eine Rückfrage: Nutzerantwort + ursprüngliche Frage kombinieren.
     if is_followup and conversation:
         last_user = next(
             (m["content"] for m in reversed(conversation) if m.get("role") == "user"),
             "",
         )
-        if last_user and last_user != question:
-            query_parts.append(last_user)
-    query = " ".join(query_parts)
+        query = f"{question} {last_user}".strip() if last_user != question else question
+    else:
+        query = question
 
     logger.info("RuleAgent: Suche → %s", query[:120])
     candidates = search(query, top_n=TOP_N_SEARCH)
