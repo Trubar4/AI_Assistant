@@ -667,6 +667,7 @@
   <div class="mode-toggle" id="mode-toggle" title="Suchmodus wechseln">
     <button class="mode-toggle__btn mode-toggle__btn--active" id="mode-btn-classic" onclick="setMode('classic')">Klassisch</button>
     <button class="mode-toggle__btn" id="mode-btn-agent" onclick="setMode('agent')">Assistent</button>
+    <button class="mode-toggle__btn" id="mode-btn-rule" onclick="setMode('rule')">Regelbasiert</button>
   </div>
 </header>
 
@@ -1147,6 +1148,7 @@ function setMode(m) {
   localStorage.setItem(MODE_KEY, m);
   document.getElementById('mode-btn-classic').classList.toggle('mode-toggle__btn--active', m === 'classic');
   document.getElementById('mode-btn-agent').classList.toggle('mode-toggle__btn--active', m === 'agent');
+  document.getElementById('mode-btn-rule').classList.toggle('mode-toggle__btn--active', m === 'rule');
 }
 setMode(_mode);
 
@@ -1171,10 +1173,10 @@ async function sendQuestion(opts = {}) {
 
   // Loading placeholder
   const loadDiv = document.createElement('div');
-  loadDiv.innerHTML = _mode === 'agent'
+  loadDiv.innerHTML = (_mode === 'agent' || _mode === 'rule')
     ? `<div class="agent-bubble"><div class="agent-bubble__head">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        Assistent sucht…</div>
+        ${_mode === 'rule' ? 'Suche…' : 'Assistent sucht…'}</div>
         <div class="skeleton" style="width:75%;margin-bottom:8px"></div>
         <div class="skeleton" style="width:55%"></div></div>`
     : `<div class="answer-card"><div class="answer-card__body" style="gap:var(--s-3)">
@@ -1187,8 +1189,8 @@ async function sendQuestion(opts = {}) {
   document.getElementById('send-btn').disabled = true;
 
   try {
-    if (_mode === 'agent') {
-      await _sendAgent(q, loadDiv, history, opts.conversation || []);
+    if (_mode === 'agent' || _mode === 'rule') {
+      await _sendAgent(q, loadDiv, history, opts.conversation || [], _mode);
     } else {
       await _sendClassic(q, loadDiv);
     }
@@ -1212,12 +1214,12 @@ async function _sendClassic(q, loadDiv) {
   }
 }
 
-async function _sendAgent(q, loadDiv, history, conversation) {
+async function _sendAgent(q, loadDiv, history, conversation, mode) {
   try {
     const resp = await fetch(API + '/ask_agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q, context: _getContext(), conversation }),
+      body: JSON.stringify({ question: q, context: _getContext(), conversation, mode: mode || '' }),
     });
     const data = await resp.json();
 

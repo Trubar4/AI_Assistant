@@ -39,6 +39,7 @@ load_dotenv()
 from backend.search import search, reset_index, extract_facets, count_hits
 from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer
 from backend.agent import run_agent
+from backend.rule_agent import run_rule_agent
 
 # ---------------------------------------------------------------------------
 # Error code database (optional — loaded once at startup)
@@ -70,8 +71,11 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
-# AGENT_MODE=true setzt den Standard-Modus im Frontend auf "agent"
-_DEFAULT_MODE = "agent" if os.environ.get("AGENT_MODE", "").lower() in ("1", "true") else "classic"
+# AGENT_MODE=true  → Standard "agent"
+# AGENT_MODE=rule  → regelbasierter Agent ohne LLM (RULE_AGENT=true hat gleichen Effekt)
+_agent_mode_env = os.environ.get("AGENT_MODE", "").lower()
+_rule_mode = _agent_mode_env == "rule" or os.environ.get("RULE_AGENT", "").lower() in ("1", "true")
+_DEFAULT_MODE = "rule" if _rule_mode else ("agent" if _agent_mode_env in ("1", "true") else "classic")
 
 app = FastAPI(
     title="Maschinen-Assistent API",
@@ -158,6 +162,7 @@ class AgentRequest(BaseModel):
     question: str
     context: str = ""
     conversation: list[dict] = []   # History für Clarification-Runden
+    mode: str = ""                  # "rule" → regelbasierter Agent; leer → globaler Default
 
 
 class AgentSource(BaseModel):
@@ -280,11 +285,20 @@ async def ask_agent(req: AgentRequest) -> AgentResponse:
     if not q:
         raise HTTPException(status_code=422, detail="question must not be empty")
 
-    result = run_agent(
-        question=q,
-        context=req.context.strip(),
-        conversation=req.conversation or [],
-    )
+    use_rule = (req.mode == "rule") or (_rule_mode and req.mode != "agent")
+
+    if use_rule:
+        result = run_rule_agent(
+            question=q,
+            context=req.context.strip(),
+            conversation=req.conversation or [],
+        )
+    else:
+        result = run_agent(
+            question=q,
+            context=req.context.strip(),
+            conversation=req.conversation or [],
+        )
 
     return AgentResponse(
         type=result["type"],
