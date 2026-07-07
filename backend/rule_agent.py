@@ -4,9 +4,11 @@ rule_agent.py — Regelbasierter RAG-Agent ohne LLM-Calls.
 Ablauf:
   1. Prüfe ob eine ESSENTIELLE Information fehlt (Keyword-Regeln).
      → Wenn ja UND Kontext enthält sie nicht: Rückfrage zurückgeben.
-  2. Suche mit BM25+Semantic (search).
-  3. Lies die beste Seite vollständig wenn Score > Schwelle (read_page).
-  4. Gibt Quellen zurück — keine LLM-Synthese.
+  2. Frage normalisieren (Fragesatz → Kernbegriffe).
+  3. Suche mit BM25+Semantic.
+  4. Score-Gap-Filter: nur Quellen die nah genug am Top-Treffer sind.
+  5. Wenn Score gut: Snippet aus Top-Seite extrahieren und anzeigen.
+  6. Wenn alle Scores schwach: zweite Suche mit normalisierten Keywords.
 
 Aktivierung: Umgebungsvariable RULE_AGENT=true  oder  AGENT_MODE=rule
 """
@@ -17,48 +19,86 @@ import re
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Score-Schwelle für read_page
+# Tuning-Parameter
 # ---------------------------------------------------------------------------
-READ_PAGE_THRESHOLD = 0.025   # BM25-Score ab dem die Top-Seite vollständig gelesen wird
-TOP_N_SEARCH       = 10
-TOP_N_SOURCES      = 3
+TOP_N_SEARCH        = 10
+TOP_N_SOURCES       = 3
+
+# Score-Gap: eine Quelle wird nur angezeigt wenn ihr Score ≥ GAP_RATIO * top_score
+SCORE_GAP_RATIO     = 0.50   # z. B. Top=0.045 → min=0.0225
+
+# Schwache-Suche-Schwelle: wenn top_score < LOW_SCORE → zweite Suche
+LOW_SCORE_THRESHOLD = 0.020
+
+# Snippet-Länge (Zeichen vor/nach dem ersten Keyword-Match)
+SNIPPET_BEFORE      = 100
+SNIPPET_AFTER       = 300
+
+# ---------------------------------------------------------------------------
+# Fragesatz-Normalisierung
+# Fragesatz-Präfixe werden abgeschnitten, damit BM25 die Kernbegriffe trifft.
+# ---------------------------------------------------------------------------
+_QUESTION_PREFIXES = re.compile(
+    r"^(wie\s+(\w+\s+ich\s+|kann\s+ich\s+|funktioniert\s+|wird\s+|ist\s+)|"
+    r"was\s+(ist|sind|bedeutet|mache\s+ich)\s+|"
+    r"welche[rns]?\s+|"
+    r"wo\s+(finde\s+ich|ist|sind)\s+|"
+    r"wann\s+|warum\s+|wozu\s+|"
+    r"kann\s+ich\s+|"
+    r"muss\s+ich\s+)",
+    re.I,
+)
+
+# Stoppwörter die nach dem Präfix noch übrig bleiben können
+_STOPWORDS = {"die", "der", "das", "den", "dem", "ein", "eine", "einen", "einem",
+              "einer", "ich", "an", "auf", "in", "mit", "zu", "für", "bei",
+              "von", "aus", "nach", "über", "unter", "zwischen", "durch"}
+
+
+def _normalize_query(question: str) -> str:
+    """Entfernt Fragesatz-Präfixe und Stoppwörter → Kernbegriffe für BM25."""
+    q = question.strip().rstrip("?").strip()
+    q = _QUESTION_PREFIXES.sub("", q).strip()
+    # Einzelne kurze Stoppwörter am Anfang entfernen
+    words = q.split()
+    while words and words[0].lower() in _STOPWORDS:
+        words = words[1:]
+    # Kurze Anhängewörter am Ende entfernen (z. B. "vor", "an", "ab")
+    while words and len(words[-1]) <= 3 and words[-1].lower() in _STOPWORDS | {"vor", "ab", "an", "aus"}:
+        words = words[:-1]
+    normalized = " ".join(words).strip()
+    return normalized if normalized else question
+
 
 # ---------------------------------------------------------------------------
 # Clarification-Regeln
-# Jede Regel: (trigger_keywords, context_keywords_die_reichen, rückfrage)
-#
+# Jede Regel: (trigger_keywords, context_satisfiers, rückfrage)
 #   trigger_keywords   — mind. eines muss in der Frage vorkommen
 #   context_satisfiers — wenn mind. eines davon im Kontext steht → KEINE Rückfrage
 #   question           — generische Rückfrage an den Bediener
 # ---------------------------------------------------------------------------
 _CLARIFICATION_RULES: list[tuple[list[str], list[str], str]] = [
     (
-        # Fragen zu Traglast / Hubkapazität
         ["traglast", "tragfähigkeit", "tragen", "heben", "last", "kapazität"],
-        # Kontext reicht wenn Auslegerlänge + Einscherung angegeben
         ["ausleger", "einscherung", "meter", " m ", "länge", "50m", "60m", "70m", "74m", "75m", "80m"],
         "Welche Auslegerlänge und Einscherung (z. B. 74 m, 6-fach) verwenden Sie?",
     ),
     (
-        # Fragen zu Lasthaken / Unterflasche / Eigengewicht
         ["lasthaken", "unterflasche", "eigengewicht", "mindestgewicht", "hakengewicht"],
         ["einscherung", "meter", " m ", "länge", "ausleger"],
         "Welche Auslegerlänge und Einscherung verwenden Sie?",
     ),
     (
-        # Fragen zu Zwischenstücken / Auslegerkonfiguration
         ["zwischenstück", "zwischenstueck", "zwischenstücke", "bauteile", "konfiguration"],
         ["meter", " m ", "länge", "ausleger", "hauptausleger", "nadelausleger"],
         "Welche Gesamt-Auslegerlänge und welche Auslegervariante (Hauptausleger / Nadelausleger) benötigen Sie?",
     ),
     (
-        # Fragen zu Einscherplan / Einscherpläne
         ["einscherplan", "einscherpläne", "einscheren", "einscherung wählen"],
         ["einscherung", "fach", "winde", "lastort"],
         "Wie viele Einscherungen (z. B. 4-fach) und welcher Lastort (Hauptausleger-Kopf / Nadelausleger-Kopf)?",
     ),
     (
-        # Seillänge (nicht "Winde" allein — zu generisch)
         ["seillänge", "seillänge berechnen", "benötigte seillänge"],
         ["einscherung", "fach", "meter", " m ", "länge", "ausleger"],
         "Welche Auslegerlänge und Einscherung verwenden Sie?",
@@ -67,24 +107,72 @@ _CLARIFICATION_RULES: list[tuple[list[str], list[str], str]] = [
 
 
 def _keywords_in_text(keywords: list[str], text: str) -> bool:
-    """True wenn mind. ein Keyword im Text vorkommt (Groß-/Kleinschreibung egal)."""
     lower = text.lower()
     return any(kw in lower for kw in keywords)
 
 
 def _needs_clarification(question: str, context: str) -> str | None:
-    """
-    Gibt die Rückfrage zurück, wenn eine essentielle Information fehlt —
-    aber nur wenn der Kontext die nötigen Infos NICHT bereits enthält.
-    """
-    combined_context = context.lower()
-
+    """Rückfrage wenn eine essentielle Info fehlt und der Kontext sie nicht enthält."""
+    ctx = context.lower()
     for trigger_kws, satisfier_kws, question_text in _CLARIFICATION_RULES:
         if _keywords_in_text(trigger_kws, question):
-            # Prüfe ob Kontext die fehlende Info schon enthält
-            if not _keywords_in_text(satisfier_kws, combined_context):
+            if not _keywords_in_text(satisfier_kws, ctx):
                 return question_text
     return None
+
+
+# ---------------------------------------------------------------------------
+# Snippet-Extraktion
+# ---------------------------------------------------------------------------
+
+def _extract_snippet(filename: str, keywords: list[str]) -> str:
+    """
+    Liest die Top-Seite und gibt den ersten Textabschnitt zurück, der ein
+    Keyword enthält. Kein LLM — reine String-Suche.
+    """
+    try:
+        from backend.agent_tools import read_page
+        result = read_page(filename, max_chars=8000)
+        text = result.get("text", "")
+        if not text:
+            return ""
+        lower = text.lower()
+        # Ersten Treffer finden
+        best_pos = len(text)
+        for kw in keywords:
+            pos = lower.find(kw.lower())
+            if 0 <= pos < best_pos:
+                best_pos = pos
+        if best_pos == len(text):
+            # Kein Keyword → erste 300 Zeichen
+            return text[:300].strip()
+        start = max(0, best_pos - SNIPPET_BEFORE)
+        end   = min(len(text), best_pos + SNIPPET_AFTER)
+        snippet = text[start:end].strip()
+        # Satz nicht mitten abschneiden
+        if start > 0 and not snippet[0].isupper():
+            dot = snippet.find(". ")
+            if dot != -1:
+                snippet = snippet[dot + 2:]
+        return snippet
+    except Exception:
+        return ""
+
+
+# ---------------------------------------------------------------------------
+# Score-Gap-Filter
+# ---------------------------------------------------------------------------
+
+def _filter_by_score_gap(candidates: list[dict]) -> list[dict]:
+    """Behält nur Kandidaten deren Score ≥ GAP_RATIO * top_score."""
+    if not candidates:
+        return []
+    top_score = candidates[0].get("score", 0)
+    if top_score <= 0:
+        return candidates[:TOP_N_SOURCES]
+    min_score = top_score * SCORE_GAP_RATIO
+    filtered = [c for c in candidates if c.get("score", 0) >= min_score]
+    return filtered[:TOP_N_SOURCES]
 
 
 # ---------------------------------------------------------------------------
@@ -101,15 +189,13 @@ def run_rule_agent(
 
     Returns:
       {"type": "clarification", "question": "...", "messages": [...]}
-      {"type": "answer", "answer": "", "sources": [...], "rounds": N}
+      {"type": "answer", "answer": "...", "sources": [...], "rounds": N}
     """
-    from backend.agent_tools import search, read_page
+    from backend.agent_tools import search
 
-    # Nach einer Rückfrage enthält conversation die User-Antwort bereits —
-    # dann direkt suchen, keine erneute Clarification-Prüfung.
     is_followup = bool(conversation)
 
-    # Phase 1: Clarification (nur beim ersten Call, nicht bei Folgeantworten)
+    # Phase 1: Clarification
     if not is_followup:
         clarification = _needs_clarification(question, context)
         if clarification:
@@ -124,45 +210,53 @@ def run_rule_agent(
                 "messages": messages,
             }
 
-    # Phase 2: Suchquery aufbauen — NUR die Frage, nicht den Kontext.
-    # Der Kontext enthält Maschinendaten (z. B. "Heckballast: 124 t / Stahl-Haltestangen")
-    # die sonst die Suchergebnisse in die falsche Richtung lenken.
-    # Bei Folgeantwort auf eine Rückfrage: Nutzerantwort + ursprüngliche Frage kombinieren.
+    # Phase 2: Query normalisieren
     if is_followup and conversation:
         last_user = next(
             (m["content"] for m in reversed(conversation) if m.get("role") == "user"),
             "",
         )
-        query = f"{question} {last_user}".strip() if last_user != question else question
+        raw_query = f"{question} {last_user}".strip() if last_user != question else question
     else:
-        query = question
+        raw_query = question
 
-    logger.info("RuleAgent: Suche → %s", query[:120])
-    candidates = search(query, top_n=TOP_N_SEARCH)
+    normalized = _normalize_query(raw_query)
+    logger.info("RuleAgent: Suche → '%s' (normalisiert: '%s')", raw_query[:80], normalized[:80])
+
+    # Phase 3: Erste Suche mit normalisiertem Query
+    candidates = search(normalized, top_n=TOP_N_SEARCH)
+    rounds = 1
+
+    # Phase 4: Schwache Ergebnisse → zweite Suche mit Original-Frage
+    top_score = candidates[0].get("score", 0) if candidates else 0
+    if top_score < LOW_SCORE_THRESHOLD and normalized != raw_query:
+        logger.info("RuleAgent: Score schwach (%.4f), zweite Suche mit Original-Query", top_score)
+        candidates2 = search(raw_query, top_n=TOP_N_SEARCH)
+        rounds = 2
+        if candidates2 and candidates2[0].get("score", 0) > top_score:
+            candidates = candidates2
 
     if not candidates:
         return {
             "type":    "answer",
             "answer":  "Keine passenden Seiten im Manual gefunden.",
             "sources": [],
-            "rounds":  1,
+            "rounds":  rounds,
         }
 
-    # Phase 3: Top-Seite vollständig lesen wenn Score ausreichend
-    top = candidates[0]
-    if top.get("score", 0) >= READ_PAGE_THRESHOLD:
-        logger.info("RuleAgent: read_page(%s) score=%.4f", top["filename"], top["score"])
-        read_page(top["filename"])   # Ergebnis wird nicht ausgewertet — nur für Logging/Cache
+    # Phase 5: Score-Gap-Filter
+    filtered = _filter_by_score_gap(candidates)
 
-    sources = [
-        {"filename": r["filename"], "title": r["title"]}
-        for r in candidates[:TOP_N_SOURCES]
-    ]
+    # Phase 6: Snippet aus Top-Treffer
+    top = filtered[0]
+    keywords = [w for w in normalized.split() if len(w) > 3 and w.lower() not in _STOPWORDS]
+    snippet = _extract_snippet(top["filename"], keywords)
+    logger.info("RuleAgent: fertig, %d Quellen, snippet=%d Zeichen", len(filtered), len(snippet))
 
-    logger.info("RuleAgent: fertig, %d Quellen", len(sources))
+    sources = [{"filename": r["filename"], "title": r["title"]} for r in filtered]
     return {
         "type":    "answer",
-        "answer":  "",        # Keine LLM-Synthese — Nutzer liest die Quelle selbst
+        "answer":  snippet,
         "sources": sources,
-        "rounds":  1,
+        "rounds":  rounds,
     }
