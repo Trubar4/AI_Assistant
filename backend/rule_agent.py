@@ -275,29 +275,40 @@ def run_rule_agent(
     normalized = _normalize_query(raw_query)
     logger.info("RuleAgent: Suche → '%s' (normalisiert: '%s')", raw_query[:80], normalized[:80])
 
-    # Phase 3: Erste Suche mit normalisiertem Query
-    candidates = search(normalized, top_n=TOP_N_SEARCH)
-    rounds = 1
+    # Phase 3a: BAL-Titelindex (deterministisch, keine Scores nötig)
+    from backend.agent_tools import bal_search
+    bal_hits = bal_search(normalized, max_results=TOP_N_SOURCES)
+    # Filtere Fehler-Einträge aus
+    bal_hits = [h for h in bal_hits if "error" not in h and h.get("filename")]
 
-    # Phase 4: Schwache Ergebnisse → zweite Suche mit Original-Frage
-    top_score = candidates[0].get("score", 0) if candidates else 0
-    if top_score < LOW_SCORE_THRESHOLD and normalized != raw_query:
-        logger.info("RuleAgent: Score schwach (%.4f), zweite Suche mit Original-Query", top_score)
-        candidates2 = search(raw_query, top_n=TOP_N_SEARCH)
-        rounds = 2
-        if candidates2 and candidates2[0].get("score", 0) > top_score:
-            candidates = candidates2
+    if bal_hits:
+        logger.info("RuleAgent: BAL-Treffer %d für '%s'", len(bal_hits), normalized[:60])
+        filtered = bal_hits[:TOP_N_SOURCES]
+        rounds = 1
+    else:
+        # Phase 3b: BM25+Semantic als Fallback
+        candidates = search(normalized, top_n=TOP_N_SEARCH)
+        rounds = 1
 
-    if not candidates:
-        return {
-            "type":    "answer",
-            "answer":  "Keine passenden Seiten im Manual gefunden.",
-            "sources": [],
-            "rounds":  rounds,
-        }
+        # Phase 4: Schwache Ergebnisse → zweite Suche mit Original-Frage
+        top_score = candidates[0].get("score", 0) if candidates else 0
+        if top_score < LOW_SCORE_THRESHOLD and normalized != raw_query:
+            logger.info("RuleAgent: Score schwach (%.4f), zweite Suche mit Original-Query", top_score)
+            candidates2 = search(raw_query, top_n=TOP_N_SEARCH)
+            rounds = 2
+            if candidates2 and candidates2[0].get("score", 0) > top_score:
+                candidates = candidates2
 
-    # Phase 5: Score-Gap-Filter
-    filtered = _filter_by_score_gap(candidates)
+        if not candidates:
+            return {
+                "type":    "answer",
+                "answer":  "Keine passenden Seiten im Manual gefunden.",
+                "sources": [],
+                "rounds":  rounds,
+            }
+
+        # Phase 5: Score-Gap-Filter
+        filtered = _filter_by_score_gap(candidates)
 
     # Phase 6: Snippet aus Top-Treffer
     top = filtered[0]

@@ -1227,6 +1227,11 @@ async function _sendAgent(q, loadDiv, history, conversation, mode) {
       loadDiv.innerHTML = renderAgentClarification(data.question, data.conversation);
     } else {
       loadDiv.innerHTML = renderAgentAnswer(data);
+      // Im Regelbasiert-Modus: Top-Quelle automatisch im Panel öffnen
+      if (mode === 'rule' && data.sources && data.sources.length > 0) {
+        const top = data.sources[0];
+        openManual('/manuals/' + top.filename, top.title);
+      }
     }
   } catch (err) {
     loadDiv.innerHTML = renderError('Agent-Anfrage fehlgeschlagen: ' + err.message);
