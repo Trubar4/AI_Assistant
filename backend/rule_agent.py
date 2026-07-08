@@ -54,17 +54,15 @@ _STOPWORDS = {"die", "der", "das", "den", "dem", "ein", "eine", "einen", "einem"
               "einer", "ich", "an", "auf", "in", "mit", "zu", "für", "bei",
               "von", "aus", "nach", "über", "unter", "zwischen", "durch"}
 
-
 def _normalize_query(question: str) -> str:
-    """Entfernt Fragesatz-Präfixe und Stoppwörter → Kernbegriffe für BM25."""
+    """Entfernt Fragesatz-Präfixe und führende Stoppwörter → Kernbegriffe für BM25."""
     q = question.strip().rstrip("?").strip()
     q = _QUESTION_PREFIXES.sub("", q).strip()
-    # Einzelne kurze Stoppwörter am Anfang entfernen
     words = q.split()
     while words and words[0].lower() in _STOPWORDS:
         words = words[1:]
-    # Kurze Anhängewörter am Ende entfernen (z. B. "vor", "an", "ab")
-    while words and len(words[-1]) <= 3 and words[-1].lower() in _STOPWORDS | {"vor", "ab", "an", "aus"}:
+    # Nur echte Stoppwörter (≤3 Zeichen) am Ende entfernen, keine Verbpräfixe
+    while words and len(words[-1]) <= 3 and words[-1].lower() in _STOPWORDS:
         words = words[:-1]
     normalized = " ".join(words).strip()
     return normalized if normalized else question
@@ -230,40 +228,29 @@ def run_rule_agent(
     normalized = _normalize_query(raw_query)
     logger.info("RuleAgent: Suche → '%s' (normalisiert: '%s')", raw_query[:80], normalized[:80])
 
-    # Phase 3a: BAL-Titelindex (deterministisch, keine Scores nötig)
-    from backend.agent_tools import bal_search
-    bal_hits = bal_search(normalized, max_results=TOP_N_SOURCES)
-    # Filtere Fehler-Einträge aus
-    bal_hits = [h for h in bal_hits if "error" not in h and h.get("filename")]
+    # Phase 3: BM25 + Semantic Search (RRF-Fusion)
+    # Zuerst mit normalisiertem Query, Fallback auf Original-Query bei schwachem Score.
+    candidates = search(normalized, top_n=TOP_N_SEARCH)
+    rounds = 1
 
-    if bal_hits:
-        logger.info("RuleAgent: BAL-Treffer %d für '%s'", len(bal_hits), normalized[:60])
-        filtered = bal_hits[:TOP_N_SOURCES]
-        rounds = 1
-    else:
-        # Phase 3b: BM25+Semantic als Fallback
-        candidates = search(normalized, top_n=TOP_N_SEARCH)
-        rounds = 1
+    top_score = candidates[0].get("score", 0) if candidates else 0
+    if top_score < LOW_SCORE_THRESHOLD and normalized != raw_query:
+        logger.info("RuleAgent: Score schwach (%.4f), zweite Suche mit Original-Query", top_score)
+        candidates2 = search(raw_query, top_n=TOP_N_SEARCH)
+        rounds = 2
+        if candidates2 and candidates2[0].get("score", 0) > top_score:
+            candidates = candidates2
 
-        # Phase 4: Schwache Ergebnisse → zweite Suche mit Original-Frage
-        top_score = candidates[0].get("score", 0) if candidates else 0
-        if top_score < LOW_SCORE_THRESHOLD and normalized != raw_query:
-            logger.info("RuleAgent: Score schwach (%.4f), zweite Suche mit Original-Query", top_score)
-            candidates2 = search(raw_query, top_n=TOP_N_SEARCH)
-            rounds = 2
-            if candidates2 and candidates2[0].get("score", 0) > top_score:
-                candidates = candidates2
+    if not candidates:
+        return {
+            "type":    "answer",
+            "answer":  "Keine passenden Seiten im Manual gefunden.",
+            "sources": [],
+            "rounds":  rounds,
+        }
 
-        if not candidates:
-            return {
-                "type":    "answer",
-                "answer":  "Keine passenden Seiten im Manual gefunden.",
-                "sources": [],
-                "rounds":  rounds,
-            }
-
-        # Phase 5: Score-Gap-Filter
-        filtered = _filter_by_score_gap(candidates)
+    # Phase 4: Score-Gap-Filter
+    filtered = _filter_by_score_gap(candidates)
 
     # Phase 6: Snippet aus Top-Treffer
     top = filtered[0]
