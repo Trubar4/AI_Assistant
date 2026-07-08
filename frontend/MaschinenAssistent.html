@@ -292,7 +292,7 @@
     .composer-textarea::placeholder { color: var(--r-on-surface-muted); }
     .composer-textarea:focus {
       border-color: var(--r-outline-variant);
-      box-shadow: 0 0 0 3px rgba(255,208,0,0.2);
+      box-shadow: 0 0 0 3px var(--r-focus-ring-soft);
     }
     .composer-hint {
       max-width: 760px;
@@ -424,7 +424,7 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.72);
+      background: var(--r-scrim);
       z-index: 100;
       align-items: center;
       justify-content: center;
@@ -440,16 +440,16 @@
       animation: pulse 1.2s ease-in-out infinite;
     }
     @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255,208,0,0.5); }
-      50%       { box-shadow: 0 0 0 24px rgba(255,208,0,0); }
+      0%, 100% { box-shadow: 0 0 0 0 var(--r-brand-glow-strong); }
+      50%       { box-shadow: 0 0 0 24px var(--r-brand-glow-transparent); }
     }
     .voice-overlay__label {
       font: 400 16px/24px var(--font-text);
-      color: var(--p-white);
+      color: var(--r-on-scrim);
     }
     .voice-overlay__transcript {
       font: 400 14px/20px var(--font-text);
-      color: rgba(255,255,255,0.6);
+      color: var(--r-on-scrim-muted);
       min-height: 20px;
     }
 
@@ -680,8 +680,8 @@
   </svg>
   <div class="lds-appbar__product"><strong>KI</strong> Assistent</div>
   <div style="flex:1"></div>
-  <span style="font:400 13px/18px var(--font-text);color:var(--p-steel-400);padding:0 var(--s-3);border-left:1px solid var(--p-steel-700)">LR 1104.03.08</span>
-  <span id="online-status" style="font:400 12px/16px var(--font-text);color:var(--p-steel-400);padding:0 var(--s-3)">Offline</span>
+  <span style="font:400 13px/18px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3);border-left:1px solid var(--r-chrome-border)">LR 1104.03.08</span>
+  <span id="online-status" style="font:400 12px/16px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3)">Offline</span>
   <!-- Mode Toggle -->
   <div class="mode-toggle" id="mode-toggle">
     <button class="mode-toggle__btn mode-toggle__btn--active" id="mode-btn-rule"
@@ -861,14 +861,14 @@
 <!-- ═══ VOICE OVERLAY ═════════════════════════════════════════════════════ -->
 <div class="voice-overlay" id="voice-overlay" onclick="stopVoice()">
   <div class="voice-ring">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--p-steel-975)" stroke-width="1.6" stroke-linecap="round">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--r-on-brand)" stroke-width="1.6" stroke-linecap="round">
       <rect x="9" y="3" width="6" height="12" rx="3"/>
       <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>
     </svg>
   </div>
   <div class="voice-overlay__label">Sprechen Sie jetzt…</div>
   <div class="voice-overlay__transcript" id="voice-transcript"></div>
-  <button class="lds-btn lds-btn--ghost" style="color:var(--p-white);border-color:var(--p-steel-500)"
+  <button class="lds-btn lds-btn--ghost" style="color:var(--r-on-scrim);border-color:var(--r-outline-on-scrim)"
     onclick="stopVoice()">Abbrechen</button>
 </div>
 
@@ -909,7 +909,7 @@ function renderMarkdown(md) {
   function fmt(t) {
     return escHtml(t)
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/`([^`]+)`/g, '<code style="font-family:monospace;background:var(--r-surface-high);padding:1px 4px;border-radius:3px">$1</code>');
+      .replace(/`([^`]+)`/g, '<code style="font-family:var(--font-mono);background:var(--r-surface-high);padding:1px 4px;border-radius:3px">$1</code>');
   }
 
   for (const raw of lines) {
