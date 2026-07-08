@@ -98,4 +98,7 @@
   --r-brand:               var(--p-yellow-400);
   --r-on-brand:            var(--p-black);
   --r-focus-ring:          var(--p-yellow-400);
+  --r-focus-ring-soft:        rgba(255,208,0,0.2);
+  --r-brand-glow-strong:      rgba(255,208,0,0.5);
+  --r-brand-glow-transparent: rgba(255,208,0,0);
 }

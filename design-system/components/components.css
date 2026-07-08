@@ -44,7 +44,7 @@
   transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 .lds-input::placeholder, .lds-textarea::placeholder { color: var(--r-on-surface-muted); }
-.lds-input:focus, .lds-textarea:focus { border-color: var(--r-outline-variant); box-shadow: 0 0 0 3px rgba(255,208,0,0.2); }
+.lds-input:focus, .lds-textarea:focus { border-color: var(--r-outline-variant); box-shadow: 0 0 0 3px var(--r-focus-ring-soft); }
 .lds-input:disabled { background: var(--r-surface-disabled); color: var(--r-on-surface-disabled); }
 .lds-input--error, .lds-textarea--error { border-color: var(--r-outline-error); }
 
@@ -60,7 +60,7 @@
 .lds-alert--error   { border-color: var(--r-outline-error);   background: var(--r-error-soft);   color: var(--r-on-error-soft); }
 .lds-alert--warning { border-color: var(--r-outline-warning); background: var(--r-warning-soft); color: var(--r-on-warning-soft); }
 .lds-alert--success { border-color: var(--r-outline-success); background: var(--r-success-soft); color: var(--r-on-success-soft); }
-.lds-alert--info    { border-color: var(--p-blue-500); background: rgba(39,121,196,0.08); color: var(--p-blue-700); }
+.lds-alert--info    { border-color: var(--r-outline-info); background: var(--r-info-soft); color: var(--r-on-info-soft); }
 .lds-alert__title { font: 700 13px/18px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
 .lds-alert__text  { font: 400 14px/20px var(--font-text); }
 
@@ -114,11 +114,11 @@
 /* ============= APP HEADER ============= */
 .lds-appbar {
   display: flex; align-items: center; gap: 24px;
-  background: var(--p-steel-975); color: var(--p-white);
+  background: var(--r-chrome-bg); color: var(--r-chrome-on);
   border-bottom: 4px solid var(--r-brand);
   padding: 0 24px; height: 64px;
 }
-.lds-appbar__product { font: 400 18px/22px var(--font-head); border-left: 1px solid var(--p-steel-700); padding-left: 16px; color: var(--p-steel-200); }
+.lds-appbar__product { font: 400 18px/22px var(--font-head); border-left: 1px solid var(--r-chrome-border); padding-left: 16px; color: var(--r-chrome-on-subtle); }
 .lds-appbar__product strong { font-family: var(--font-head-b); color: var(--r-brand); margin-right: 6px; }
 
 /* ============= BREADCRUMB ============= */
