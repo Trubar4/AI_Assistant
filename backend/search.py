@@ -157,6 +157,12 @@ _sem_matrix = None
 _sem_ids    = None
 
 
+_DIM_TO_MODEL = {
+    768:  "paraphrase-multilingual-mpnet-base-v2",
+    1024: "BAAI/bge-m3",
+}
+
+
 def _load_semantic() -> bool:
     global _sem_model, _sem_matrix, _sem_ids
     if _sem_matrix is not None and _sem_model is not None:
@@ -167,11 +173,25 @@ def _load_semantic() -> bool:
         return False
     try:
         from sentence_transformers import SentenceTransformer
-        _sem_matrix = np.load(str(_EMB_NPY))
+        matrix = np.load(str(_EMB_NPY))
+        dim = matrix.shape[1]
+        model_name = _DIM_TO_MODEL.get(dim)
+        if model_name is None:
+            logger.warning("Semantic search: unbekannte Embedding-Dimension %d", dim)
+            return False
+        model = SentenceTransformer(model_name)
+        # Validate dimension before committing globals
+        test_vec = model.encode(["test"], normalize_embeddings=True)[0]
+        if test_vec.shape[0] != dim:
+            logger.warning(
+                "Semantic search: Modell %s erzeugt %d-dim, Matrix hat %d-dim — deaktiviert",
+                model_name, test_vec.shape[0], dim,
+            )
+            return False
+        _sem_matrix = matrix
         _sem_ids    = json.loads(_EMB_IDS.read_text(encoding="utf-8"))
-        # Model must produce 768-dim embeddings matching embeddings.npy
-        _sem_model  = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
-        logger.info("Semantic search geladen: %d Dokumente", len(_sem_ids))
+        _sem_model  = model
+        logger.info("Semantic search geladen: %d Dokumente (%d-dim, %s)", len(_sem_ids), dim, model_name)
         return True
     except Exception as exc:
         logger.warning("Semantic search nicht verfügbar: %s", exc)
