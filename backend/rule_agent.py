@@ -258,10 +258,15 @@ def run_rule_agent(
     snippet = _extract_snippet(top["filename"], keywords)
     logger.info("RuleAgent: fertig, %d Quellen, snippet=%d Zeichen", len(filtered), len(snippet))
 
+    top_score_final = filtered[0].get("score", 0) if filtered else 0
+    # Konfidenz: 0.0–1.0 basierend auf dem Normbereich typischer Scores (0–50)
+    confidence = round(min(top_score_final / 40.0, 1.0), 2)
+
     sources = [{"filename": r["filename"], "title": r["title"]} for r in filtered]
     return {
-        "type":    "answer",
-        "answer":  snippet,
-        "sources": sources,
-        "rounds":  rounds,
+        "type":       "answer",
+        "answer":     snippet,
+        "sources":    sources,
+        "rounds":     rounds,
+        "confidence": confidence,
     }

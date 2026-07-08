@@ -177,6 +177,7 @@ class AgentResponse(BaseModel):
     sources: list[AgentSource] = []
     rounds: int = 0
     conversation: list[dict] = []   # zurück an Frontend für nächsten Call
+    confidence: float = 1.0         # 0.0–1.0; nur rule-agent befüllt dieses Feld
 
 
 class ErrorCodeRequest(BaseModel):
@@ -307,6 +308,7 @@ async def ask_agent(req: AgentRequest) -> AgentResponse:
         sources=[AgentSource(**s) for s in result.get("sources", [])],
         rounds=result.get("rounds", 0),
         conversation=result.get("messages", []),
+        confidence=result.get("confidence", 1.0),
     )
 
 

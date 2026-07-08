@@ -571,6 +571,25 @@
       flex-direction: column;
       gap: var(--s-2);
     }
+    /* Escalation hint */
+    .escalation-hint {
+      max-width: 760px;
+      margin: var(--s-3) auto 0;
+      border: 1px solid var(--r-state-warning, #b45309);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-high);
+      padding: var(--s-3) var(--s-4);
+    }
+    .escalation-hint__text {
+      font: 400 13px/20px var(--font-text);
+      color: var(--r-on-surface-muted);
+      margin-bottom: var(--s-2);
+    }
+    .escalation-hint__actions {
+      display: flex;
+      gap: var(--s-2);
+      flex-wrap: wrap;
+    }
     /* Clarification input */
     .agent-clarify {
       max-width: 760px;
@@ -664,10 +683,13 @@
   <span style="font:400 13px/18px var(--font-text);color:var(--p-steel-400);padding:0 var(--s-3);border-left:1px solid var(--p-steel-700)">LR 1104.03.08</span>
   <span id="online-status" style="font:400 12px/16px var(--font-text);color:var(--p-steel-400);padding:0 var(--s-3)">Offline</span>
   <!-- Mode Toggle -->
-  <div class="mode-toggle" id="mode-toggle" title="Suchmodus wechseln">
-    <button class="mode-toggle__btn mode-toggle__btn--active" id="mode-btn-classic" onclick="setMode('classic')">Klassisch</button>
-    <button class="mode-toggle__btn" id="mode-btn-agent" onclick="setMode('agent')">Assistent</button>
-    <button class="mode-toggle__btn" id="mode-btn-rule" onclick="setMode('rule')">Regelbasiert</button>
+  <div class="mode-toggle" id="mode-toggle">
+    <button class="mode-toggle__btn mode-toggle__btn--active" id="mode-btn-rule"
+      onclick="setMode('rule')" title="Kostenlos · Sofort · Zeigt relevante Seiten">Regelbasiert</button>
+    <button class="mode-toggle__btn" id="mode-btn-classic"
+      onclick="setMode('classic')" title="Geringe Kosten · Schnell · KI-Antwort">Klassisch</button>
+    <button class="mode-toggle__btn" id="mode-btn-agent"
+      onclick="setMode('agent')" title="Höhere Kosten · Langsamer · Mehrschrittiger KI-Assistent">Assistent</button>
   </div>
 </header>
 
@@ -1141,7 +1163,7 @@ async function analyseContext() {
 // ── Mode ──────────────────────────────────────────────────────────────────
 
 const MODE_KEY = 'ma_mode';
-let _mode = localStorage.getItem(MODE_KEY) || new URLSearchParams(location.search).get('mode') || 'classic';
+let _mode = localStorage.getItem(MODE_KEY) || new URLSearchParams(location.search).get('mode') || 'rule';
 
 function setMode(m) {
   _mode = m;
@@ -1151,6 +1173,12 @@ function setMode(m) {
   document.getElementById('mode-btn-rule').classList.toggle('mode-toggle__btn--active', m === 'rule');
 }
 setMode(_mode);
+
+function escalateQuery(question, targetMode) {
+  // Wechselt den Modus und stellt dieselbe Frage erneut
+  setMode(targetMode);
+  sendQuestion({ question });
+}
 
 // ── Ask ───────────────────────────────────────────────────────────────────
 
@@ -1226,7 +1254,7 @@ async function _sendAgent(q, loadDiv, history, conversation, mode) {
     if (data.type === 'clarification') {
       loadDiv.innerHTML = renderAgentClarification(data.question, data.conversation);
     } else {
-      loadDiv.innerHTML = renderAgentAnswer(data);
+      loadDiv.innerHTML = renderAgentAnswer(data, mode, q);
       // Im Regelbasiert-Modus: Top-Quelle automatisch im Panel öffnen
       if (mode === 'rule' && data.sources && data.sources.length > 0) {
         const top = data.sources[0];
@@ -1275,7 +1303,7 @@ async function submitClarification(id) {
   await sendQuestion({ question: answer, isClarification: true, conversation });
 }
 
-function renderAgentAnswer(data) {
+function renderAgentAnswer(data, mode, question) {
   const rounds = data.rounds > 1 ? `${data.rounds} Suchschritte` : '1 Suchschritt';
   const sourcesHtml = (data.sources || []).map(s => `
     <div class="source-item" role="button" tabindex="0"
@@ -1289,13 +1317,33 @@ function renderAgentAnswer(data) {
       </div>
     </div>`).join('');
 
+  // Eskalations-Hinweis bei niedrigem Konfidenz-Score im Regelbasiert-Modus
+  const confidence = typeof data.confidence === 'number' ? data.confidence : 1.0;
+  const lowConfidence = mode === 'rule' && confidence < 0.6;
+  const escalationHtml = lowConfidence ? `
+    <div class="escalation-hint">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Niedrige Übereinstimmung
+      <button class="lds-btn lds-btn--secondary lds-btn--sm escalation-btn"
+        onclick="escalateQuery(${JSON.stringify(question || '').replace(/"/g,'&quot;')}, 'classic')">
+        Klassisch versuchen
+      </button>
+      <button class="lds-btn lds-btn--secondary lds-btn--sm escalation-btn"
+        onclick="escalateQuery(${JSON.stringify(question || '').replace(/"/g,'&quot;')}, 'agent')">
+        Assistent fragen
+      </button>
+    </div>` : '';
+
+  const modeLabel = mode === 'rule' ? 'Regelbasiert' : 'Assistent';
+
   return `
     <div class="agent-bubble">
       <div class="agent-bubble__head">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        Assistent
+        ${modeLabel}
         <span class="agent-bubble__rounds">(${escHtml(rounds)})</span>
       </div>
+      ${escalationHtml}
       <div class="agent-bubble__answer">${renderMarkdown(data.answer)}</div>
       ${sourcesHtml ? `<div class="answer-section-label">Quellen</div><div class="agent-bubble__sources source-list">${sourcesHtml}</div>` : ''}
     </div>`;
