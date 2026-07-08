@@ -112,87 +112,42 @@ def _keywords_in_text(keywords: list[str], text: str) -> bool:
 
 
 def _needs_clarification(question: str, context: str) -> str | None:
-    """Rückfrage wenn eine essentielle Info fehlt und der Kontext sie nicht enthält."""
-    ctx = context.lower()
+    """Rückfrage wenn eine essentielle Info fehlt und weder Kontext noch Frage sie enthält."""
+    # Satisfier-Check über Kontext UND Frage — Frage kann die Info schon enthalten
+    combined = (context + " " + question).lower()
     for trigger_kws, satisfier_kws, question_text in _CLARIFICATION_RULES:
         if _keywords_in_text(trigger_kws, question):
-            if not _keywords_in_text(satisfier_kws, ctx):
+            if not _keywords_in_text(satisfier_kws, combined):
                 return question_text
     return None
 
 
 # ---------------------------------------------------------------------------
-# Snippet-Extraktion
+# Snippet-Extraktion — direkt aus dem Such-Index (kein HTML-Re-Read)
 # ---------------------------------------------------------------------------
-
-def _page_to_plain(text: str) -> str:
-    """
-    Wandelt den annotierten Seitentext in lesbaren Klartext um:
-    - Überschrift/Breadcrumb-Header (erste Zeilen bis zum echten Inhalt) überspringen
-    - Markdown-Tabellenzeilen: zweite Zelle extrahieren (Aktionsschritte)
-    - Annotierte Tabellen (ROW-Format) in lesbare Zeilen umwandeln
-    """
-    lines = text.splitlines()
-    result = []
-    # Die erste nicht-leere Zeile ist immer der Breadcrumb-Header → überspringen.
-    first_content_skipped = False
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if not first_content_skipped:
-            first_content_skipped = True
-            continue   # Breadcrumb-Zeile überspringen
-        # UI-Navigation und Zwischenüberschriften überspringen
-        if re.search(r'\bHome\b.*\bFig\.\b|\bHome\b.{40,}', stripped) and not stripped.startswith("|"):
-            continue
-        if re.search(r'font bigger|font smaller|font-reset', stripped):
-            continue
-
-        # Markdown-Aktionszeile: | — | Text | oder | ❑ | Text |
-        m = re.match(r'^\|\s*[—–\-❑✓]\s*\|\s*(.+?)\s*\|?\s*$', stripped)
-        if m:
-            cell = m.group(1).strip()
-            if cell and cell != "---":
-                result.append(cell)
-            continue
-
-        # Separator-Zeile überspringen
-        if re.match(r'^\|[-|: ]+\|$', stripped):
-            continue
-
-        # Annotierte Tabellenzeile (aus _table_to_text): "  75 m: 1=380kg | 2=690kg ..."
-        if re.match(r'^\s+\S.*:\s+\d', stripped):
-            result.append(stripped.strip())
-            continue
-
-        # Tabellen-Header-Zeile [Tabelle: ...]
-        if stripped.startswith("[Tabelle:"):
-            result.append(stripped)
-            continue
-
-        # Normale Textzeile
-        if not stripped.startswith("|"):
-            result.append(stripped)
-
-    return "\n".join(result)
-
 
 def _extract_snippet(filename: str, keywords: list[str]) -> str:
     """
-    Liest die Top-Seite und gibt den ersten Textabschnitt zurück, der ein
-    Keyword enthält. Kein LLM — reine String-Suche im Klartext.
+    Gibt den relevantesten Textabschnitt zurück:
+    - Für Anleitungsseiten: die ersten Handlungsschritte (steps)
+    - Für Informationsseiten: Keyword-naher Ausschnitt aus dem Indextext
+    Liest NICHT die HTML-Datei — nutzt ausschließlich den vorverarbeiteten Index.
     """
     try:
-        from backend.agent_tools import read_page
-        result = read_page(filename, max_chars=8000)
-        raw = result.get("text", "")
-        if not raw:
+        from backend.search import _load_index
+        idx = _load_index()
+        entry = next((e for e in idx if e["filename"] == filename), None)
+        if not entry:
             return ""
 
-        text = _page_to_plain(raw)
+        # Anleitungsseiten: Schritte sind bereits sauber extrahiert
+        steps = entry.get("steps") or []
+        if steps:
+            return "\n".join(f"• {s}" for s in steps[:8])
+
+        text = entry.get("text", "").strip()
         if not text:
-            return raw[:300].strip()
+            return ""
 
         lower = text.lower()
         best_pos = len(text)

@@ -150,7 +150,7 @@ def reset_index() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Semantic search (optional — only active when embeddings are pre-built)
+# Semantic search — sentence-transformers (optional, requires model download)
 # ---------------------------------------------------------------------------
 _sem_model  = None
 _sem_matrix = None
@@ -159,15 +159,18 @@ _sem_ids    = None
 
 def _load_semantic() -> bool:
     global _sem_model, _sem_matrix, _sem_ids
-    if _sem_matrix is not None:
+    if _sem_matrix is not None and _sem_model is not None:
         return True
+    if _sem_matrix is not None and _sem_model is None:
+        return False  # matrix loaded but model unavailable
     if not (_EMB_NPY.exists() and _EMB_IDS.exists()):
         return False
     try:
         from sentence_transformers import SentenceTransformer
         _sem_matrix = np.load(str(_EMB_NPY))
         _sem_ids    = json.loads(_EMB_IDS.read_text(encoding="utf-8"))
-        _sem_model  = SentenceTransformer("BAAI/bge-m3")
+        # Model must produce 768-dim embeddings matching embeddings.npy
+        _sem_model  = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
         logger.info("Semantic search geladen: %d Dokumente", len(_sem_ids))
         return True
     except Exception as exc:
@@ -185,6 +188,55 @@ def _semantic_ranking(query: str, top_k: int = 50) -> list[tuple[str, float]]:
     logger.info("Semantic max_sim=%.3f query='%s'", max_sim, query[:50])
     ranked = sorted(zip(_sem_ids, sims), key=lambda x: x[1], reverse=True)
     return ranked[:top_k]
+
+
+# ---------------------------------------------------------------------------
+# TF-IDF character n-gram ranking (fallback when sentence-transformer unavailable)
+# Handles German compound words and morphological variants without any model download.
+# ---------------------------------------------------------------------------
+_tfidf_vectorizer = None
+_tfidf_matrix     = None
+_tfidf_filenames: list[str] = []
+
+
+def _load_tfidf() -> bool:
+    global _tfidf_vectorizer, _tfidf_matrix, _tfidf_filenames
+    if _tfidf_matrix is not None:
+        return True
+    try:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        index = _load_index()
+        docs, fnames = [], []
+        for e in index:
+            text = e["title"] + " " + e["title"] + " " + e.get("text", "") + " " + " ".join(e.get("steps", []))
+            docs.append(text.lower())
+            fnames.append(e["filename"])
+        # char n-grams (3-6): captures German compound sub-strings
+        _tfidf_vectorizer = TfidfVectorizer(
+            analyzer="char_wb", ngram_range=(3, 6),
+            min_df=2, max_df=0.95, sublinear_tf=True,
+        )
+        _tfidf_matrix   = _tfidf_vectorizer.fit_transform(docs)
+        _tfidf_filenames = fnames
+        logger.info("TF-IDF char-ngram index gebaut: %d Dokumente", len(fnames))
+        return True
+    except Exception as exc:
+        logger.warning("TF-IDF nicht verfügbar: %s", exc)
+        return False
+
+
+def _tfidf_ranking(query: str, top_k: int = 50) -> list[tuple[str, float]]:
+    """TF-IDF cosine similarity ranking as fallback for semantic search."""
+    if not _load_tfidf():
+        return []
+    try:
+        from sklearn.metrics.pairwise import cosine_similarity
+        q_vec = _tfidf_vectorizer.transform([query.lower()])
+        sims  = cosine_similarity(q_vec, _tfidf_matrix).flatten()
+        ranked = sorted(zip(_tfidf_filenames, sims.tolist()), key=lambda x: x[1], reverse=True)
+        return [(f, s) for f, s in ranked[:top_k] if s > 0]
+    except Exception:
+        return []
 
 
 # ---------------------------------------------------------------------------
@@ -288,9 +340,11 @@ def search(
     title_rank = _bm25_title_ranking(query, top_k=50)
     full_rank  = _bm25_ranking(query, top_k=50)
     sem_rank   = _semantic_ranking(query, top_k=50)
+    # TF-IDF char-ngram as fallback when sentence-transformer model is unavailable
+    tfidf_rank = _tfidf_ranking(query, top_k=50) if not sem_rank else []
 
     use_sem  = bool(sem_rank)
-    rankings = [r for r in [title_rank, full_rank, sem_rank] if r]
+    rankings = [r for r in [title_rank, full_rank, sem_rank, tfidf_rank] if r]
 
     rrf_scores = _rrf(rankings)
     if not rrf_scores:
@@ -299,11 +353,12 @@ def search(
     sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 
     logger.info(
-        "TOP-10 für '%s' (title=%d full=%d sem=%s): %s",
+        "TOP-10 für '%s' (title=%d full=%d sem=%s tfidf=%d): %s",
         query[:50],
         len(title_rank),
         len(full_rank),
         use_sem,
+        len(tfidf_rank),
         " | ".join(
             f"{index_by_filename[f]['title'][:18]}={rrf_scores[f]:.4f}"
             for f in sorted_filenames[:10]
