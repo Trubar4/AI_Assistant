@@ -148,9 +148,11 @@ class ErrorCodeResponse(BaseModel):
     description: str = ""
     cause: str = ""
     action: str = ""
-    effect: str = ""     # Auswirkung (Meldungen / MsgCodeHex)
-    solution: str = ""   # Problemlösung (Meldungen / MsgCodeHex)
-    causes: str = ""     # Mögliche Ursachen (Meldungen / MsgCodeHex)
+    effect: str = ""           # Auswirkung (Meldungen / MsgCodeHex)
+    solution: str = ""         # Problemlösung (Meldungen / MsgCodeHex)
+    causes: str = ""           # Mögliche Ursachen (Meldungen / MsgCodeHex)
+    required_action: str = ""  # Erforderliche Aktion (Meldungen / MsgCodeHex)
+    relation: str = ""         # Beziehung (Meldungen / MsgCodeHex)
     related: list[SourceLink] = []
     matches: list[ErrorCodeMatch] = []  # populated on keyword search
 
@@ -172,6 +174,7 @@ def _keyword_search(query: str, limit: int = 8) -> list[ErrorCodeMatch]:
             entry.get("description", ""),
             entry.get("solution", ""),
             entry.get("causes", ""),
+            entry.get("required_action", ""),
         )).lower()
         if q in haystack:
             results.append(ErrorCodeMatch(
@@ -234,6 +237,8 @@ async def lookup_errorcode(req: ErrorCodeRequest) -> ErrorCodeResponse:
             effect=entry.get("effect", ""),
             solution=entry.get("solution", ""),
             causes=entry.get("causes", ""),
+            required_action=entry.get("required_action", ""),
+            relation=entry.get("relation", ""),
             related=related,
         )
 

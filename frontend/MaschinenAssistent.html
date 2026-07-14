@@ -891,6 +891,8 @@ async function lookupCode() {
         ${data.effect ? `<div class="ec-field"><div class="ec-field__label">Auswirkung</div><div class="ec-field__value">${escHtml(data.effect)}</div></div>` : ''}
         ${data.solution ? `<div class="ec-field"><div class="ec-field__label">Problemlösung</div><div class="ec-field__value">${escHtml(data.solution)}</div></div>` : ''}
         ${data.causes ? `<div class="ec-field"><div class="ec-field__label">Mögliche Ursachen</div><div class="ec-field__value">${escHtml(data.causes)}</div></div>` : ''}
+        ${data.required_action ? `<div class="ec-field"><div class="ec-field__label">Erforderliche Aktion</div><div class="ec-field__value">${escHtml(data.required_action)}</div></div>` : ''}
+        ${data.relation ? `<div class="ec-field"><div class="ec-field__label">Beziehung</div><div class="ec-field__value">${escHtml(data.relation)}</div></div>` : ''}
         ${data.cause ? `<div class="ec-field"><div class="ec-field__label">Ursache</div><div class="ec-field__value">${escHtml(data.cause)}</div></div>` : ''}
         ${data.action ? `<div class="ec-field"><div class="ec-field__label">Massnahme</div><div class="ec-field__value">${escHtml(data.action)}</div></div>` : ''}
       </div>

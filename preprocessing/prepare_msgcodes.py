@@ -53,6 +53,8 @@ TIPTYPE_FIELDS = (
     ("loesung", "solution"),
     ("problem", "solution"),
     ("auswirkung", "effect"),
+    ("aktion", "required_action"), # Erforderliche Aktion
+    ("beziehung", "relation"),
 )
 
 
@@ -144,7 +146,11 @@ def from_excel(path: Path, sheet: str | None = None, language: str = "deutsch") 
                 skipped_lang += 1
                 continue
 
-        entry = agg.setdefault(code, {"description": "", "effect": [], "solution": [], "causes": []})
+        entry = agg.setdefault(code, {
+            "description": "",
+            "effect": [], "solution": [], "causes": [],
+            "required_action": [], "relation": [],
+        })
 
         desc = _cell(row, col.get("description"))
         if desc:
@@ -176,10 +182,12 @@ def from_excel(path: Path, sheet: str | None = None, language: str = "deutsch") 
     # Listen → mehrzeilige Strings
     result = {
         code: {
-            "description": e["description"],
-            "effect":      "\n".join(e["effect"]),
-            "solution":    "\n".join(e["solution"]),
-            "causes":      "\n".join(e["causes"]),
+            "description":     e["description"],
+            "effect":          "\n".join(e["effect"]),
+            "solution":        "\n".join(e["solution"]),
+            "causes":          "\n".join(e["causes"]),
+            "required_action": "\n".join(e["required_action"]),
+            "relation":        "\n".join(e["relation"]),
         }
         for code, e in agg.items()
     }
