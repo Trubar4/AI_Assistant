@@ -293,6 +293,48 @@
       min-height: 20px;
     }
 
+    /* ── Kamera-Scan overlay ────────────────────────────────── */
+    .scan-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 110;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--s-4);
+      padding: var(--s-5);
+    }
+    .scan-overlay.is-active { display: flex; }
+    .scan-video-wrap {
+      position: relative;
+      width: min(92vw, 560px);
+      border-radius: var(--radius-2);
+      overflow: hidden;
+      background: var(--p-black, #000);
+    }
+    .scan-video-wrap video { width: 100%; display: block; }
+    .scan-frame {
+      position: absolute;
+      left: 10%; right: 10%;
+      top: 38%; bottom: 38%;
+      border: 2px solid var(--r-brand);
+      border-radius: var(--radius-1);
+      box-shadow: 0 0 0 999px rgba(0,0,0,0.4);
+      pointer-events: none;
+    }
+    .scan-overlay__label {
+      font: 400 16px/24px var(--font-text);
+      color: var(--p-white);
+    }
+    .scan-overlay__status {
+      font: 400 13px/18px var(--font-text);
+      color: rgba(255,255,255,0.6);
+      min-height: 18px;
+      text-align: center;
+    }
+
     /* ── Error code view ────────────────────────────────────── */
     .errorcode-view {
       max-width: 560px;
@@ -480,6 +522,12 @@
               <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>
             </svg>
           </button>
+          <button class="lds-btn lds-btn--ghost lds-btn--icon" title="Code mit Kamera scannen" onclick="startScan()">
+            <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
+              <path d="M3 7h4l2-2.5h6L17 7h4v13H3V7z"/>
+              <circle cx="12" cy="13" r="3.5"/>
+            </svg>
+          </button>
           <button class="lds-btn lds-btn--primary" onclick="lookupCode()">Nachschlagen</button>
         </div>
         <div id="errorcode-result"></div>
@@ -536,6 +584,19 @@
   <div class="voice-overlay__transcript" id="voice-transcript"></div>
   <button class="lds-btn lds-btn--ghost" style="color:var(--p-white);border-color:var(--p-steel-500)"
     onclick="stopVoice()">Abbrechen</button>
+</div>
+
+<!-- ═══ KAMERA-SCAN OVERLAY ═══════════════════════════════════════════════ -->
+<div class="scan-overlay" id="scan-overlay">
+  <div class="scan-video-wrap">
+    <video id="scan-video" playsinline muted></video>
+    <div class="scan-frame"></div>
+  </div>
+  <div class="scan-overlay__label">Fehlercode in den Rahmen halten</div>
+  <div class="scan-overlay__status" id="scan-status"></div>
+  <button class="lds-btn lds-btn--ghost" style="color:var(--p-white);border-color:var(--p-steel-500)"
+    onclick="stopScan()">Abbrechen</button>
+  <canvas id="scan-canvas" hidden></canvas>
 </div>
 
 <!-- ═══ SCRIPT ════════════════════════════════════════════════════════════ -->
@@ -906,6 +967,129 @@ async function askFromErrorCode(code, description) {
   answerEl.innerHTML = renderAnswer(userQ, data);
   document.getElementById('ec-followup-btn').disabled = false;
   answerEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Kamera-Scan (OCR für MsgCodeHex) ─────────────────────────────────────
+// Live-Erkennung des Fehlercodes vom Maschinendisplay. Tesseract.js wird
+// erst beim ersten Scan geladen (CDN), der Worker bleibt für die Session.
+
+const TESSERACT_SRC = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const SCAN_INTERVAL_MS = 900;
+// Ausschnitt = Position des .scan-frame im Videobild
+const SCAN_REGION = { x: 0.10, y: 0.38, w: 0.80, h: 0.24 };
+
+let _scanStream = null;
+let _scanTimer = null;
+let _scanWorker = null;
+let _scanBusy = false;
+
+function _scanStatus(text) {
+  document.getElementById('scan-status').textContent = text;
+}
+
+function _loadTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = TESSERACT_SRC;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Tesseract-Script nicht ladbar'));
+    document.head.appendChild(s);
+  });
+}
+
+async function startScan() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Kamerazugriff wird von diesem Browser nicht unterstützt (HTTPS erforderlich).');
+    return;
+  }
+  const overlay = document.getElementById('scan-overlay');
+  overlay.classList.add('is-active');
+  _scanStatus('Kamera wird gestartet…');
+
+  try {
+    _scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 } },
+      audio: false,
+    });
+  } catch (err) {
+    stopScan();
+    alert('Kamerazugriff nicht möglich. Bitte Kamera-Berechtigung erteilen.');
+    return;
+  }
+
+  const video = document.getElementById('scan-video');
+  video.srcObject = _scanStream;
+  try { await video.play(); } catch { /* Overlay wurde evtl. schon geschlossen */ }
+
+  _scanStatus('Texterkennung wird geladen…');
+  try {
+    await _loadTesseract();
+    if (!_scanWorker) {
+      // Sprachdaten von jsdelivr statt tessdata.projectnaptha.com —
+      // derselbe Host wie das Script, seltener durch Proxies blockiert.
+      const worker = await Tesseract.createWorker('eng', 1, {
+        langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0',
+        gzip: true,
+      });
+      await worker.setParameters({
+        tessedit_char_whitelist: '0123456789ABCDEFabcdefxX',
+        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+      });
+      _scanWorker = worker;
+    }
+  } catch (err) {
+    stopScan();
+    alert('Texterkennung konnte nicht geladen werden — Internetverbindung erforderlich.');
+    return;
+  }
+
+  if (!_scanStream) return; // Nutzer hat währenddessen abgebrochen
+  _scanStatus('Code in den Rahmen halten…');
+  _scanTimer = setInterval(_scanFrame, SCAN_INTERVAL_MS);
+}
+
+async function _scanFrame() {
+  if (_scanBusy || !_scanStream || !_scanWorker) return;
+  _scanBusy = true;
+  try {
+    const video = document.getElementById('scan-video');
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) return;
+
+    const canvas = document.getElementById('scan-canvas');
+    const sw = Math.round(vw * SCAN_REGION.w);
+    const sh = Math.round(vh * SCAN_REGION.h);
+    canvas.width = sw;
+    canvas.height = sh;
+    canvas.getContext('2d').drawImage(
+      video,
+      Math.round(vw * SCAN_REGION.x), Math.round(vh * SCAN_REGION.y), sw, sh,
+      0, 0, sw, sh
+    );
+
+    const { data } = await _scanWorker.recognize(canvas);
+    // OCR verliert gelegentlich führende Nullen — das Backend füllt auf 8 Stellen auf.
+    const match = (data.text || '').replace(/\s+/g, '').match(/0x[0-9A-Fa-f]{4,8}/);
+    if (match) {
+      stopScan();
+      const el = document.getElementById('ec-input');
+      el.value = match[0];
+      lookupCode();
+    }
+  } catch { /* Einzelbild fehlgeschlagen — nächster Versuch folgt */ }
+  finally { _scanBusy = false; }
+}
+
+function stopScan() {
+  if (_scanTimer) { clearInterval(_scanTimer); _scanTimer = null; }
+  if (_scanStream) {
+    _scanStream.getTracks().forEach(t => t.stop());
+    _scanStream = null;
+  }
+  const video = document.getElementById('scan-video');
+  if (video) video.srcObject = null;
+  document.getElementById('scan-overlay').classList.remove('is-active');
 }
 
 // ── Voice input ───────────────────────────────────────────────────────────
