@@ -331,6 +331,7 @@
     .ec-field__value {
       font: 400 14px/20px var(--font-text);
       color: var(--r-on-surface-default);
+      white-space: pre-line; /* Zeilenumbrüche aus den Meldungsdaten erhalten */
     }
 
     /* ── Inline followup question ───────────────────────────── */
@@ -433,7 +434,7 @@
       </button>
       <button class="lds-nav__item" data-view="errorcode" onclick="switchView('errorcode')">
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="6" y="8" width="12" height="11" rx="6"/><path d="M9 8a3 3 0 0 1 6 0M2 13h4M18 13h4M3 8l3 2M21 8l-3 2M3 18l3-2M21 18l-3-2M12 8v11"/></svg>
-        Störungen
+        Meldungen
       </button>
     </nav>
     <div class="app-sidebar__footer">
@@ -468,10 +469,10 @@
     <!-- Error code view -->
     <div id="view-errorcode" class="view app-scroll">
       <div class="errorcode-view">
-        <h2>Störung nachschlagen</h2>
-        <p>Code eingeben (z. B. <strong>R-003</strong>) oder Stichwort (z. B. <strong>Batterie</strong>, <strong>Hydraulik</strong>) — zeigt passende Anzeigen und Abhilfemassnahmen.</p>
+        <h2>Meldung nachschlagen</h2>
+        <p>Code eingeben (z. B. <strong>0x00000035</strong> oder <strong>R-003</strong>) oder Stichwort (z. B. <strong>Batterie</strong>, <strong>Hydraulik</strong>) — zeigt Beschreibung, Auswirkung, Problemlösung und mögliche Ursachen.</p>
         <div class="errorcode-row">
-          <input class="lds-input" id="ec-input" type="text" placeholder="z. B. R-003 oder Hydraulik"
+          <input class="lds-input" id="ec-input" type="text" placeholder="z. B. 0x00000035 oder Hydraulik"
             onkeydown="if(event.key==='Enter')lookupCode()" />
           <button class="lds-btn lds-btn--ghost lds-btn--icon" title="Spracheingabe" onclick="toggleVoice('ec-input')">
             <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -519,7 +520,7 @@
   </button>
   <button class="lds-nav__item" data-view="errorcode" onclick="switchView('errorcode')">
     <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="6" y="8" width="12" height="11" rx="6"/><path d="M9 8a3 3 0 0 1 6 0M2 13h4M18 13h4M3 8l3 2M21 8l-3 2M3 18l3-2M21 18l-3-2M12 8v11"/></svg>
-    Störungen
+    Meldungen
   </button>
 </nav>
 
@@ -826,6 +827,9 @@ async function lookupCode() {
         <span style="font:500 14px/20px var(--font-text-m)">${escHtml(data.description)}</span>
       </div>
       <div class="lds-card__body">
+        ${data.effect ? `<div class="ec-field"><div class="ec-field__label">Auswirkung</div><div class="ec-field__value">${escHtml(data.effect)}</div></div>` : ''}
+        ${data.solution ? `<div class="ec-field"><div class="ec-field__label">Problemlösung</div><div class="ec-field__value">${escHtml(data.solution)}</div></div>` : ''}
+        ${data.causes ? `<div class="ec-field"><div class="ec-field__label">Mögliche Ursachen</div><div class="ec-field__value">${escHtml(data.causes)}</div></div>` : ''}
         ${data.cause ? `<div class="ec-field"><div class="ec-field__label">Ursache</div><div class="ec-field__value">${escHtml(data.cause)}</div></div>` : ''}
         ${data.action ? `<div class="ec-field"><div class="ec-field__label">Massnahme</div><div class="ec-field__value">${escHtml(data.action)}</div></div>` : ''}
       </div>

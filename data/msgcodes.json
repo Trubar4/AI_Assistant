@@ -1,0 +1,8 @@
+{
+  "0x00000035": {
+    "description": "Ladeluftdruck zu niedrig",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Ladeluft Kühlsystem prüfen\n- Ladeluftkühler (Zustand, Drehzahl)\n- Lüfterklappen Position\n- Ladedruckregler\nTurbolader prüfen",
+    "causes": "Kurzschluß oder Kabelbruch,\nLadelufttemperatur: Sensorfehler,\nLadedruckschläuche offen oder Dichtungen defekt,\nLadeluftkühler gerissen,\nTurbolader verschlissen,\nLadedrucksensor, Elektro-pneumatisches Ventil (EPV) bzw. Wastegate Steller defekt"
+  }
+}
