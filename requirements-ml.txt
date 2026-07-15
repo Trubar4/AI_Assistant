@@ -1,0 +1,8 @@
+# Optionale ML-Abhängigkeiten für die semantische Suche.
+# Nicht auf Speicher-limitierten Instanzen installieren (z. B. Render Free,
+# 512 MB RAM) — PyTorch + Embedding-Modell brauchen deutlich mehr.
+#
+#   pip install -r requirements-ml.txt
+#
+-r requirements.txt
+sentence-transformers>=3.0.0
