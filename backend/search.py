@@ -15,6 +15,7 @@ Usage (standalone test):
 
 import json
 import logging
+import os
 import re
 import sys
 from pathlib import Path
@@ -165,6 +166,10 @@ _DIM_TO_MODEL = {
 
 def _load_semantic() -> bool:
     global _sem_model, _sem_matrix, _sem_ids
+    # SEMANTIC_SEARCH=off deaktiviert die semantische Suche komplett
+    # (z. B. auf Speicher-limitierten Instanzen); BM25 + TF-IDF bleiben aktiv.
+    if os.environ.get("SEMANTIC_SEARCH", "").lower() in ("0", "off", "false"):
+        return False
     if _sem_matrix is not None and _sem_model is not None:
         return True
     if _sem_matrix is not None and _sem_model is None:
