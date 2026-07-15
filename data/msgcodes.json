@@ -1,0 +1,2418 @@
+{
+  "0x0000006b": {
+    "description": "Durchflussmesser +4V-B12 Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000006c": {
+    "description": "Durchfluss Fahrwerk Schmieröl zu niedrig",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000001a5": {
+    "description": "Ölfilter Bohrantrieb verschmutzt",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nModul/Sensor prüfen\nFilter kontrollieren",
+    "causes": "Sensor defekt\nKabelbruch\nFilter verschmutzt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000245": {
+    "description": "Lecköldruck Bohrantrieb zu hoch",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000307": {
+    "description": "Winkelgeber Anlenkstück, Hauptausleger, interner Sensorfehler",
+    "effect": "LMB Stopp",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000462": {
+    "description": "Einziehwerk 1: Vergleich von der Rückmeldung mit der Ansteuerung der Winde fehlgeschlagen\nEingang: %y",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000463": {
+    "description": "Einziehwerk 2: Vergleich von der Rückmeldung mit der Ansteuerung der Winde fehlgeschlagen\nEingang: %y",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000464": {
+    "description": "Einziehwerk 3: Vergleich von der Rückmeldung mit der Ansteuerung der Winde fehlgeschlagen\nEingang: %y",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004a2": {
+    "description": "Bewegung der Hubwinde 1 erkannt obwohl das Werk nicht angesteuert wird\nEingang: %y",
+    "effect": "Keine Auswirkung auf den Betrieb der Maschine.\nBediener den sicheren Zustand der Maschine einleiten.",
+    "solution": "Bremslamellen verschließen\nAuf Hydr. Druck in Bremsleitung prüfen.\nGebrochene Druckfedern oder falsche Anzahl/Anordnung",
+    "causes": "Bewegung über 2° an der Winde erkannt, obwohl nicht angesteuert",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004a3": {
+    "description": "Bewegung der Hubwinde 2 erkannt obwohl das Werk nicht angesteuert wird\nEingang: %y",
+    "effect": "Keine Auswirkung auf den Betrieb der Maschine.\nBediener den sicheren Zustand der Maschine einleiten.",
+    "solution": "Bremslamellen verschließen\nAuf Hydr. Druck in Bremsleitung prüfen.\nGebrochene Druckfedern oder falsche Anzahl/Anordnung",
+    "causes": "Bewegung über 2° an der Winde erkannt, obwohl nicht angesteuert",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004ae": {
+    "description": "LMB-Konfiguration: Der obere Winkelgeber des Nadelauslegers ist vorhanden obwohl nur der untere Winkelgeber benötigt wird.",
+    "effect": "LMB Stopp",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004bf": {
+    "description": "Druckaufnehmer der Druckbegrenzung am Drehwerk: Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004c0": {
+    "description": "Druckaufnehmer der Druckbegrenzung am Drehwerk: Signal nicht vorhanden (Eingang: %y)",
+    "effect": "Wenn dies beim Motorstart erkannt wird, ist das Drehwerk gesperrt.\nWenn dies im Betrieb erkannt wird, ist die maximale Drehgeschwindigkeit des Drehwerks um 50% reduziert.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004c1": {
+    "description": "Druckaufnehmer der Druckbegrenzung am Drehwerk: Signal zu niedrig (Eingang: %y)",
+    "effect": "Wenn dies beim Motorstart erkannt wird, ist das Drehwerk gesperrt.\nWenn dies im Betrieb erkannt wird, ist die maximale Drehgeschwindigkeit des Drehwerks um 50% reduziert.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004c2": {
+    "description": "Druckaufnehmer der Druckbegrenzung am Drehwerk: interner Sensorfehler (Eingang: %y)",
+    "effect": "",
+    "solution": "prüfen / tauschen",
+    "causes": "Sensor defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004c3": {
+    "description": "Drehwerk Maximaldruckventil: Druckregelventil defekt",
+    "effect": "",
+    "solution": "Einstellung des Speisedrucks (laut Hydr. Schema)  prüfen und ggf. einstellen\nmin. Strom Druckregelventil (laut Hydr. Schema) bei Einstiegshebel unten anpassen.\nAustausch Druckregelventil\nHS / LR – min. Software Stand 10524423 idx 041 (bei Master 5 Maschinen)",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004c4": {
+    "description": "Drehwerk Maximaldruckventil: Bremse Schaltventil defekt",
+    "effect": "Einschränkung Drehwerk",
+    "solution": "Sensor prüfen\nVentil prüfen\nVerkabelung, Steckverbindung und Modul prüfen",
+    "causes": "Sensor defekt\nKabelbruch, defekte Steckverbindung, defektes Modul\nVentil defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004ca": {
+    "description": "Personentransport Deaktivierung nicht möglich: LMB- Ausnutzung zu hoch.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004cb": {
+    "description": "Sensibler Hub Deaktivierung nicht möglich: LMB- Ausnutzung zu hoch.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004d3": {
+    "description": "Hauptausleger Rückfallstützen Endschalter Abweichung zwischen links und rechts (links: %i , rechts: %i)",
+    "effect": "Einziehwerk Heben Stopp",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004e8": {
+    "description": "Hauptausleger heben aufgrund der aktivierten Einziehseil Spannvorrichtung gesperrt - Kugelhahn umlegen!",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004eb": {
+    "description": "Negativer Winkelgeber Anlenkstück, Wippspitze, Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004ec": {
+    "description": "Negativer Winkelgeber Anlenkstück, Nadelausleger, Signal nicht vorhanden",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004ed": {
+    "description": "Negativer Winkelgeber Anlenkstück, Wippspitze, Signal zu niedrig",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004ee": {
+    "description": "Negativer Winkelgeber Anlenkstück, Wippspitze, interner Sensorfehler",
+    "effect": "",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004f3": {
+    "description": "Derrickausleger befindet sich nicht in Position für den Kranbetrieb.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004f4": {
+    "description": "A-Bock befindet sich nicht in Position für den Kranbetrieb.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004f9": {
+    "description": "LMB Stop: Last am Nadelauslegerkopf zu hoch",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004fa": {
+    "description": "LMB Stopp: Last am Hauptauslegerkopf zu hoch",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004fd": {
+    "description": "Kraftmesslasche rechts, Derrickausleger, interner Sensorfehler (%u)",
+    "effect": "LMB Stopp",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004fe": {
+    "description": "Kraftmesslasche rechts, Derrickausleger, defekt (%u)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000004ff": {
+    "description": "Kraftmesslasche links, Derrickausleger, interner Sensorfehler (%u)",
+    "effect": "LMB Stopp",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000500": {
+    "description": "Kraftmesslasche links, Derrickausleger, defekt (%u)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000501": {
+    "description": "Kraftmesslasche, Derrick Ballast, interner Sensorfehler (%u)",
+    "effect": "LMB Stopp",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000502": {
+    "description": "Kraftmesslasche, Derrick Ballast, defekt (%u)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000503": {
+    "description": "Kraftmesslasche, Derrick Ballast, Signal nicht vorhanden",
+    "effect": "LMB Stopp",
+    "solution": "Verkabelung Pruefen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000504": {
+    "description": "Winkelgeber, Derrick, interner Sensorfehler (%u)",
+    "effect": "",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000505": {
+    "description": "Winkelgeber, Derrick, defekt (%u)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000506": {
+    "description": "Winkelgeber, Derrick, Signal nicht vorhanden",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000507": {
+    "description": "Abstandsmessung Ballastverstellung, interner Sensor Fehler (%u,%u)",
+    "effect": "",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000508": {
+    "description": "Abstandsmessung Ballastverstellung, defekt (%u,%u)",
+    "effect": "Stopp Ballastwagen",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000509": {
+    "description": "Abstandsmessung Ballastverstellung, Signal nicht vorhanden",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000050a": {
+    "description": "Bewegung von der Ballast Ausladungsverstellung erkannt obwohl das Werk nicht angesteuert wird\nEingang: %y",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000050b": {
+    "description": "Betriebsart Ballastverstellung: Sensoren sind vorhanden jedoch keine Betriebsart vorgewählt",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000513": {
+    "description": "Drehwerk Maximaldruckventil: Druckregelung Schaltventil defekt",
+    "effect": "",
+    "solution": "Magnetsspule prüfen",
+    "causes": "Magnetspule defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000514": {
+    "description": "Der aktuelle Seilzug der HW1 hat das erlaubte Maximum von %.1f kN überschritten!",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000515": {
+    "description": "Der aktuelle Seilzug der HW2 hat das erlaubte Maximum von %.1f kN überschritten!",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000051b": {
+    "description": "Stromsensor Motor 1, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000051c": {
+    "description": "Stromsensor Motor 1, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000051d": {
+    "description": "Stromsensor Motor 1, Signal zu niedrig (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000051e": {
+    "description": "Stromsensor Motor 1, interner Sensorfehler (Eingang: %y)",
+    "effect": "",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000051f": {
+    "description": "Stromsensor Motor 2, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000520": {
+    "description": "Stromsensor Motor 2, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000521": {
+    "description": "Stromsensor Motor 2, Signal zu niedrig (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000522": {
+    "description": "Stromsensor Motor 2, interner Sensorfehler (Eingang: %y)",
+    "effect": "",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000523": {
+    "description": "Motor 1 überlastet (Nennstrom: %.0fA)",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000524": {
+    "description": "Motor 2 überlastet (Nennstrom: %.0fA)",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000525": {
+    "description": "Abweichung der Drehzahl von Motor 1 und 2 (Eingang Motor 1 Drehzahl: %y, Eingang Motor 2 Drehzahl: %y)",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000526": {
+    "description": "Aktuelle Motordrehzahl stimmt nicht mit der Nenndrehzahl überein (Nenndrehzahl: %.0fU/min)",
+    "effect": "Stopp aller Funktionen und Anzeige am Monitor",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000527": {
+    "description": "Elektromotor 1: Netzschütz Rückmessung (%y) meldet Netzschütz (%y) geschalten. (Netzschütz ist nicht angesteuert)",
+    "effect": "Leistungsreduktion",
+    "solution": "",
+    "causes": "Kabelbruch\nRelais K17 defekt\nRelais K13 defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000528": {
+    "description": "Elektromotor 1: Dreieckschütz Rückmessung (%y) meldet Dreieckschütz geschalten. (Dreieckschütz ist nicht angesteuert)",
+    "effect": "Leistungsreduktion",
+    "solution": "",
+    "causes": "Kabelbruch\nRelais K16 defekt\nRelais K11 defekt\nRelais K14 defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000529": {
+    "description": "Elektromotor 2: Netzschütz Rückmessung (%y) meldet Netzschütz (%y) geschalten. (Netzschütz ist nicht angesteuert)",
+    "effect": "Leistungsreduktion",
+    "solution": "",
+    "causes": "Kabelbruch\nRelais K27 defekt\nRelais K23 defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000052a": {
+    "description": "Elektromotor 2: Dreieckschütz Rückmessung (%y) meldet Dreieckschütz geschalten. (Dreieckschütz ist nicht angesteuert)",
+    "effect": "Leistungsreduktion",
+    "solution": "",
+    "causes": "Kabelbruch\nRelais K26 defekt\nRelais K21 defekt\nRelais K24 defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000052b": {
+    "description": "Elektromotor 1: Dreieckschütz nicht geschalten. (Rückmessung: %y)",
+    "effect": "Leistungsreduktion",
+    "solution": "",
+    "causes": "Kabelbruch\nRelais K16 defekt\nRelais K11 defekt\nRelais K14 defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000052c": {
+    "description": "Elektromotor 2: Dreieckschütz nicht geschalten. (Rückmessung: %y)",
+    "effect": "Leistungsreduktion",
+    "solution": "",
+    "causes": "Kabelbruch\nRelais K26 defekt\nRelais K21 defekt\nRelais K24 defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000052e": {
+    "description": "Spannungssensor Motor 1, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000052f": {
+    "description": "Spannungssensor Motor 1, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000530": {
+    "description": "Spannungssensor Motor 1, Signal zu niedrig (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000531": {
+    "description": "Spannungssensor Motor 1, interner Sensorfehler (Eingang: %y)",
+    "effect": "",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000532": {
+    "description": "Spannungssensor Motor 2, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000533": {
+    "description": "Spannungssensor Motor 2, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000534": {
+    "description": "Spannungssensor Motor 2, Signal zu niedrig (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000535": {
+    "description": "Spannungssensor Motor 2, interner Sensorfehler (Eingang: %y)",
+    "effect": "",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000537": {
+    "description": "Elektromotor 1: Netzschütz Rückmessung (%y) meldet Netzschütz (%y) nicht geschalten. (Netzschütz ist angesteuert)",
+    "effect": "Leistungsreduktion",
+    "solution": "",
+    "causes": "Kabelbruch\nRelais K17 defekt\nRelais K13 defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000538": {
+    "description": "Elektromotor 2: Netzschütz Rückmessung (%y) meldet Netzschütz (%y) nicht geschalten. (Netzschütz ist angesteuert)",
+    "effect": "Leistungsreduktion",
+    "solution": "",
+    "causes": "Kabelbruch\nRelais K27 defekt\nRelais K23 defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000550": {
+    "description": "Elektromotor 1: Versorgung nicht korrekt",
+    "effect": "Motor wird gestoppt",
+    "solution": "",
+    "causes": "Phasendrehrichtung der Versorgung nicht korrekt\nNicht alle Phasen der Versorgung vorhanden",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000551": {
+    "description": "Elektromotor 2: Versorgung nicht korrekt",
+    "effect": "Motor wird gestoppt",
+    "solution": "",
+    "causes": "Phasendrehrichtung der Versorgung nicht korrekt\nNicht alle Phasen der Versorgung vorhanden",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000005ad": {
+    "description": "Temperatur Sensor Wasserkühlung, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000005ae": {
+    "description": "Temperatur Sensor Wasserkühlung, Signal zu niedrig (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000005af": {
+    "description": "Temperatur Sensor Wasserkühlung, interner Sensorfehler (Eingang: %y)",
+    "effect": "",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000005e0": {
+    "description": "Motorstop über Oberwagen Neigungssensor: Maschine ist umgekippt",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000005fa": {
+    "description": "Neigungsgeber VerticalLineFinder, Spitzenausleger, interner Sensor Fehler (%u,%u)",
+    "effect": "Keine Funktion des Vertikal Line Finder",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000005fb": {
+    "description": "Neigungsgeber VerticalLineFinder, Spitzenausleger, defekt (%u,%u)",
+    "effect": "Keine Funktion des Vertikal Line Finder",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000005fc": {
+    "description": "Aktorenbegrenzung: Fehler beim Auslesen der LMB Daten",
+    "effect": "LMB Stopp",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000062c": {
+    "description": "Drehmomentanzeige Bohrantieb, keine gültigen Database-Werte vorhanden. Anzeige nur noch im 1.Gang.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000062e": {
+    "description": "Außentemperatursensor Signal zu niedrig oder nicht vorhanden",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000062f": {
+    "description": "Außentemperatursensor Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000643": {
+    "description": "Fehler CAN-Linie, Dieselmotor (CAN 2 Modul 92,93) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000644": {
+    "description": "Fehler CAN-Linie, Rechter Bedienhebel (CAN 1 Modul 65,66) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000645": {
+    "description": "Fehler CAN-Linie, Linker Bedienhebel (CAN 1 Modul 67,68) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000646": {
+    "description": "Fehler CAN-Linie, Tastatur X23 (CAN 1 Modul 73,29) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000647": {
+    "description": "Fehler CAN-Linie, Tastatur X22 (CAN 1 Modul 74,98) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000648": {
+    "description": "Fehler CAN-Linie, Tastatur X25 (CAN 1 Modul 75,99) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000649": {
+    "description": "Fehler CAN-Linie, Tastatur X26 (CAN 1 Modul 76,100) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000064a": {
+    "description": "Fehler CAN-Linie, Immobiliser (CAN 1 Modul 107) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000064b": {
+    "description": "Fehler CAN-Linie, Klimaanlage (CAN 1 Modul 106) meldet sich nicht",
+    "effect": "Keine",
+    "solution": "Liebherr (LVF) Klimaanlage\n- CAN-Line 1 - Qualität überprüfen. Fällt diese sporadisch ab, kann die Wegfahrsperre des Zündstartschalters defekt sein. \n- CAN-Line 1 - Leitungen bzw. Steckverbindungen überprüfen\n- Spannungsversorgung am Eingang des DC/DC Wandler überprüfen\n- Spannung am Ausgang des DC/DC Wandler überprüfen\n- Steuerungseinheit BK4 austauschen. Die Software wird nach dem verbinden mit dem CAN Bus vom Master 5 eingespielt\n\n\n\nAircontech – Klimaanlage:\n- Steckverbindung bis zur CAN-Platine prüfen\n- Spannungsversorgung der CAN-Platineprüfen (UDS Wert \"Controller Voltage\" - siehe Testsystem UDS Seite)\n- Austausch der CAN-Platine (neu CAN-Platine mit Überspannungsschutz)",
+    "causes": "Liebherr (LVF) Klimaanlage:\n- Qualität CAN-Line 1\n- CAN-Line1- Leitungen bzw. Steckverbindungen bis zur Steuerungseinheit BK4 der Klimaanlage.\n- Spannungsversorgung am Eingang des DC/DC Wandler  im Schaltschrank der Klimaanlage.\n- Spannungsversorgung am Ausgang des DC/DC Wandler.\n- Steuerungseinheit BK4 defekt. \n\n\nAircontech – Klimaanlage:\n- CAN-Platine (Steuerung der A/C) ist defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000064c": {
+    "description": "Fehler CAN-Linie, Tastatur X20 (CAN 1 Modul 101) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000064d": {
+    "description": "Fehler CAN-Linie, Tastatur X21 (CAN 1 Modul 102) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000064e": {
+    "description": "Fehler CAN-Linie, elektrischer Antriebsstrang (CAN 7 Modul 109,113) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000631": {
+    "description": "Hubwinde 1 Getriebeöltemperatur Signal zu niedrig oder nicht vorhanden",
+    "effect": "keine direkte Auswirkung.\nKeine Funktion des Vertikal Line Finder",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000658": {
+    "description": "Hubwinde 2 Getriebeöltemperatur Signal zu niedrig oder nicht vorhanden",
+    "effect": "keine direkte Auswirkung.\nKeine Funktion des Vertikal Line Finder",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000659": {
+    "description": "Hubwinde 1 Getriebeöltemperatur Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000065a": {
+    "description": "Hubwinde 2 Getriebeöltemperatur Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000065b": {
+    "description": "Hubwerk 1: Hubendschalter aktiviert",
+    "effect": "Hubwerk Stopp",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000065c": {
+    "description": "Hubwerk 2: Hubendschalter aktiviert",
+    "effect": "Hubwerk Stopp",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000667": {
+    "description": "Rammsteuerung: Eingestellte Hubhöhe %.1fm zu hoch für aktuelle Kopfhöhe %.1fm.",
+    "effect": "Hubhöhe wird gelb am Monitor dargestellt.",
+    "solution": "",
+    "causes": "DGC wurde mit falschen Parameter gestartet. Zu hohe Hubhöhe für aktuelle Kopfhöhe -3m Hub-Endschalter",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000066e": {
+    "description": "Fehler CAN-Linie, Kompaktmodul am Unterwagen (CAN 7 Modul 11,23,35,47) meldet sich nicht",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000673": {
+    "description": "Fehler Datenaufzeichnung: Authority Recorder Initialisierungszeit wurde überschritten, Daten werden nicht aufgezeichnet",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000674": {
+    "description": "Druckaufnehmer Abstützplatte Vorne Links, Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000675": {
+    "description": "Druckaufnehmer Abstützplatte Vorne Links, Signal nicht vorhanden",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000676": {
+    "description": "Druckaufnehmer Abstützplatte Vorne Links, Signal zu niedrig",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000677": {
+    "description": "Druckaufnehmer Abstützplatte Vorne Links, interner Sensorfehler",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000678": {
+    "description": "Druckaufnehmer Abstützplatte Vorne Rechts, Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000679": {
+    "description": "Druckaufnehmer Abstützplatte Vorne Rechts, Signal nicht vorhanden",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000067a": {
+    "description": "Druckaufnehmer Abstützplatte Vorne Rechts, Signal zu niedrig",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000067b": {
+    "description": "Druckaufnehmer Abstützplatte Vorne Rechts, interner Sensorfehler",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000067c": {
+    "description": "Druckaufnehmer Abstützplatte Hinten Links, Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000067d": {
+    "description": "Druckaufnehmer Abstützplatte Hinten Links, Signal nicht vorhanden",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000067e": {
+    "description": "Druckaufnehmer Abstützplatte Hinten Links, Signal zu niedrig",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000067f": {
+    "description": "Druckaufnehmer Abstützplatte Hinten Links, interner Sensorfehler",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000680": {
+    "description": "Druckaufnehmer Abstützplatte Hinten Rechts, Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000681": {
+    "description": "Druckaufnehmer Abstützplatte Hinten Rechts, Signal nicht vorhanden",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000682": {
+    "description": "Druckaufnehmer Abstützplatte Hinten Rechts, Signal zu niedrig",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000683": {
+    "description": "Druckaufnehmer Abstützplatte Hinten Rechts, interner Sensorfehler",
+    "effect": "Stopp Abstützplattenregelung",
+    "solution": "Sensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000684": {
+    "description": "Abfrage der erforderlichen Winkelgeberanzahl fehlgeschlagen. Fehler beim Auslesen der LMB Daten.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000685": {
+    "description": "Not-Halt über Interlock oder Steuerungsfehler des Elektroantriebes ausgelöst",
+    "effect": "Maschine ist gesperrt",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000687": {
+    "description": "Aufrüst-/Ablegeüberwachung: Warnschwelle für Last am Auslegerkopf überschritten (Strukturlast max: %.1ft, aktuelle Last: %.1ft)",
+    "effect": "",
+    "solution": "",
+    "causes": "Last am Auslegerkopf ist zu hoch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000688": {
+    "description": "Aufrüst-/Ablegeüberwachung: Sicherheitsschwelle für Last am Auslegerkopf überschritten (Strukturlast max: %.1ft, aktuelle Last: %.1ft)",
+    "effect": "",
+    "solution": "",
+    "causes": "Last am Auslegerkopf ist zu hoch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000689": {
+    "description": "Aufrüst-/Ablegeüberwachung: In der LMB-Konfiguration ist der falsche Lastort vorgewählt! (Der eingestellte Lastort muss der Nadelauslegerkopf sein)",
+    "effect": "",
+    "solution": "Es muss der Korrekte Lastort vorgewählt werden.\nDer Korrekte Lastoder ist der Nadelauslegerkopf",
+    "causes": "In der LMB-Konfiguration wurde falsche Lastort für das Aufrüsten oder Ablegen mit BUDA vorgewählt.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000005f1": {
+    "description": "Wegmessung Höhenverstellzylinder: Sensorfehler",
+    "effect": "",
+    "solution": "Geber ueberpruefen\nKabel überprüfen",
+    "causes": "Kabelbruch, defekte Steckverbindung, defektes Modul\nMech./ Mitnehmer defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000005f6": {
+    "description": "Mäkler und Oberwagen verriegelt",
+    "effect": "Funktion Mäkler gesperrt",
+    "solution": "Entriegeln",
+    "causes": "Sensor defekt; Wasser ist im Sensor eingefroren; Wasser in Sensor.\nSensor aktiv",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000060b": {
+    "description": "Wegmessung Vorschubzylinder: Sensorfehler",
+    "effect": "",
+    "solution": "Geber ueberpruefen\nKabel überprüfen",
+    "causes": "Kabelbruch, defekte Steckverbindung, defektes Modul\nMech./ Mitnehmer defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006a2": {
+    "description": "Bewegung der Vorschubwinde erkannt obwohl nicht angesteuert, NICHT AUSSCHALTEN!",
+    "effect": "Keine Auswirkung auf den Betrieb der Maschine.\nBediener den sicheren Zustand der Maschine einleiten.",
+    "solution": "Bremslamellen verschließen\nAuf Hydr. Druck in Bremsleitung prüfen.\nGebrochene Druckfedern oder falsche Anzahl/Anordnung",
+    "causes": "Bewegung über 4° an der Winde erkannt, obwohl nicht angesteuert",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006a3": {
+    "description": "Bewegung der Hauptwinde erkannt obwohl nicht angesteuert, NICHT AUSSCHALTEN!",
+    "effect": "Keine Auswirkung auf den Betrieb der Maschine.\nBediener den sicheren Zustand der Maschine einleiten.",
+    "solution": "Bremslamellen verschließen\nAuf Hydr. Druck in Bremsleitung prüfen.\nGebrochene Druckfedern oder falsche Anzahl/Anordnung",
+    "causes": "Bewegung über 4° an der Winde erkannt, obwohl nicht angesteuert",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006a4": {
+    "description": "Bewegung der HG1 erkannt obwohl nicht angesteuert, NICHT AUSSCHALTEN!\nEingang: %y",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006a6": {
+    "description": "Fehler CAN-Linie, elektrischer Antriebsstrang (CAN 7 Modul 109,113,117) meldet sich nicht",
+    "effect": "Abschaltung des HV-Systems",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen\nSoftwareupdate des Haupt- und EPT Master auf die neueste Version (Main > idx. 82 / EPT > idx. 25)\nAbschaltung des Gerätes und des EPT-Systems (Zündung AUS und Kabel der Versorgung abstecken)",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt\nKommunikation zwischen Haupt- und EPT Master wurde verzögert oder unterbrochen.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006a7": {
+    "description": "Fehler CAN-Linie, elektrischer Antriebsstrang (CAN 8 Modul 109,113,117) meldet sich nicht",
+    "effect": "PLC - Abschaltung",
+    "solution": "Verkabelung prüfen\nKorrekturwert prüfen\nModul prüfen",
+    "causes": "CAN-Linie ist nicht angeschlossen\nNRS aktiviert - Modul fehlt\nfalscher NRS vorgewählt\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006a8": {
+    "description": "Vorschubwinde: keine Bewegung erkannt obwohl angesteuert",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006a9": {
+    "description": "Hauptwinde: keine Bewegung erkannt obwohl angesteuert",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006aa": {
+    "description": "Zusätzlicher Druckaufnehmer Druckwert überschritten %.1f bar",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006ad": {
+    "description": "Spannzylinderautomatik spannen aktiv",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006ae": {
+    "description": "Sensorsignal für die Klappenposition der oberen rechten seitlichen Klappe (KLD2-B1) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006af": {
+    "description": "Sensorsignal für die Klappenposition der oberen rechten seitlichen Klappe (KLD2-B1) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006b0": {
+    "description": "Sensorsignal für die Klappenposition der oberen rechten vorderen Klappe (KLD2-B2) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006b1": {
+    "description": "Sensorsignal für die Klappenposition der oberen rechten vorderen Klappe (KLD2-B2) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006b2": {
+    "description": "Sensorsignal für die Klappenposition der oberen rechten hinteren Klappe (KLD2-B3) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006b3": {
+    "description": "Sensorsignal für die Klappenposition der oberen rechten hinteren Klappe (KLD2-B3) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006b4": {
+    "description": "Sensorsignal für die Klappenposition der oberen linken vorderen Klappe (KLD2-B4) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006b5": {
+    "description": "Sensorsignal für die Klappenposition der oberen linken vorderen Klappe (KLD2-B4) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006b6": {
+    "description": "Sensorsignal für die Klappenposition der oberen linken hinteren Klappe (KLD2-B5) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006b7": {
+    "description": "Sensorsignal für die Klappenposition der oberen linken hinteren Klappe (KLD2-B5) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006b8": {
+    "description": "Sensorsignal für die Klappenposition der oberen linken seitlichen Klappe (KLD2-B6) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006b9": {
+    "description": "Sensorsignal für die Klappenposition der oberen linken seitlichen Klappe (KLD2-B6) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006ba": {
+    "description": "Sensorsignal für die Klappenposition der unteren rechten seitlichen Klappe (KLD1-B7) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006bb": {
+    "description": "Sensorsignal für die Klappenposition der unteren rechten seitlichen Klappe (KLD1-B7) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006bc": {
+    "description": "Sensorsignal für die Klappenposition der unteren rechten vorderen Klappe (KLD1-B8) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006bd": {
+    "description": "Sensorsignal für die Klappenposition der unteren rechten vorderen Klappe (KLD1-B8) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006be": {
+    "description": "Sensorsignal für die Klappenposition der unteren rechten hinteren Klappe (KLD1-B9) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006bf": {
+    "description": "Sensorsignal für die Klappenposition der unteren rechten hinteren Klappe (KLD1-B9) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006c0": {
+    "description": "Sensorsignal für die Klappenposition der unteren linken vorderen Klappe (KLD1-B10) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006c1": {
+    "description": "Sensorsignal für die Klappenposition der unteren linken vorderen Klappe (KLD1-B10) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006c2": {
+    "description": "Sensorsignal für die Klappenposition der unteren linken hinteren Klappe (KLD1-B11) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006c3": {
+    "description": "Sensorsignal für die Klappenposition der unteren linken hinteren Klappe (KLD1-B11) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006c4": {
+    "description": "Sensorsignal für die Klappenposition der unteren linken seitlichen Klappe (KLD1-B12) ist zu hoch bzw. Kurzschluss mit Spannungsversorgung.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006c5": {
+    "description": "Sensorsignal für die Klappenposition der unteren linken seitlichen Klappe (KLD1-B12) ist zu niedrig oder nicht vorhanden.",
+    "effect": "keine direkte Auswirkung.",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen\nAnaloger Eingangswert prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt\nAnaloger Eingangswert ist falsch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006c7": {
+    "description": "Die Schlappseilabschaltung auf der Winde %u wurde vorgewählt.",
+    "effect": "Schlappseilabschaltung ist aktiv.",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006ca": {
+    "description": "Abstützplatte: Fehler beim Auslesen der LMB Daten",
+    "effect": "",
+    "solution": "",
+    "causes": "Es liegt ein Problem mit der LMB bzw. mit der LMB- Einstellung vor.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006cb": {
+    "description": "Abstützplatte Vorne: Druckabweichung links/rechts (Links: %.1f bar, Rechts: %.1f bar)",
+    "effect": "",
+    "solution": "",
+    "causes": "Der Druck in den Zylindern der Abstützplatte vorne ist nicht gleich.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006cc": {
+    "description": "Abstützplatte Hinten: Druckabweichung links/rechts (Links: %.1f bar, Rechts: %.1f bar)",
+    "effect": "",
+    "solution": "",
+    "causes": "Der Druck in den Zylindern der Abstützplatte hinten ist nicht gleich.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006cd": {
+    "description": "Abstützplatte Vorne: Druckmessung stimmt nicht mit der Ansteuerung überein",
+    "effect": "",
+    "solution": "",
+    "causes": "Der Druck in den Zylindern der Abstützplatte weicht von der Druckansteuerung ab.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006ce": {
+    "description": "Abstützplatte Hinten: Druckmessung stimmt nicht mit der Ansteuerung überein",
+    "effect": "",
+    "solution": "",
+    "causes": "Der Druck in den Zylindern der Abstützplatte weicht von der Druckansteuerung ab.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006cf": {
+    "description": "Personentransport Aktivierung nicht möglich: LMB- Ausnutzung zu hoch.",
+    "effect": "",
+    "solution": "",
+    "causes": "LMB Ausnutzung ist zu hoch um den Personentransport zu aktivieren.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006d0": {
+    "description": "Sensibler Hub Aktivierung nicht möglich: LMB- Ausnutzung zu hoch.",
+    "effect": "",
+    "solution": "",
+    "causes": "LMB Ausnutzung ist zu hoch um den sensiblen Hub zu aktivieren.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006d3": {
+    "description": "Relativverschiebung unter last gefahren. Druck des Schneckenantriebs größer 150 bar.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006d5": {
+    "description": "Derrick Winkelgebersignal hat einen unzulässigen Wert. Winkelgeber ist möglicherweise falsch montiert.",
+    "effect": "",
+    "solution": "",
+    "causes": "Der Derrick-Winkelgeber ist falsch montiert.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006d6": {
+    "description": "Spannzylinderautomatik entspannen aktiv",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006da": {
+    "description": "Unterschied zwischen Pull up und Pull down Seilgeschwindigkeit zu groß",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006db": {
+    "description": "Klimaanlage LVF Hochdrucksensor defekt",
+    "effect": "Abschaltung  Klimaanlage",
+    "solution": "Sensor prüfen\nVerkabelung prüfen\nSteckverbindung prüfen",
+    "causes": "Hochdrucksensor ausserhalb des gültigen Signalbereichs.\n\nWenn Signal unter 2,5mA ist Fehler aktiv. Triggerbedingung Anlaufzeit: 20sek. Abfallzeit:5sek.\nVerkabelung fehlerhaft oder defekt\nSteckverbindungen fehlerhaft oder defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006dc": {
+    "description": "Klimaanlage LVF Niederdrucksensor defekt",
+    "effect": "Abschaltung  Klimaanlage",
+    "solution": "Sensor prüfen\nVerkabelung prüfen\nSteckverbindung prüfen",
+    "causes": "Niederdrucksensor ausserhalb des gültigen Signalbereichs.\n\nWenn Signal unter 2,5mA ist Fehler aktiv. Triggerbedingung Anlaufzeit: 20sek. Abfallzeit:5sek.\nVerkabelung fehlerhaft oder defekt\nSteckverbindungen fehlerhaft oder defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006dd": {
+    "description": "Klimaanlage LVF Hochdruck Fehler",
+    "effect": "Abschaltung  Klimaanlage",
+    "solution": "Verkabelung prüfen.\nDruckschalter prüfen\nLüfter/Verflüssiger reinigen\nLuftdurchsatz Verflüssiger prüfen",
+    "causes": "Druckschalter fehlerhaft\nVerkabelung defekt\nHochdruck zu groß (HD >25 Bar +/- 0,7 Bar). Abschaltung der Kälteanlage (Hochdruckschalter ausgelöst).\n\nWenn Schalter -B40 (Hochdruckschalter 25 Bar) ausgelöst hat. Anlaufzeit: 5Sek. Abfallzeit 2Sek.\nLüfter/Verflüssiger verschmutzt\nLuftdurchsatz Verflüssiger zu gering",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006de": {
+    "description": "Klimaanlage LVF APU defekt",
+    "effect": "Abschaltung  Klimaanlage",
+    "solution": "Verkabelung prüfen\nSteckverbindung prüfen\nVerkabelung Lichtmaschine prüfen",
+    "causes": "Externes Zusatzaggregat (APU) defekt (keine Rückmeldung der APU bei Anforderung) - Sperre der Kältenalage bei PRE_Cooling. Fehlermeldung wird abgesetzt, wenn APU trotz Ansteuerung keine APU Running Rückmeldung innerhalb von 180s kommt. Abfallzeit 2sek.\nVerkabelung fehlerhaft oder defekt\nSteckverbindungen fehlerhaft oder defekt\nVerkabelung an der Lichtmaschine fehlerhaft oder defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006df": {
+    "description": "Klimaanlage LVF Temperaturfühler Innenraum defekt",
+    "effect": "",
+    "solution": "Sensor prüfen\nVerkabelung prüfen\nSteckverbindung prüfen",
+    "causes": "Temperaturfühler Innenraum (CAT Sensor) ausserhalb des gültigen Signalbereichs.\nErsatzwert = letzgültiger Wert.\n\nWenn Innenraum Temperaturfühler (-B10) defekt. Anlauftzeit 60sek. Abfallzeit: 20sek.\nVerkabelung fehlerhaft oder defekt\nSteckverbindungen fehlerhaft oder defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006e0": {
+    "description": "Klimaanlage LVF Zuluft Lüfter defekt",
+    "effect": "Abschaltung  Klimaanlage",
+    "solution": "Verkabelung prüfen\nSteckverbindung prüfen\nLüfter prüfen",
+    "causes": "Diagnoserückmeldung Zuluftlüfter meldet Fehler.\n\nWenn Diagnose Ausgang von Zuluftlüfter -M10 auf 0V (BI2) abfällt wird Fehler abgesetzt. Anlaufzeit: 10sek. Abfallzeit: 5sek.\nVerkabelung fehlerhaft oder defekt\nSteckverbindungen fehlerhaft oder defekt\nLüfter mechanisch blockiert",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006e1": {
+    "description": "Klimaanlage LVF Heißwasserventil Fehler",
+    "effect": "",
+    "solution": "Ventil prüfen\nVerkabelung prüfen\nSteckverbindung prüfen",
+    "causes": "Stromrückmeldung bei geschaltetem Heißwasserventil ausserhalb des gültigen Signalbereichs.\n\nWenn LVF-Steuerung bei angesteuertem Heißwasserventil einen Strom <0mA bzw. >2000mA misst wird Fehler ausgelöst. Anlaufzeit: 20sek. Abfallzeit:5sek.\nVerkabelung fehlerhaft oder defekt\nSteckverbindungen fehlerhaft oder defekt\nVentil defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006e2": {
+    "description": "Klimaanlage LVF Kühlung ausgefallen",
+    "effect": "Klimaanlage schaltet ab und versucht neu zu starten",
+    "solution": "Ventilstecker prüfen,  Ventil defekt, Antrieb Kompressor prüfen, Kabelbruch\nElektr. / Hydr. prüfen\nKompressor prüfen\nRiemen prüfen",
+    "causes": "Ca. 30 sec nach Freigabesignal vom Klimagerät (Ansteuerung vom Hydraulischen Drosselventil) muss der Druckunterschied zwischen Hoch- und Niederdruck 6 Bar sein, ansonsten wird die Kühlfunktion abgeschalten.\n\nWenn kein HD Fehler (1757) aktiv und Freigabe Singal (digital) von LVF-Steuerung zum Hydr. Ventil und Ansteuersignal >4mA und Druckdifferenz zwischen HD und ND < 6 Bar Anlaufzeit 30sek. Abfallzeit: 2sek.\nElektr./Hydr. Fehler\nKompressor blockiert\nRiemen gerissen",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006e3": {
+    "description": "Klimaanlage LVF Unzulässiges Druckverhältnis Hochdruck zu Niederdruck",
+    "effect": "Klimaanlage schaltet ab und versucht neu zu starten",
+    "solution": "Luftzuführung verstopft, Lüfter defekt\nVerflüssiger reinigen",
+    "causes": "zu wenig Kältemittel (System undicht)\nVerhältnis Hochdruck zu Niederdruck im Kühlkreis ist unzulässig, entweder geht die Wärme über die Kältekondensatorlüfter  oder die Kaltluft Richtung Kabine  nicht weg.\n\nEinsatzgrenzen des Verdichter laut Diagramm nicht eingehalten. (Formel:Hpmax=5/3*ND+18,33Bar)Anlaufzeit 1sek. Abfallzeit: 2sek.\nVerflüssiger verschmutzt\nLuftdruchsatz Verflüssiger zu gering",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006e4": {
+    "description": "Klimaanlage LVF Boden-/Deckenklappe Positionsfehler",
+    "effect": "keine Auswirkung - Luftauslass nicht steuerbar",
+    "solution": "Verkabelung prüfen.\nSteckverbindung prüfen\nStellmotor prüfen",
+    "causes": "Boden-/ Deckenklappe - Sollposition nicht erreicht.\n\nAnsteuerung und Rückmeldesignal dürfen nicht mehr als 1V abweichen. Klappe -M80 (Messung zwischen Pin 3 und Masse / 4 und Masse am Deutschstecker der Stellmotoren) . Anlaufzeit 120sek. Abfallzeit: 2sek.\nVerkabelung fehlerhaft oder defekt\nSteckverbindungen fehlerhaft oder defekt\nStellmotor blockiert",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006e5": {
+    "description": "Klimaanlage LVF Außenluftklappe Positionsfehler",
+    "effect": "keine Auswirkung - Umluftauslass nicht steuerbar",
+    "solution": "Verkabelung prüfen.\nSteckverbindung prüfen\nStellmotor prüfen",
+    "causes": "Aussenluftklappe - Sollposition nicht erreicht.\n\nAnsteuerung und Rückmeldesignal dürfen nicht mehr als 1V abweichen. Klappe -M81 (Messung zwischen Pin 3 und Masse / 4 und Masse am Deutschstecker der Stellmotoren) . Anlaufzeit 120sek. Abfallzeit: 2sek.\nVerkabelung fehlerhaft oder defekt\nSteckverbindungen fehlerhaft oder defekt\nStellmotor blockiert",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006e6": {
+    "description": "Klimaanlage LVF Boden-/Deckenklappe defekt",
+    "effect": "keine Auswirkung - Luftauslass nicht steuerbar",
+    "solution": "Verkabelung prüfen.\nSteckverbindung prüfen\nStellmotor prüfen",
+    "causes": "Rückmeldesignal ausserhalb des gültigen Signalbereichs.\n\nWenn Rückmeldungssignal < 1,7V an Klappe -M80 (Messung Pin 4 an Deutschstecker gegenüber Masse)  Anlaufzeit: 20 sek. Abfallzeit: 5sek.\nVerkabelung fehlerhaft oder defekt\nSteckverbindungen fehlerhaft oder defekt\nStellmotor blockiert",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006e7": {
+    "description": "Klimaanlage LVF Außenluftklappe defekt",
+    "effect": "keine Auswirkung - Umluftauslass nicht steuerbar",
+    "solution": "Verkabelung prüfen.\nSteckverbindung prüfen\nStellmotor prüfen",
+    "causes": "Rückmeldesignal ausserhalb des gültigen Signalbereichs.\n\nWenn Rückmeldungssignal < 1,7V an Klappe -M81 (Messung Pin 4 an Deutschstecker gegenüber Masse)  Anlaufzeit: 20 sek. Abfallzeit: 5sek.\nVerkabelung fehlerhaft oder defekt\nSteckverbindungen fehlerhaft oder defekt\nStellmotor blockiert",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006e8": {
+    "description": "Klimaanlage LVF Kältemittel leer",
+    "effect": "Abschaltung  Klimaanlage",
+    "solution": "Kältemittelstand prüfen\nAuf Leckagen prüfen\nKältemittel nachfüllen",
+    "causes": "Die Ansaugleitung des Kompressors ist möglicherweise lose.\n\nHD und ND < 1,0 Bar bei Aussentemperatur >0°C  Anlaufzeit: 10sek. Abfallzeit: 5sek.",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006ed": {
+    "description": "Freifall HG1 analoges Druckventil defekt. Restdruck beim Start der Freifallvorwahl erkannt (Kupplungsdruck: %.1fbar)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006ee": {
+    "description": "Freifall HG1 analoges Druckventil defekt. Druck während der Freifallvorwahl ist zu hoch (Kupplungsdruck: %.1fbar)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006ef": {
+    "description": "Freifall HG1 analoges Druckventil defekt. Der Kupplungsdruck ist höher als der durch die Ansteuerung erwartete Druck (Kupplungsdruck: %.1fbar)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006f0": {
+    "description": "Freifall HG2 analoges Druckventil defekt. Restdruck beim Start der Freifallvorwahl erkannt (Kupplungsdruck: %.1fbar)",
+    "effect": "Elektr. Freifall wird nicht aktiviert",
+    "solution": "",
+    "causes": "20 bar Druckschalter prüfen",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006f1": {
+    "description": "Freifall HG2 analoges Druckventil defekt. Druck während der Freifallvorwahl ist zu hoch (Kupplungsdruck: %.1fbar)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006f2": {
+    "description": "Freifall HG2 analoges Druckventil defekt. Der Kupplungsdruck ist höher als der durch die Ansteuerung erwartete Druck (Kupplungsdruck: %.1fbar)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006f3": {
+    "description": "Freifall CW analoges Druckventil defekt. Restdruck beim Start der Freifallvorwahl erkannt (Kupplungsdruck: %.1fbar)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006f4": {
+    "description": "Freifall CW analoges Druckventil defekt. Druck während der Freifallvorwahl ist zu hoch (Kupplungsdruck: %.1fbar)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006f5": {
+    "description": "Freifall CW analoges Druckventil defekt. Der Kupplungsdruck ist höher als der durch die Ansteuerung erwartete Druck (Kupplungsdruck: %.1fbar)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006f6": {
+    "description": "Kraftmessung Nackenzylinder Kraftschwelle überschritten : Links %.1f kN Rechts %.1f kN",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000006f8": {
+    "description": "Unerwarteter Druck am Sensor erkannt, Kugelhahnstellung kontrollieren.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000724": {
+    "description": "Fehler CAN-Linie, Kompaktmodul am Greifer (CAN4 Modul 9,21,33,45,57) meldet sich nicht",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000728": {
+    "description": "Kraftmessung Wippzylinder Z4 Kraftschwelle überschritten : Links %.1f kN Rechts %.1f kN",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000731": {
+    "description": "Betonschieber unter Druck betätigt. Betondruck größer 5 bar.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000073d": {
+    "description": "Es wurde ein Verbindungsunterbruch zwischen dem Gerätemaster und dem Fräsenmaster festgestellt. Der NRS LSC ist eingebaut aber nicht vorgewählt.",
+    "effect": "Fahren nicht möglich.",
+    "solution": "Richtiger Mode wählen",
+    "causes": "Falscher Mode vergewählt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000073e": {
+    "description": "Nackenzylinder Kraftmessung: Kolben- und Ringdrücke nicht plausibel Verkabelung prüfen!",
+    "effect": "Falsche oder keine Anzeige am Bildschirm.\nÜberlast.",
+    "solution": "Überprüfung Kabel / Stecker / Master",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000758": {
+    "description": "Bewegung der Relativverschiebung erkannt (größer %imm), obwohl das Werk nicht angesteuert wird",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000759": {
+    "description": "Fehler CAN-Linie, Kompaktmodul am Greifer (CAN7 Modul 9,21,33,45,57) meldet sich nicht",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000075a": {
+    "description": "Assistenzsystem \"Greifer drehen\" wurde aktiviert.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000075c": {
+    "description": "LMB Fehler nach Neustart: Es wurde noch keine gültige Konfiguration eingestellt.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000075e": {
+    "description": "Greifer digital öffnen / schließen wurde aktiviert.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000766": {
+    "description": "Kraftmesslasche Höhenverstellwinde, Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000767": {
+    "description": "Kraftmesslasche Höhenverstellwinde, Signal nicht vorhanden",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000768": {
+    "description": "Kraftmesslasche Höhenverstellwinde, Signal zu niedrig",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000769": {
+    "description": "Kraftmesslasche Höhenverstellwinde, interner Sensorfehler",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000076a": {
+    "description": "Kraftmesslasche Höhenverstellwinde, unterer Schwellwert unterschritten.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000076f": {
+    "description": "Die Schlappseilabschaltung auf der Höhenverstellwinde wurde vorgewählt.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000770": {
+    "description": "Die Schlappseilabschaltung auf der Höhenverstellwinde hat angesprochen.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000771": {
+    "description": "Schwebeballast einfahren/ausfahren gestoppt. Rückmessung %y des Freigabeventiles %y meldet falsche Ventilstellung!",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000772": {
+    "description": "Schwebeballast heben/senken gestoppt. Rückmessung %y des Freigabeventiles %y meldet falsche Ventilstellung!",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000773": {
+    "description": "Hubzylinder A-Bock einfahren/ausfahren gestoppt. Rückmessung %y des Freigabeventiles %y meldet falsche Ventilstellung!",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000774": {
+    "description": "Druckaufnehmer Einziehwerk %i, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000775": {
+    "description": "Druckaufnehmer Einziehwerk %i, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000776": {
+    "description": "Druckaufnehmer Einziehwerk %i, Signal zu niedrig (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch\nSpannungsversorgung Modulbank\nElektronik-Modul defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000777": {
+    "description": "Druckaufnehmer Einziehwerk %i, interner Sensorfehler (Eingang: %y)",
+    "effect": "",
+    "solution": "prüfen / tauschen",
+    "causes": "Sensor defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000077a": {
+    "description": "Klimaanlage DC/DC Wandler keine Kommunikation",
+    "effect": "",
+    "solution": "- Verbindung zwischen CAN-Platine und DC/DC Wandler prüfen\n- Spannungsversorgung und Sicherung prüfen\n- Steckverbindungen prüfen\n- Austausch der CAN-Platine (Unplugged Version - 14126416)\n- Austausch des DC/DC Wandler-Platine (13666888)",
+    "causes": "E-HVAC (Unplugged) - Verbindung zum DC/DC Wandler fehlerhaft",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000077b": {
+    "description": "Klimaanlage Versorgungsspannung HV außerhalb soll",
+    "effect": "",
+    "solution": "HV Versorgung pürfen",
+    "causes": "E-HVAC (Unplugged) - HV-Spannung ist  <500VDC / >750VDC",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000077c": {
+    "description": "Klimaanlage Klimahochvolt Inverter Fehler",
+    "effect": "",
+    "solution": "EPT System herunterfahren und neustarten",
+    "causes": "E-HVAC (Unplugged) - (Lenze) Inverter-Fehler",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000077d": {
+    "description": "Klimaanlage Temperaturfühler Heizwasser defekt",
+    "effect": "",
+    "solution": "Sensor nicht aktiv - wird nicht vom System abgefragt",
+    "causes": "E-HVAC (Unplugged) - Ausfall des Kühlwassersensors",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000077e": {
+    "description": "Klimaanlage Versorgungsspannungs derating zu hoch für Kompressor Start derating: temp. %3.0f% U %3.0f%",
+    "effect": "",
+    "solution": "- UDS Wert \"Battery Voltage\" prüfen. (UDS Wert im Testsystem UDS Seit).\n\n- Lichtmaschiene prüfen\n\n- 24V Batterien prüfen",
+    "causes": "Aufgrund zu niedriger Batteriespannung oder zu hoher Außentemperaturen kann der Kompressor nicht starten.  \n(Leistungsbegrenzung - Derating)",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000077f": {
+    "description": "Klimaanlage Kompressor Abschaltung aufgrund von Versorgungsspannung derating: temp. %3.0f% U %3.0f%",
+    "effect": "",
+    "solution": "- UDS Wert \"Battery Voltage\" prüfen. (UDS Wert im Testsystem UDS Seit).\n\n- Lichtmaschiene prüfen\n\n- 24V Batterien prüfen",
+    "causes": "Aufgrund zu niedriger Batteriespannung oder zu hoher Außentemperaturen wurde der Kompressor gestoppt.\n(Leistungsbegrenzung – Derating)",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000782": {
+    "description": "Speicherdruck des Greifers +4A-B1 Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000078c": {
+    "description": "Wegmesssystem Greiferschalen: Signal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000078d": {
+    "description": "Wegmesssystem Greiferschalen: Signal zu niedrig oder nicht vorhanden",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000078e": {
+    "description": "Endschalter Einziehwinde senken, Derrick in Arbeitsposition vorne, Meisterschaltersignal: %.1f",
+    "effect": "Einziehwerk Senken Stopp",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000078f": {
+    "description": "Endschalter unten, Derrick in Montageposition hat angesprochen und Taster zur Endschalterüberbrückung gedrückt",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000790": {
+    "description": "Fehler CAN-Linie 4, Kompaktmodul am Mäkler (Modul 9,17,30,41,57,61) meldet sich nicht",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000791": {
+    "description": "Fehler CAN-Linie 5, Kompaktmodul am Mäkler (Modul 9,17,30,41,57,61) meldet sich nicht",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000796": {
+    "description": "Greifer linke seitliche Klappe, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000797": {
+    "description": "Greifer rechte seitliche Klappe, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000798": {
+    "description": "Greifer linke vordere Klappe, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000799": {
+    "description": "Greifer rechte vordere Klappe, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000079a": {
+    "description": "Linke seitliche Klappe, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000079b": {
+    "description": "Rechte seitliche Klappe, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000079c": {
+    "description": "Linke vordere Klappe, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000079d": {
+    "description": "Rechte vordere Klappe, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007a2": {
+    "description": "Schmieröldruck Bohrantrieb zu niedrig",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007a3": {
+    "description": "Fremdbohrantrieb KDK 275S vorgewählt",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007a4": {
+    "description": "Schwenkwinkelsensor Pumpe 1, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007a5": {
+    "description": "Schwenkwinkelsensor Pumpe 2, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007a6": {
+    "description": "Schwenkwinkelsensor Pumpe 1, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007a7": {
+    "description": "Schwenkwinkelsensor Pumpe 2, Signal nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007a8": {
+    "description": "Klimaanlage hat Gerätetyp nicht erkannt",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007a9": {
+    "description": "Klimaanlage Temperaturfühler Heizung defekt",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007aa": {
+    "description": "Klimaanlage Stromsensor Versorgung Fehler",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007ad": {
+    "description": "Klimaanlage derating wegen Unterspannung derating: temp. %3.0f% U %3.0f%",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007ae": {
+    "description": "Klimaanlage derating wegen zu hoher Temperatur derating: temp. %3.0f% U %3.0f%",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007af": {
+    "description": "Dieselmotor Start-Stopp-Automatik aktiviert.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007b0": {
+    "description": "Wasser im linken Fahrwerksmotor erkannt.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007b1": {
+    "description": "Wasser im rechten Fahrwerksmotor erkannt.",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007b4": {
+    "description": "Endschalter Schwebeballast, Schwebeballast abgesetzt",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007c1": {
+    "description": "Unterbetriebsart Schlitzwandmeißeln aktiviert",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007c3": {
+    "description": "Nullstellungszwang Meisterschalter, Fußpedale und Tastaturen erforderlich",
+    "effect": "Kranfunktionen werden durch die Steuerung nicht freigegeben",
+    "solution": "Die Betätigungselemente der Kabine (Meisterschalter, Fußpedale und Tastaturen) müssen in Nullstellung gebracht werden.",
+    "causes": "Während dem Schließen des Betriebsfreigabehebels waren die Betätigungselemente der Kabine nicht in Nullstellung",
+    "required_action": "Alle Betätigungselemente der Kabine müssen in Nullstellung gebracht werden",
+    "relation": ""
+  },
+  "0x000007d6": {
+    "description": "Kraftmessachse Mäkler Hauptwinde nicht vorhanden (Canlinie:%u Modul:%u)",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007e0": {
+    "description": "Not-Halt über Not-Halt Schlagtaster ausgelöst",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007e1": {
+    "description": "Not-Halt über Steuerungseinheit der Fräse ausgelöst",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007e8": {
+    "description": "Bewegung der Hubwinde 1 erkannt obwohl nicht angesteuert, NICHT AUSSCHALTEN!",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007e9": {
+    "description": "Bewegung der Hubwinde 2 erkannt obwohl nicht angesteuert, NICHT AUSSCHALTEN!",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007f9": {
+    "description": "Hubwinde 1 Getriebeöltemperatur Warnung %.1f°C",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007fa": {
+    "description": "Hubwinde 2 Getriebeöltemperatur Warnung %.1f°C",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007fb": {
+    "description": "Kraftmesslasche links Spitzenausleger, interner Sensorfehler (%u)",
+    "effect": "LMB Stopp",
+    "solution": "Zündung Aus- und wieder Einschalten\nprüfen / tauschen",
+    "causes": "Sensor defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007fc": {
+    "description": "Kraftmesslasche links Spitzenausleger, defekt (%u)",
+    "effect": "",
+    "solution": "Sensor muss ausgewechselt werden",
+    "causes": "Auswertung der Fehlernummern:\n15: Sensor durch negative Überbeanspruchung defekt\n16: Sensor durch positive Überbeanspruchung defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007fd": {
+    "description": "Kraftmesslasche links Spitzenausleger, Signal nicht vorhanden",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007fe": {
+    "description": "Kraftmesslasche rechts Spitzenausleger, interner Sensorfehler (%u)",
+    "effect": "LMB Stopp",
+    "solution": "Zündung Aus- und wieder Einschalten\nprüfen / tauschen",
+    "causes": "Sensor defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x000007ff": {
+    "description": "Kraftmesslasche rechts Spitzenausleger, defekt (%u)",
+    "effect": "",
+    "solution": "Sensor muss ausgewechselt werden",
+    "causes": "Auswertung der Fehlernummern:\n15: Sensor durch negative Überbeanspruchung defekt\n16: Sensor durch positive Überbeanspruchung defekt",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000800": {
+    "description": "Kraftmesslasche rechts Spitzenausleger, Signal nicht vorhanden",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000801": {
+    "description": "LMB-Konfiguration: Sensoren des Spitzenauslegers sind vorhanden aber nicht vorgewählt",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000803": {
+    "description": "Kraftmesslasche links und rechts, Spitzenausleger, Signale stimmen nicht überein\nLast links: %.1fkN, Last rechts: %.1fkN",
+    "effect": "LMB Stopp",
+    "solution": "Stecker und Leitungen prüfen",
+    "causes": "Feuchtigkeit im Stecker\nSchrägzug",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000805": {
+    "description": "Dieseltank im Unterwagen: Gebersignal zu niedrig oder nicht vorhanden",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000806": {
+    "description": "Dieseltank im Unterwagen: Gebersignal zu hoch oder Kurzschluss mit Spannungsversorgung",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000807": {
+    "description": "Dieseltank im Unterwagen: Tankinhalt Warnschwelle unterschritten",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000808": {
+    "description": "Dieseltank im Unterwagen: Tankinhalt Sicherheitsschwelle unterschritten",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000809": {
+    "description": "Drehwerk 1 Temperatur-Sensor, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000080a": {
+    "description": "Drehwerk 1 Temperatur-Sensor, Signal zu niedrig oder nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000080b": {
+    "description": "Drehwerk 2 Temperatur-Sensor, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000080c": {
+    "description": "Drehwerk 2 Temperatur-Sensor, Signal zu niedrig oder nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000080d": {
+    "description": "Drehwerk 3 Temperatur-Sensor, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000080e": {
+    "description": "Drehwerk 3 Temperatur-Sensor, Signal zu niedrig oder nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000080f": {
+    "description": "Drehwerk 4 Temperatur-Sensor, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000810": {
+    "description": "Drehwerk 4 Temperatur-Sensor, Signal zu niedrig oder nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000811": {
+    "description": "Verteilergetriebe Temperatur-Sensor, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000812": {
+    "description": "Verteilergetriebe Getriebeöltemperatur, Signal zu niedrig oder nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000813": {
+    "description": "Druckaufnehmer Speisedruck-Versorgung, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000814": {
+    "description": "Druckaufnehmer Speisedruck-Versorgung, Signal zu niedrig oder nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000815": {
+    "description": "Hubwerk Freifall-Kupplung Spülöl Temperatur-Sensor eingangsseitig, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000816": {
+    "description": "Hubwerk Freifall-Kupplung Spülöl Temperatur-Sensor eingangsseitig, Signal zu niedrig oder nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000817": {
+    "description": "Hubwerk 1 Freifall-Kupplung Spülöl Temperatur-Sensor ausgangssseitig, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000818": {
+    "description": "Hubwerk 1 Freifall-Kupplung Spülöl Temperatur-Sensor ausgangsseitig, Signal zu niedrig oder nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x00000819": {
+    "description": "Hubwerk 2 Freifall-Kupplung Spülöl Temperatur-Sensor ausgangssseitig, Signal zu hoch oder Kurzschluss mit Spannungsversorgung (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nSensor prüfen\nStecker und Leitungen prüfen",
+    "causes": "Sensor defekt\nFeuchtigkeit im Stecker\nKurzschluss",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000081a": {
+    "description": "Hubwerk 2 Freifall-Kupplung Spülöl Temperatur-Sensor ausgangsseitig, Signal zu niedrig oder nicht vorhanden (Eingang: %y)",
+    "effect": "",
+    "solution": "Verkabelung prüfen\nÜberprüfe Spannungsversorgung\nModul/Sensor prüfen",
+    "causes": "Sensor defekt\nKabelbruch",
+    "required_action": "",
+    "relation": ""
+  },
+  "0x0000081d": {
+    "description": "Fehler CAN-Linie, Modul für Condition Monitoring (Linie 7 Modul 45)  meldet sich nicht",
+    "effect": "",
+    "solution": "",
+    "causes": "",
+    "required_action": "",
+    "relation": ""
+  }
+}
