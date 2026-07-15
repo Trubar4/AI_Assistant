@@ -1671,6 +1671,7 @@ let _scanStream = null;
 let _scanTimer = null;
 let _scanWorker = null;
 let _scanBusy = false;
+let _scanAttempts = 0;
 
 function _scanStatus(text) {
   document.getElementById('scan-status').textContent = text;
@@ -1734,6 +1735,7 @@ async function startScan() {
   }
 
   if (!_scanStream) return; // Nutzer hat währenddessen abgebrochen
+  _scanAttempts = 0;
   _scanStatus('Code in den Rahmen halten…');
   _scanTimer = setInterval(_scanFrame, SCAN_INTERVAL_MS);
 }
@@ -1747,27 +1749,64 @@ async function _scanFrame() {
     if (!vw || !vh) return;
 
     const canvas = document.getElementById('scan-canvas');
-    const sw = Math.round(vw * SCAN_REGION.w);
-    const sh = Math.round(vh * SCAN_REGION.h);
-    canvas.width = sw;
-    canvas.height = sh;
-    canvas.getContext('2d').drawImage(
-      video,
-      Math.round(vw * SCAN_REGION.x), Math.round(vh * SCAN_REGION.y), sw, sh,
-      0, 0, sw, sh
-    );
+    const sx = Math.round(vw * SCAN_REGION.x), sy = Math.round(vh * SCAN_REGION.y);
+    const sw = Math.round(vw * SCAN_REGION.w), sh = Math.round(vh * SCAN_REGION.h);
+    // Handy-Kameras liefern sehr große Frames — ohne Verkleinerung dauert
+    // die Erkennung auf Mobilgeräten viele Sekunden pro Bild.
+    const scale = Math.min(1, 800 / sw);
+    canvas.width = Math.round(sw * scale);
+    canvas.height = Math.round(sh * scale);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    _preprocessForOcr(ctx, canvas.width, canvas.height);
 
     const { data } = await _scanWorker.recognize(canvas);
+    const raw = (data.text || '').replace(/\s+/g, '');
     // OCR verliert gelegentlich führende Nullen — das Backend füllt auf 8 Stellen auf.
-    const match = (data.text || '').replace(/\s+/g, '').match(/0x[0-9A-Fa-f]{4,8}/);
+    const match = raw.match(/0x[0-9A-Fa-f]{4,8}/i);
     if (match) {
       stopScan();
       const el = document.getElementById('ec-input');
       el.value = match[0];
       lookupCode();
+      return;
+    }
+    _scanAttempts++;
+    if (_scanAttempts >= 8) {
+      _scanStatus('Kein Code erkannt — näher herangehen, Reflexionen vermeiden.');
+    } else if (raw) {
+      _scanStatus(`Analysiere… gelesen: „${raw.slice(0, 16)}"`);
+    } else {
+      _scanStatus(`Analysiere… (${_scanAttempts})`);
     }
   } catch { /* Einzelbild fehlgeschlagen — nächster Versuch folgt */ }
   finally { _scanBusy = false; }
+}
+
+// Graustufen, Kontrast strecken und dunkle Displays invertieren —
+// Tesseract erkennt dunkle Schrift auf hellem Grund deutlich besser
+// als die typische helle Schrift auf dunklem Maschinendisplay.
+function _preprocessForOcr(ctx, w, h) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const n = w * h;
+  const gray = new Uint8ClampedArray(n);
+  let sum = 0, min = 255, max = 0;
+  for (let i = 0; i < n; i++) {
+    const g = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+    gray[i] = g;
+    sum += g;
+    if (g < min) min = g;
+    if (g > max) max = g;
+  }
+  const invert = (sum / n) < 128;
+  const range = Math.max(1, max - min);
+  for (let i = 0; i < n; i++) {
+    let v = (gray[i] - min) * 255 / range;
+    if (invert) v = 255 - v;
+    d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v;
+  }
+  ctx.putImageData(img, 0, 0);
 }
 
 function stopScan() {
