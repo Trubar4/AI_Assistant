@@ -8,10 +8,16 @@ Endpoints:
 """
 
 import json
+import logging
 import os
 import re
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s:%(name)s: %(message)s",
+)
 
 from dotenv import load_dotenv
 
@@ -31,8 +37,10 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-from backend.search import search, reset_index
-from backend.claude_client import ask, VerifiedAnswer
+from backend.search import search, reset_index, extract_facets, count_hits
+from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer
+from backend.agent import run_agent
+from backend.rule_agent import run_rule_agent
 
 # ---------------------------------------------------------------------------
 # Error code database (optional — loaded once at startup)
@@ -73,6 +81,12 @@ def _load_errorcodes() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _load_errorcodes()
+    # Pre-warm semantic model so first request isn't slow
+    try:
+        from backend.search import _load_semantic
+        _load_semantic()
+    except Exception:
+        pass
     yield
     reset_index()
 
@@ -80,6 +94,12 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
+# AGENT_MODE=true  → Standard "agent"
+# AGENT_MODE=rule  → regelbasierter Agent ohne LLM (RULE_AGENT=true hat gleichen Effekt)
+_agent_mode_env = os.environ.get("AGENT_MODE", "").lower()
+_rule_mode = _agent_mode_env == "rule" or os.environ.get("RULE_AGENT", "").lower() in ("1", "true")
+_DEFAULT_MODE = "rule" if _rule_mode else ("agent" if _agent_mode_env in ("1", "true") else "classic")
+
 app = FastAPI(
     title="Maschinen-Assistent API",
     version="0.1.0",
@@ -108,7 +128,12 @@ if _manuals.exists():
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return RedirectResponse(url="/frontend/MaschinenAssistent.html")
+    return RedirectResponse(url=f"/frontend/MaschinenAssistent.html?mode={_DEFAULT_MODE}")
+
+
+@app.get("/config", include_in_schema=False)
+async def config() -> dict:
+    return {"default_mode": _DEFAULT_MODE}
 
 
 # ---------------------------------------------------------------------------
@@ -117,12 +142,19 @@ async def root():
 class AskRequest(BaseModel):
     question: str
     top_n: int = 5
+    context: str = ""   # persistenter Maschinen-/Konfigurations-Kontext
 
 
 class SourceLink(BaseModel):
     title: str
     filename: str
     score: float
+    snippet: str = ""
+
+
+class Facet(BaseModel):
+    label: str
+    options: list[str]
 
 
 class AskResponse(BaseModel):
@@ -130,6 +162,45 @@ class AskResponse(BaseModel):
     grounding: str          # BELEGT | TEILWEISE | NICHT_BELEGT
     fallback_used: bool
     sources: list[SourceLink]
+    facets: list[Facet] = []
+
+
+class ParseContextRequest(BaseModel):
+    raw: str
+
+
+class ParsedField(BaseModel):
+    key: str
+    value: str
+    hits: int = 0
+    valid: bool = True
+
+
+class ParseContextResponse(BaseModel):
+    fields: list[ParsedField]
+    canonical: str
+
+
+class AgentRequest(BaseModel):
+    question: str
+    context: str = ""
+    conversation: list[dict] = []   # History für Clarification-Runden
+    mode: str = ""                  # "rule" → regelbasierter Agent; leer → globaler Default
+
+
+class AgentSource(BaseModel):
+    filename: str
+    title: str
+
+
+class AgentResponse(BaseModel):
+    type: str                        # "answer" | "clarification"
+    answer: str = ""
+    question: str = ""              # bei type="clarification"
+    sources: list[AgentSource] = []
+    rounds: int = 0
+    conversation: list[dict] = []   # zurück an Frontend für nächsten Call
+    confidence: float = 1.0         # 0.0–1.0; nur rule-agent befüllt dieses Feld
 
 
 class ErrorCodeRequest(BaseModel):
@@ -194,8 +265,15 @@ async def ask_question(req: AskRequest) -> AskResponse:
     if not q:
         raise HTTPException(status_code=422, detail="question must not be empty")
 
-    results = search(q, top_n=req.top_n)
-    if not results:
+    ctx = req.context.strip()
+
+    # HyDE: BM25-Titelscan nur gegen die echte Frage — Kontext-Tokens würden
+    # die Titeltreffer verzerren. Kontext fließt aber in den HyDE-Prompt ein,
+    # damit die hypothetische Passage konfigurationsrelevant ist.
+    expanded_q = expand_query(q, context=ctx)
+
+    candidates = search(expanded_q, top_n=50)   # Triple-RRF → 50 candidates
+    if not candidates:
         return AskResponse(
             answer=(
                 "Zu dieser Frage wurden keine passenden Seiten im Manual gefunden. "
@@ -206,12 +284,72 @@ async def ask_question(req: AskRequest) -> AskResponse:
             sources=[],
         )
 
-    va: VerifiedAnswer = ask(q, results)
+    facets = extract_facets(candidates, top_k=10)
+    # Reranker bekommt Kontext + Frage explizit, damit konfigurationsrelevante
+    # Seiten (z. B. "74m Hauptausleger") höher bewertet werden.
+    rerank_q = f"{ctx}\n\n{q}" if ctx else q
+    results = rerank(rerank_q, candidates, top_n=req.top_n)
+    va: VerifiedAnswer = ask(q, results)                         # original query für Anzeige
     return AskResponse(
         answer=va.answer,
         grounding=va.grounding,
         fallback_used=va.fallback_used,
         sources=[SourceLink(**s) for s in va.sources],
+        facets=[Facet(**f) for f in facets],
+    )
+
+
+@app.post("/context/parse", response_model=ParseContextResponse)
+async def parse_context_endpoint(req: ParseContextRequest) -> ParseContextResponse:
+    raw = req.raw.strip()
+    if not raw:
+        raise HTTPException(status_code=422, detail="raw must not be empty")
+
+    parsed = parse_context(raw)
+
+    fields_out = []
+    for f in parsed:
+        hits = count_hits(f["wert"])
+        fields_out.append(ParsedField(
+            key=f["schluessel"],
+            value=f["wert"],
+            hits=hits,
+            valid=hits > 0,
+        ))
+
+    canonical = " / ".join(f"{f.key}: {f.value}" for f in fields_out)
+    return ParseContextResponse(fields=fields_out, canonical=canonical)
+
+
+@app.post("/ask_agent", response_model=AgentResponse)
+async def ask_agent(req: AgentRequest) -> AgentResponse:
+    q = req.question.strip()
+    if not q:
+        raise HTTPException(status_code=422, detail="question must not be empty")
+
+    use_rule = (req.mode == "rule") or (_rule_mode and req.mode != "agent")
+
+    if use_rule:
+        result = run_rule_agent(
+            question=q,
+            context=req.context.strip(),
+            conversation=req.conversation or [],
+        )
+    else:
+        result = run_agent(
+            question=q,
+            context=req.context.strip(),
+            conversation=req.conversation or [],
+        )
+
+    return AgentResponse(
+        type=result["type"],
+        answer=result.get("answer", ""),
+        question=result.get("question", ""),
+        sources=[AgentSource(**s) for s in result.get("sources", [])],
+        rounds=result.get("rounds", 0),
+        conversation=result.get("messages", []),
+        confidence=result.get("confidence", 1.0),
     )
 
 

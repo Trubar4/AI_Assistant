@@ -196,6 +196,49 @@
       color: var(--r-on-surface-muted);
       flex-shrink: 0;
     }
+    .source-item__snippet {
+      font: 400 12px/16px var(--font-text);
+      color: var(--r-on-surface-muted);
+      margin-top: 3px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ── Manual viewer ──────────────────────────────────────────── */
+    #manual-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: var(--r-bg-default);
+    }
+    .manual-toolbar {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      padding: var(--s-2) var(--s-4);
+      border-bottom: 1px solid var(--r-outline-bright);
+      background: var(--r-surface-high);
+      flex-shrink: 0;
+    }
+    .manual-toolbar__title {
+      flex: 1;
+      font: 500 13px/18px var(--font-text-m);
+      color: var(--r-on-surface-default);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #view-manual {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    #view-manual.is-active {
+      display: flex;
+    }
 
     /* ── Disclaimer ─────────────────────────────────────────── */
     .disclaimer {
@@ -249,7 +292,7 @@
     .composer-textarea::placeholder { color: var(--r-on-surface-muted); }
     .composer-textarea:focus {
       border-color: var(--r-outline-variant);
-      box-shadow: 0 0 0 3px rgba(255,208,0,0.2);
+      box-shadow: 0 0 0 3px var(--r-focus-ring-soft);
     }
     .composer-hint {
       max-width: 760px;
@@ -259,12 +302,129 @@
       text-align: center;
     }
 
+    /* ── Kontext-Panel ──────────────────────────────────────── */
+    .context-toggle-row {
+      max-width: 760px;
+      margin: 0 auto var(--s-2);
+    }
+    .context-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-1);
+      padding: 3px 10px;
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-pill);
+      background: transparent;
+      cursor: pointer;
+      font: 400 12px/18px var(--font-text);
+      color: var(--r-on-surface-muted);
+      transition: background var(--motion-fast), color var(--motion-fast);
+    }
+    .context-toggle-btn:hover {
+      background: var(--r-surface-high);
+      color: var(--r-on-surface-default);
+    }
+    .context-active-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      background: var(--r-state-info-subtle, #e8f4fd);
+      color: var(--r-state-info, #1a6fa8);
+      font: 500 10px/14px var(--font-text-m);
+    }
+    .context-panel {
+      max-width: 760px;
+      margin: 0 auto var(--s-3);
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-high);
+      overflow: hidden;
+    }
+    .context-panel__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--s-2) var(--s-3);
+      border-bottom: 1px solid var(--r-outline-bright);
+    }
+    .context-panel__textarea {
+      width: 100%;
+      box-sizing: border-box;
+      resize: none;
+      padding: var(--s-2) var(--s-3);
+      background: transparent;
+      color: var(--r-on-surface-default);
+      border: none;
+      font: 400 13px/20px var(--font-text);
+      outline: none;
+    }
+    .context-panel__textarea::placeholder { color: var(--r-on-surface-muted); }
+    .context-panel__actions {
+      display: flex;
+      gap: var(--s-2);
+      padding: var(--s-2) var(--s-3);
+      border-top: 1px solid var(--r-outline-bright);
+      align-items: center;
+    }
+    .context-panel__actions .spacer { flex: 1; }
+    /* Parsed chips view */
+    .ctx-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--s-2);
+      padding: var(--s-3);
+    }
+    .ctx-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-1);
+      padding: 4px 8px 4px 10px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--r-outline-bright);
+      background: var(--r-surface-default);
+      font: 400 12px/18px var(--font-text);
+      color: var(--r-on-surface-default);
+    }
+    .ctx-chip--invalid {
+      border-color: var(--r-state-danger, #c0392b);
+      background: var(--r-state-danger-subtle, #fdf0ef);
+    }
+    .ctx-chip__key {
+      font: 500 11px/14px var(--font-text-m);
+      color: var(--r-on-surface-muted);
+      margin-right: 2px;
+    }
+    .ctx-chip__del {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: var(--r-on-surface-muted);
+      padding: 0;
+      margin-left: 2px;
+    }
+    .ctx-chip__del:hover { background: var(--r-surface-high); color: var(--r-on-surface-default); }
+    .ctx-chip--invalid .ctx-chip__key,
+    .ctx-chip--invalid .ctx-chip__del { color: var(--r-state-danger, #c0392b); }
+    .ctx-analyse-spinner { display: none; }
+    .ctx-analyse-spinner.is-spinning {
+      display: inline-block;
+      animation: ctx-spin 0.8s linear infinite;
+    }
+    @keyframes ctx-spin { to { transform: rotate(360deg); } }
+
     /* ── Voice overlay ──────────────────────────────────────── */
     .voice-overlay {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.72);
+      background: var(--r-scrim);
       z-index: 100;
       align-items: center;
       justify-content: center;
@@ -280,16 +440,16 @@
       animation: pulse 1.2s ease-in-out infinite;
     }
     @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255,208,0,0.5); }
-      50%       { box-shadow: 0 0 0 24px rgba(255,208,0,0); }
+      0%, 100% { box-shadow: 0 0 0 0 var(--r-brand-glow-strong); }
+      50%       { box-shadow: 0 0 0 24px var(--r-brand-glow-transparent); }
     }
     .voice-overlay__label {
       font: 400 16px/24px var(--font-text);
-      color: var(--p-white);
+      color: var(--r-on-scrim);
     }
     .voice-overlay__transcript {
       font: 400 14px/20px var(--font-text);
-      color: rgba(255,255,255,0.6);
+      color: var(--r-on-scrim-muted);
       min-height: 20px;
     }
 
@@ -400,6 +560,109 @@
     }
     @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
+    /* ── Mode Toggle ────────────────────────────────────────── */
+    .mode-toggle {
+      display: inline-flex;
+      border: 1px solid var(--p-steel-600);
+      border-radius: var(--radius-pill);
+      overflow: hidden;
+      margin-left: var(--s-2);
+    }
+    .mode-toggle__btn {
+      padding: 3px 12px;
+      font: 400 12px/18px var(--font-text);
+      color: var(--p-steel-300);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: background var(--motion-fast), color var(--motion-fast);
+    }
+    .mode-toggle__btn:hover { background: var(--p-steel-800); }
+    .mode-toggle__btn--active {
+      background: var(--r-brand);
+      color: var(--r-on-brand);
+      font-family: var(--font-text-m);
+      font-weight: 500;
+    }
+
+    /* ── Agent-Bubble ───────────────────────────────────────── */
+    .agent-bubble {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .agent-bubble__head {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      margin-bottom: var(--s-2);
+      font: 500 12px/16px var(--font-text-m);
+      color: var(--r-on-surface-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .agent-bubble__rounds {
+      font: 400 11px/14px var(--font-text);
+      color: var(--r-on-surface-disabled);
+    }
+    .agent-bubble__answer {
+      font: 400 15px/24px var(--font-text);
+      color: var(--r-on-surface-default);
+      margin-bottom: var(--s-4);
+    }
+    .agent-bubble__sources {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-2);
+    }
+    /* Escalation hint */
+    .escalation-hint {
+      max-width: 760px;
+      margin: var(--s-3) auto 0;
+      border: 1px solid var(--r-state-warning, #b45309);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-high);
+      padding: var(--s-3) var(--s-4);
+    }
+    .escalation-hint__text {
+      font: 400 13px/20px var(--font-text);
+      color: var(--r-on-surface-muted);
+      margin-bottom: var(--s-2);
+    }
+    .escalation-hint__actions {
+      display: flex;
+      gap: var(--s-2);
+      flex-wrap: wrap;
+    }
+    /* Clarification input */
+    .agent-clarify {
+      max-width: 760px;
+      margin: 0 auto;
+      border: 1px solid var(--r-state-info, #1a6fa8);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-high);
+      padding: var(--s-4);
+    }
+    .agent-clarify__q {
+      font: 400 15px/24px var(--font-text);
+      color: var(--r-on-surface-default);
+      margin-bottom: var(--s-3);
+    }
+    .agent-clarify__row {
+      display: flex;
+      gap: var(--s-2);
+    }
+    .agent-clarify__input {
+      flex: 1;
+      padding: var(--s-2) var(--s-3);
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-default);
+      color: var(--r-on-surface-default);
+      font: 400 14px/20px var(--font-text);
+      outline: none;
+    }
+    .agent-clarify__input:focus { border-color: var(--r-brand); }
+
     /* ── Inline SVG icon helper ─────────────────────────────── */
     .icon { display: inline-flex; flex-shrink: 0; }
 
@@ -460,8 +723,17 @@
   </svg>
   <div class="lds-appbar__product"><strong>KI</strong> Assistent</div>
   <div style="flex:1"></div>
-  <span style="font:400 13px/18px var(--font-text);color:var(--p-steel-400);padding:0 var(--s-3);border-left:1px solid var(--p-steel-700)">LR 1104.03.08</span>
-  <span id="online-status" style="font:400 12px/16px var(--font-text);color:var(--p-steel-400);padding:0 var(--s-3)">Offline</span>
+  <span style="font:400 13px/18px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3);border-left:1px solid var(--r-chrome-border)">LR 1104.03.08</span>
+  <span id="online-status" style="font:400 12px/16px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3)">Offline</span>
+  <!-- Mode Toggle -->
+  <div class="mode-toggle" id="mode-toggle">
+    <button class="mode-toggle__btn mode-toggle__btn--active" id="mode-btn-rule"
+      onclick="setMode('rule')" title="Kostenlos · Sofort · Zeigt relevante Seiten">Regelbasiert</button>
+    <button class="mode-toggle__btn" id="mode-btn-classic"
+      onclick="setMode('classic')" title="Geringe Kosten · Schnell · KI-Antwort">Klassisch</button>
+    <button class="mode-toggle__btn" id="mode-btn-agent"
+      onclick="setMode('agent')" title="Höhere Kosten · Langsamer · Mehrschrittiger KI-Assistent">Assistent</button>
+  </div>
 </header>
 
 <!-- ═══ LAYOUT ════════════════════════════════════════════════════════════ -->
@@ -534,8 +806,71 @@
       </div>
     </div>
 
+    <!-- Manual viewer view -->
+    <div id="view-manual" class="view">
+      <div class="manual-toolbar">
+        <button class="lds-btn lds-btn--ghost" id="manual-back-btn" onclick="closeManual()">
+          <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Zurück
+        </button>
+        <div class="manual-toolbar__title" id="manual-title"></div>
+      </div>
+      <iframe id="manual-frame" title="Manual-Seite"></iframe>
+    </div>
+
     <!-- Composer (always visible) -->
     <div class="app-composer" id="composer-wrap">
+
+      <!-- Kontext-Panel -->
+      <div class="context-panel" id="context-panel" style="display:none">
+        <div class="context-panel__head">
+          <span style="font:500 12px/16px var(--font-text-m);color:var(--r-on-surface-default)">Maschinenkonfiguration</span>
+          <button class="lds-btn lds-btn--ghost lds-btn--icon" style="width:24px;height:24px;padding:0"
+            title="Kontext entfernen" onclick="clearContext()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <!-- State 1: Freitext-Eingabe -->
+        <div id="ctx-input-view">
+          <textarea class="context-panel__textarea" id="context-input"
+            placeholder="z. B. Hauptausleger 74 m / Heckballast 124 t / Einscherung 6x / Lasthaken 160 t"
+            rows="2"
+            oninput="onContextInput()"></textarea>
+          <div class="context-panel__actions">
+            <span style="font:400 11px/16px var(--font-text);color:var(--r-on-surface-muted)">Konfiguration eingeben, dann analysieren</span>
+            <span class="spacer"></span>
+            <button class="lds-btn lds-btn--secondary" style="font-size:12px;padding:4px 12px"
+              onclick="analyseContext()" id="ctx-analyse-btn" disabled>
+              <svg class="ctx-analyse-spinner" id="ctx-spinner" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
+              Analysieren
+            </button>
+          </div>
+        </div>
+
+        <!-- State 2: Analysierte Felder als Chips -->
+        <div id="ctx-parsed-view" style="display:none">
+          <div class="ctx-fields" id="ctx-fields"></div>
+          <div class="context-panel__actions">
+            <span id="ctx-warn-text" style="font:400 11px/16px var(--font-text);color:var(--r-state-danger,#c0392b);display:none"></span>
+            <span class="spacer"></span>
+            <button class="lds-btn lds-btn--ghost" style="font-size:12px;padding:4px 10px"
+              onclick="editContext()">Bearbeiten</button>
+            <button class="lds-btn lds-btn--primary" style="font-size:12px;padding:4px 12px"
+              onclick="acceptContext()">Übernehmen</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kontext-Toggle-Zeile -->
+      <div class="context-toggle-row">
+        <button class="context-toggle-btn" id="context-toggle-btn" onclick="toggleContextPanel()" title="Maschinenkonfiguration als Suchkontext setzen">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          Konfiguration
+          <span class="context-active-badge" id="context-active-badge" style="display:none">aktiv</span>
+        </button>
+      </div>
+
       <div class="composer-row">
         <textarea class="composer-textarea" id="question-input"
           placeholder='Frage zur Maschine stellen…  z. B. „Welche Schritte beim Aufrüsten mit 60 m?"'
@@ -575,14 +910,14 @@
 <!-- ═══ VOICE OVERLAY ═════════════════════════════════════════════════════ -->
 <div class="voice-overlay" id="voice-overlay" onclick="stopVoice()">
   <div class="voice-ring">
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--p-steel-975)" stroke-width="1.6" stroke-linecap="round">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--r-on-brand)" stroke-width="1.6" stroke-linecap="round">
       <rect x="9" y="3" width="6" height="12" rx="3"/>
       <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/>
     </svg>
   </div>
   <div class="voice-overlay__label">Sprechen Sie jetzt…</div>
   <div class="voice-overlay__transcript" id="voice-transcript"></div>
-  <button class="lds-btn lds-btn--ghost" style="color:var(--p-white);border-color:var(--p-steel-500)"
+  <button class="lds-btn lds-btn--ghost" style="color:var(--r-on-scrim);border-color:var(--r-outline-on-scrim)"
     onclick="stopVoice()">Abbrechen</button>
 </div>
 
@@ -636,7 +971,7 @@ function renderMarkdown(md) {
   function fmt(t) {
     return escHtml(t)
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/`([^`]+)`/g, '<code style="font-family:monospace;background:var(--r-surface-high);padding:1px 4px;border-radius:3px">$1</code>');
+      .replace(/`([^`]+)`/g, '<code style="font-family:var(--font-mono);background:var(--r-surface-high);padding:1px 4px;border-radius:3px">$1</code>');
   }
 
   for (const raw of lines) {
@@ -702,6 +1037,27 @@ function switchView(id) {
   composer.style.display = id === 'chat' ? '' : 'none';
 }
 
+let _manualReturnView = 'chat';
+
+function openManual(url, title) {
+  // Remember which view we came from
+  const active = document.querySelector('.view.is-active');
+  _manualReturnView = active ? active.id.replace('view-', '') : 'chat';
+
+  document.getElementById('manual-title').textContent = title;
+  document.getElementById('manual-frame').src = url;
+
+  // Hide all views, show manual
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('is-active'));
+  document.getElementById('view-manual').classList.add('is-active');
+  document.getElementById('composer-wrap').style.display = 'none';
+}
+
+function closeManual() {
+  document.getElementById('manual-frame').src = '';
+  switchView(_manualReturnView);
+}
+
 // ── Health check ─────────────────────────────────────────────────────────
 
 async function checkHealth() {
@@ -714,111 +1070,442 @@ async function checkHealth() {
   } catch { /* stays offline */ }
 }
 
+// ── Kontext-Panel (Ansatz C: Freitext → LLM-Parse → Chip-Bestätigung) ────
+
+const CONTEXT_KEY     = 'ma_context';          // canonical string für /ask
+const CONTEXT_RAW_KEY = 'ma_context_raw';      // original Freitext für Bearbeiten
+
+// Interne State
+let _ctxFields = [];   // [{key, value, hits, valid}, ...]
+
+function _getContext() {
+  return localStorage.getItem(CONTEXT_KEY) || '';
+}
+
+function toggleContextPanel() {
+  const panel = document.getElementById('context-panel');
+  const open  = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  if (open) {
+    // Zeige gespeicherten Rohtext in der Textarea
+    const raw = localStorage.getItem(CONTEXT_RAW_KEY) || '';
+    document.getElementById('context-input').value = raw;
+    _updateAnalyseBtn();
+    // Wenn bereits akzeptierte Felder existieren, Chip-View zeigen
+    if (_ctxFields.length && raw) {
+      _showParsedView();
+    } else {
+      _showInputView();
+    }
+  }
+}
+
+function _showInputView() {
+  document.getElementById('ctx-input-view').style.display = 'block';
+  document.getElementById('ctx-parsed-view').style.display = 'none';
+  document.getElementById('context-input').focus();
+}
+
+function _showParsedView() {
+  document.getElementById('ctx-input-view').style.display = 'none';
+  document.getElementById('ctx-parsed-view').style.display = 'block';
+  _renderChips();
+}
+
+function _renderChips() {
+  const container = document.getElementById('ctx-fields');
+  container.innerHTML = '';
+  _ctxFields.forEach((f, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'ctx-chip' + (f.valid ? '' : ' ctx-chip--invalid');
+    chip.title = f.valid ? `${f.hits} Treffer im Manual` : 'Begriff nicht im Manual gefunden';
+    chip.innerHTML =
+      `<span class="ctx-chip__key">${escHtml(f.key)}:</span>${escHtml(f.value)}` +
+      `<button class="ctx-chip__del" onclick="removeCtxField(${i})" title="Entfernen">` +
+      `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+    container.appendChild(chip);
+  });
+
+  // Warnung bei ungültigen Feldern
+  const invalid = _ctxFields.filter(f => !f.valid);
+  const warn = document.getElementById('ctx-warn-text');
+  if (invalid.length) {
+    warn.style.display = 'inline';
+    warn.textContent = `${invalid.length} Begriff(e) nicht im Manual gefunden (rot markiert).`;
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+function removeCtxField(idx) {
+  _ctxFields.splice(idx, 1);
+  if (_ctxFields.length === 0) {
+    _showInputView();
+  } else {
+    _renderChips();
+  }
+}
+
+function clearContext() {
+  _ctxFields = [];
+  document.getElementById('context-input').value = '';
+  document.getElementById('context-panel').style.display = 'none';
+  document.getElementById('context-active-badge').style.display = 'none';
+  localStorage.removeItem(CONTEXT_KEY);
+  localStorage.removeItem(CONTEXT_RAW_KEY);
+}
+
+function editContext() {
+  _showInputView();
+}
+
+function acceptContext() {
+  if (_ctxFields.length === 0) return;
+  const canonical = _ctxFields.map(f => `${f.key}: ${f.value}`).join(' / ');
+  localStorage.setItem(CONTEXT_KEY, canonical);
+  document.getElementById('context-active-badge').style.display = 'inline-flex';
+  document.getElementById('context-panel').style.display = 'none';
+}
+
+function onContextInput() {
+  _updateAnalyseBtn();
+}
+
+function _updateAnalyseBtn() {
+  const val = document.getElementById('context-input').value.trim();
+  document.getElementById('ctx-analyse-btn').disabled = !val;
+}
+
+async function analyseContext() {
+  const raw = document.getElementById('context-input').value.trim();
+  if (!raw) return;
+
+  const btn     = document.getElementById('ctx-analyse-btn');
+  const spinner = document.getElementById('ctx-spinner');
+  btn.disabled  = true;
+  spinner.classList.add('is-spinning');
+
+  try {
+    const resp = await fetch('/context/parse', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({raw}),
+    });
+    if (!resp.ok) throw new Error(resp.statusText);
+    const data = await resp.json();
+    _ctxFields = data.fields.map(f => ({
+      key: f.key, value: f.value, hits: f.hits, valid: f.valid
+    }));
+    localStorage.setItem(CONTEXT_RAW_KEY, raw);
+    _showParsedView();
+  } catch (e) {
+    alert('Analyse fehlgeschlagen: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    spinner.classList.remove('is-spinning');
+  }
+}
+
+// Kontext aus localStorage beim Laden wiederherstellen
+(function restoreContext() {
+  const canonical = localStorage.getItem(CONTEXT_KEY);
+  const raw       = localStorage.getItem(CONTEXT_RAW_KEY);
+  if (canonical) {
+    document.getElementById('context-active-badge').style.display = 'inline-flex';
+    // Felder aus canonical string rekonstruieren (key: value / key: value)
+    _ctxFields = canonical.split(' / ').map(part => {
+      const sep = part.indexOf(': ');
+      if (sep > 0) return {key: part.slice(0, sep), value: part.slice(sep + 2), hits: 1, valid: true};
+      return {key: 'Konfiguration', value: part, hits: 1, valid: true};
+    }).filter(f => f.value);
+    if (raw) document.getElementById('context-input').value = raw;
+  }
+})();
+
+// ── Mode ──────────────────────────────────────────────────────────────────
+
+const MODE_KEY = 'ma_mode';
+let _mode = localStorage.getItem(MODE_KEY) || new URLSearchParams(location.search).get('mode') || 'rule';
+
+function setMode(m) {
+  _mode = m;
+  localStorage.setItem(MODE_KEY, m);
+  document.getElementById('mode-btn-classic').classList.toggle('mode-toggle__btn--active', m === 'classic');
+  document.getElementById('mode-btn-agent').classList.toggle('mode-toggle__btn--active', m === 'agent');
+  document.getElementById('mode-btn-rule').classList.toggle('mode-toggle__btn--active', m === 'rule');
+}
+setMode(_mode);
+
+function escalateQuery(question, targetMode) {
+  // Wechselt den Modus und stellt dieselbe Frage erneut
+  setMode(targetMode);
+  sendQuestion({ question });
+}
+
 // ── Ask ───────────────────────────────────────────────────────────────────
 
-async function sendQuestion() {
+async function sendQuestion(opts = {}) {
   const el = document.getElementById('question-input');
-  const q = el.value.trim();
+  const q = (opts.question || el.value).trim();
   if (!q) return;
 
-  el.value = '';
-  autoResize(el);
+  if (!opts.question) { el.value = ''; autoResize(el); }
   document.getElementById('hero').style.display = 'none';
 
   const history = document.getElementById('chat-history');
 
-  // Question bubble
-  const qDiv = document.createElement('div');
-  qDiv.className = 'chat-question';
-  qDiv.innerHTML = `<div class="chat-question__bubble">${escHtml(q)}</div>`;
-  history.appendChild(qDiv);
+  if (!opts.isClarification) {
+    const qDiv = document.createElement('div');
+    qDiv.className = 'chat-question';
+    qDiv.innerHTML = `<div class="chat-question__bubble">${escHtml(q)}</div>`;
+    history.appendChild(qDiv);
+  }
 
-  // Loading card
+  // Loading placeholder
   const loadDiv = document.createElement('div');
-  loadDiv.innerHTML = `
-    <div class="answer-card">
-      <div class="answer-card__body" style="gap:var(--s-3)">
+  loadDiv.innerHTML = (_mode === 'agent' || _mode === 'rule')
+    ? `<div class="agent-bubble"><div class="agent-bubble__head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        ${_mode === 'rule' ? 'Suche…' : 'Assistent sucht…'}</div>
+        <div class="skeleton" style="width:75%;margin-bottom:8px"></div>
+        <div class="skeleton" style="width:55%"></div></div>`
+    : `<div class="answer-card"><div class="answer-card__body" style="gap:var(--s-3)">
         <div class="skeleton" style="width:60%"></div>
         <div class="skeleton" style="width:90%"></div>
         <div class="skeleton" style="width:75%"></div>
-      </div>
-    </div>`;
+      </div></div>`;
   history.appendChild(loadDiv);
   loadDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
-
   document.getElementById('send-btn').disabled = true;
 
-  let data;
+  try {
+    if (_mode === 'agent' || _mode === 'rule') {
+      await _sendAgent(q, loadDiv, history, opts.conversation || [], _mode);
+    } else {
+      await _sendClassic(q, loadDiv);
+    }
+  } finally {
+    document.getElementById('send-btn').disabled = false;
+    loadDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+}
+
+async function _sendClassic(q, loadDiv) {
   try {
     const resp = await fetch(API + '/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q }),
+      body: JSON.stringify({ question: q, context: _getContext() }),
     });
-    data = await resp.json();
+    const data = await resp.json();
+    loadDiv.innerHTML = renderAnswer(q, data);
   } catch (err) {
     loadDiv.innerHTML = renderError('Verbindung zum Backend fehlgeschlagen. Starten Sie den Server mit: uvicorn backend.main:app');
-    document.getElementById('send-btn').disabled = false;
-    return;
   }
-
-  loadDiv.innerHTML = renderAnswer(q, data);
-  document.getElementById('send-btn').disabled = false;
-  loadDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
-function renderAnswer(question, data) {
-  const grounding = data.grounding || 'TEILWEISE';
-  const badgeCls = grounding === 'BELEGT' ? 'lds-badge--success'
-    : grounding === 'NICHT_BELEGT' ? 'lds-badge--error' : 'lds-badge--warning';
+async function _sendAgent(q, loadDiv, history, conversation, mode) {
+  try {
+    const resp = await fetch(API + '/ask_agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q, context: _getContext(), conversation, mode: mode || '' }),
+    });
+    const data = await resp.json();
 
-  const disclaimer = data.fallback_used ? `
-    <div class="disclaimer">
-      <div>${icon('alert', 18)}</div>
-      <div>
-        <div class="disclaimer__title">Antwort nicht eindeutig belegt</div>
-        <div class="disclaimer__text">Bitte direkt im Manual nachschlagen oder Liebherr-Service kontaktieren. Die unten verlinkte Quelle ist die nächstbeste Übereinstimmung.</div>
+    if (data.type === 'clarification') {
+      loadDiv.innerHTML = renderAgentClarification(data.question, data.conversation);
+    } else {
+      loadDiv.innerHTML = renderAgentAnswer(data, mode, q);
+      // Im Regelbasiert-Modus: Top-Quelle automatisch im Panel öffnen
+      if (mode === 'rule' && data.sources && data.sources.length > 0) {
+        const top = data.sources[0];
+        openManual('/manuals/' + top.filename, top.title);
+      }
+    }
+  } catch (err) {
+    loadDiv.innerHTML = renderError('Agent-Anfrage fehlgeschlagen: ' + err.message);
+  }
+}
+
+// Konversations-Store: id → conversation-Array (vermeidet HTML-Encoding von JSON)
+const _convStore = {};
+
+function renderAgentClarification(question, conversation) {
+  const id = 'clarify-' + Date.now();
+  _convStore[id] = conversation;
+  return `
+    <div class="agent-clarify" id="${id}-wrap">
+      <div class="agent-bubble__head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Assistent hat eine Rückfrage
       </div>
+      <div class="agent-clarify__q">${escHtml(question)}</div>
+      <div class="agent-clarify__row">
+        <input class="agent-clarify__input" id="${id}" placeholder="Ihre Antwort…"
+          onkeydown="if(event.key==='Enter')submitClarification('${id}')">
+        <button class="lds-btn lds-btn--primary" style="font-size:13px"
+          onclick="submitClarification('${id}')">Senden</button>
+      </div>
+    </div>`;
+}
+
+async function submitClarification(id) {
+  const answer = document.getElementById(id).value.trim();
+  if (!answer) return;
+  const conversation = _convStore[id] || [];
+  delete _convStore[id];
+
+  const wrap = document.getElementById(id + '-wrap');
+  const qDiv = document.createElement('div');
+  qDiv.className = 'chat-question';
+  qDiv.innerHTML = `<div class="chat-question__bubble">${escHtml(answer)}</div>`;
+  wrap.parentNode.replaceChild(qDiv, wrap);
+
+  await sendQuestion({ question: answer, isClarification: true, conversation });
+}
+
+function renderAgentAnswer(data, mode, question) {
+  const rounds = data.rounds > 1 ? `${data.rounds} Suchschritte` : '1 Suchschritt';
+  const sourcesHtml = (data.sources || []).map(s => `
+    <div class="source-item" role="button" tabindex="0"
+      data-url="/manuals/${escHtml(s.filename)}"
+      data-title="${escHtml(s.title || s.filename)}"
+      onclick="openManual(this.dataset.url, this.dataset.title)"
+      onkeydown="if(event.key==='Enter')openManual(this.dataset.url, this.dataset.title)">
+      <div class="icon">${icon('doc', 16)}</div>
+      <div class="source-item__info">
+        <div class="source-item__title">${escHtml(s.title || s.filename)}</div>
+      </div>
+    </div>`).join('');
+
+  // Eskalations-Hinweis bei niedrigem Konfidenz-Score im Regelbasiert-Modus
+  const confidence = typeof data.confidence === 'number' ? data.confidence : 1.0;
+  const lowConfidence = mode === 'rule' && confidence < 0.6;
+  const escalationHtml = lowConfidence ? `
+    <div class="escalation-hint">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Niedrige Übereinstimmung
+      <button class="lds-btn lds-btn--secondary lds-btn--sm escalation-btn"
+        onclick="escalateQuery(${JSON.stringify(question || '').replace(/"/g,'&quot;')}, 'classic')">
+        Klassisch versuchen
+      </button>
+      <button class="lds-btn lds-btn--secondary lds-btn--sm escalation-btn"
+        onclick="escalateQuery(${JSON.stringify(question || '').replace(/"/g,'&quot;')}, 'agent')">
+        Assistent fragen
+      </button>
     </div>` : '';
+
+  const modeLabel = mode === 'rule' ? 'Regelbasiert' : 'Assistent';
+
+  return `
+    <div class="agent-bubble">
+      <div class="agent-bubble__head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        ${modeLabel}
+        <span class="agent-bubble__rounds">(${escHtml(rounds)})</span>
+      </div>
+      ${escalationHtml}
+      <div class="agent-bubble__answer">${renderMarkdown(data.answer)}</div>
+      ${sourcesHtml ? `<div class="answer-section-label">Quellen</div><div class="agent-bubble__sources source-list">${sourcesHtml}</div>` : ''}
+    </div>`;
+}
+
+let _refineCardCounter = 0;
+
+function renderAnswer(question, data) {
+  const high = data.grounding === 'BELEGT';
+  const confidenceCls = high ? 'lds-badge--success' : 'lds-badge--warning';
+  const confidenceLabel = high ? 'Gute Übereinstimmung' : 'Niedrige Übereinstimmung';
 
   const sources = (data.sources || []);
   const sourcesHtml = sources.length ? `
     <div>
-      <div class="answer-section-label">Quellen im Manual</div>
+      <div class="answer-section-label" style="margin-bottom:var(--s-2)">Seiten im Manual</div>
       <div class="source-list">
         ${sources.map(s => `
-          <a class="source-item" href="/manuals/${escHtml(s.filename)}" target="_blank" rel="noopener">
+          <div class="source-item" role="button" tabindex="0"
+            data-url="/manuals/${escHtml(s.filename)}"
+            data-title="${escHtml(s.title)}"
+            onclick="openManual(this.dataset.url, this.dataset.title)"
+            onkeydown="if(event.key==='Enter')openManual(this.dataset.url, this.dataset.title)">
             <div class="icon">${icon('doc', 16)}</div>
             <div class="source-item__info">
               <div class="source-item__title">${escHtml(s.title)}</div>
-              <div class="source-item__crumb">${escHtml(s.filename)}</div>
+              ${s.snippet ? `<div class="source-item__snippet">${escHtml(s.snippet)}</div>` : ''}
             </div>
-            <div class="source-item__score">${Math.round((s.score || 0) * 10) / 10}</div>
-          </a>`).join('')}
+          </div>`).join('')}
       </div>
     </div>` : '';
+
+  const refineId = `refine-${++_refineCardCounter}`;
+  const facets = data.facets || [];
+  const refineHtml = `
+    <div class="refine-block" id="${refineId}">
+      <div class="answer-section-label" style="margin-bottom:var(--s-2)">Suche verfeinern</div>
+      <input class="lds-input" id="${refineId}-text" type="text"
+        placeholder="z. B. 74m Hauptausleger" style="margin-bottom:var(--s-3)" />
+      ${facets.map((f, fi) => `
+        <div style="margin-bottom:var(--s-2)">
+          <div style="font:400 12px/16px var(--font-text);color:var(--r-on-surface-muted);margin-bottom:var(--s-1)">${escHtml(f.label)}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:var(--s-2)">
+            ${f.options.map((opt, oi) => `
+              <label class="lds-pill" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+                <input type="checkbox" id="${refineId}-f${fi}-${oi}" value="${escHtml(opt)}" style="margin:0" />
+                ${escHtml(opt)}
+              </label>`).join('')}
+          </div>
+        </div>`).join('')}
+      <button class="lds-btn lds-btn--secondary" onclick="refineSearch('${refineId}', ${JSON.stringify(question).replace(/"/g, '&quot;')})">Verfeinerte Suche</button>
+    </div>`;
 
   return `
     <div class="answer-card">
       <div class="answer-card__head">
-        <span class="lds-badge ${badgeCls}">${escHtml(grounding)}</span>
+        <span class="lds-badge ${confidenceCls}">${confidenceLabel}</span>
         <span style="font:400 13px/18px var(--font-text);color:var(--r-on-surface-muted)">${escHtml(question)}</span>
       </div>
       <div class="answer-card__body">
-        ${disclaimer}
-        <div class="answer-text">${renderMarkdown(data.answer || '')}</div>
+        <div class="answer-text">${escHtml(data.answer || '')}</div>
         ${sourcesHtml}
+        ${refineHtml}
       </div>
       <div class="answer-card__foot">
-        <button class="lds-btn lds-btn--ghost" onclick="speak(this)" data-text="${escHtml(data.answer||'')}">
-          ${icon('speaker',16)} Vorlesen
-        </button>
         <div class="spacer"></div>
         <button class="lds-btn lds-btn--ghost lds-btn--icon" title="Kopieren" onclick="copyAnswer(this)" data-text="${escHtml(data.answer||'')}">
           ${icon('copy',16)}
         </button>
       </div>
     </div>`;
+}
+
+async function refineSearch(refineId, originalQuestion) {
+  const block = document.getElementById(refineId);
+  if (!block) return;
+
+  const freeText = block.querySelector(`#${refineId}-text`).value.trim();
+  const checked = Array.from(block.querySelectorAll('input[type="checkbox"]:checked')).map(el => el.value);
+  const extra = [...checked, freeText].filter(Boolean).join(' ');
+  if (!extra) return;
+
+  const refinedQ = `${originalQuestion} ${extra}`.trim();
+  const card = block.closest('.answer-card');
+  card.style.opacity = '0.5';
+
+  let data;
+  try {
+    const resp = await fetch(API + '/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: refinedQ }),
+    });
+    data = await resp.json();
+  } catch {
+    card.style.opacity = '1';
+    return;
+  }
+
+  card.outerHTML = renderAnswer(originalQuestion, data);
 }
 
 function renderError(msg) {

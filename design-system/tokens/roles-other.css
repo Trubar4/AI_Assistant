@@ -60,6 +60,9 @@
 
   --r-brand: var(--p-yellow-400); --r-on-brand: var(--p-black);
   --r-focus-ring: var(--p-yellow-400);
+  --r-focus-ring-soft: rgba(255,208,0,0.2);
+  --r-brand-glow-strong: rgba(255,208,0,0.5);
+  --r-brand-glow-transparent: rgba(255,208,0,0);
 }
 
 /* HA/Light — Hausgeräte Light */
@@ -89,6 +92,9 @@
   --r-warning: var(--p-warning-300);--r-on-warning: var(--p-warning-700); --r-warning-soft: var(--p-warning-100); --r-on-warning-soft: var(--p-warning-700);
   --r-success: var(--p-success-500);--r-on-success: var(--p-white); --r-success-soft: var(--p-success-100); --r-on-success-soft: var(--p-success-700);
   --r-brand: var(--p-blue-500); --r-on-brand: var(--p-white); --r-focus-ring: var(--p-blue-500);
+  --r-focus-ring-soft: rgba(39,121,196,0.2);
+  --r-brand-glow-strong: rgba(39,121,196,0.5);
+  --r-brand-glow-transparent: rgba(39,121,196,0);
 }
 
 /* HA/Dark */
@@ -104,4 +110,31 @@
   --r-warning: var(--p-warning-300); --r-on-warning: var(--p-warning-700); --r-warning-soft: rgba(227,167,53,0.18); --r-on-warning-soft: var(--p-warning-300);
   --r-success: var(--p-success-500); --r-on-success: var(--p-white); --r-success-soft: rgba(57,135,19,0.18); --r-on-success-soft: var(--p-success-300);
   --r-brand: var(--p-blue-500); --r-on-brand: var(--p-white); --r-focus-ring: var(--p-blue-500);
+  --r-focus-ring-soft: rgba(39,121,196,0.2);
+  --r-brand-glow-strong: rgba(39,121,196,0.5);
+  --r-brand-glow-transparent: rgba(39,121,196,0);
+}
+
+/* ============================================================
+   Fixed roles — constant across all themes
+   (app chrome / bars that stay dark by brand convention, scrims)
+   ============================================================ */
+:root {
+  --r-chrome-bg:        var(--p-steel-975);
+  --r-chrome-on:        var(--p-white);
+  --r-chrome-on-subtle: var(--p-steel-200);
+  --r-chrome-on-dim:    var(--p-steel-400);
+  --r-chrome-border:    var(--p-steel-700);
+
+  --r-scrim:            rgba(0,0,0,0.72);
+  --r-on-scrim:         var(--p-white);
+  --r-on-scrim-muted:   rgba(255,255,255,0.6);
+  --r-outline-on-scrim: var(--p-steel-500);
+
+  --r-info:             var(--p-blue-500);
+  --r-info-hover:       var(--p-blue-700);
+  --r-on-info:          var(--p-white);
+  --r-info-soft:        rgba(39,121,196,0.08);
+  --r-on-info-soft:     var(--p-blue-700);
+  --r-outline-info:     var(--p-blue-500);
 }
