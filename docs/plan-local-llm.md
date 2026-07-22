@@ -19,8 +19,10 @@
    OpenAI-kompatibler Endpunkt (`http://localhost:11434/v1`), eingebaute
    JSON-Schema-Erzwingung, plattformübergreifend. (vLLM wäre produktiv-schneller,
    für ein Notebook aber Overkill.)
-3. **Modell: Qwen3 7B** (Q4, ~5 GB) — beste Mehrsprachigkeit/Deutsch der kleinen
-   Modelle; die zwei Modus-2-Calls sind trivial dafür.
+3. **Modell: Qwen3 8B** (Ollama-Tag `qwen3:8b`, Q4 ~5–6 GB) — beste
+   Mehrsprachigkeit/Deutsch der kleinen Modelle; die zwei Modus-2-Calls sind
+   trivial dafür. Leichtere Alternative zum Testen: `qwen3:4b` (~2,5 GB).
+   (Hinweis: Qwen3 hat **kein** 7B — die dichten Größen sind 0.6b/1.7b/4b/8b/14b.)
 4. **Client-Pfad: zweiter, OpenAI-kompatibler Client** (nicht LiteLLM-Proxy).
 5. **Kein Fallback:** Ist Provider = local gesetzt und der lokale Server nicht
    erreichbar → **harter Fehler mit klarer Meldung**, kein stiller Rückfall auf
@@ -47,7 +49,7 @@
    - `LLM_PROVIDER=anthropic|local` (Default: `anthropic` → Render unverändert)
    - `LOCAL_BASE_URL=http://localhost:11434/v1`
    - `LOCAL_API_KEY=ollama` (Dummy)
-   - `LOCAL_MODEL_EXPAND=qwen3:7b`
+   - `LOCAL_MODEL_EXPAND=qwen3:8b`
 4. **Abhängigkeit:** `openai`-SDK zu `requirements.txt` (klein, kein PyTorch).
 
 ## Nicht anfassen
@@ -55,7 +57,7 @@
   Render-Setup, die semantische Suche.
 
 ## Setup-Schritte auf dem Notebook (für die Umsetzung)
-1. Ollama installieren, `ollama pull qwen3:7b`
+1. Ollama installieren, `ollama pull qwen3:8b` (Tag ist 8b, nicht 7b)
 2. `.env` lokal: `LLM_PROVIDER=local` (+ die vier Local-Variablen)
 3. Auf Render: nichts ändern (kein `LLM_PROVIDER` gesetzt → Default Anthropic)
 
