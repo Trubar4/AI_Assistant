@@ -38,6 +38,91 @@ ANSWER_MODEL   = os.environ.get("ANSWER_MODEL",   "claude-haiku-4-5-20251001")
 VERIFIER_MODEL = os.environ.get("VERIFIER_MODEL", "claude-haiku-4-5-20251001")
 EXPAND_MODEL   = os.environ.get("EXPAND_MODEL",   "claude-haiku-4-5-20251001")
 
+# ---------------------------------------------------------------------------
+# LLM-Provider für die zwei Modus-2-Calls (expand_query, rerank)
+#
+# LLM_PROVIDER=anthropic (Default)  → Anthropic API wie bisher.
+# LLM_PROVIDER=local                → OpenAI-kompatibler Client gegen
+#                                     LOCAL_BASE_URL (z. B. Ollama).
+#
+# Nur diese beiden tool-freien, zustandslosen Calls werden abgezweigt.
+# answer()/verify()/parse_context() bleiben immer auf Anthropic.
+# ---------------------------------------------------------------------------
+LLM_PROVIDER      = os.environ.get("LLM_PROVIDER", "anthropic").strip().lower()
+LOCAL_BASE_URL    = os.environ.get("LOCAL_BASE_URL", "http://localhost:11434/v1")
+LOCAL_MODEL_EXPAND = os.environ.get("LOCAL_MODEL_EXPAND", "qwen3:4b")
+# Ollama ignoriert den Key, das OpenAI-SDK verlangt aber einen nicht-leeren Wert.
+LOCAL_API_KEY     = os.environ.get("LOCAL_API_KEY", "ollama")
+
+_local_client = None
+
+
+def _get_local_client():
+    """OpenAI-kompatibler Client für den lokalen LLM-Server (z. B. Ollama)."""
+    global _local_client
+    if _local_client is None:
+        from openai import OpenAI
+        _local_client = OpenAI(base_url=LOCAL_BASE_URL, api_key=LOCAL_API_KEY)
+    return _local_client
+
+
+# Qwen3 gibt seine Gedankengänge in <think>…</think> aus. Trotz /no_think kann
+# ein leerer oder befüllter Block auftauchen — serverseitig entfernen.
+_THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
+
+def _strip_think(text: str) -> str:
+    return _THINK_RE.sub("", text).strip()
+
+
+def _mode2_complete(system: str, user_msg: str, max_tokens: int) -> str:
+    """Ein einzelner, zustandsloser, tool-freier Completion-Call für Modus 2.
+
+    Routet je nach LLM_PROVIDER an Anthropic oder den lokalen OpenAI-kompatiblen
+    Endpunkt. Für das lokale Qwen3-Modell wird der Thinking-Mode via /no_think
+    abgeschaltet und ein etwaiger <think>…</think>-Block aus der Antwort entfernt.
+
+    Kein Fallback im lokalen Modus: ist der Server nicht erreichbar, wird ein
+    klarer Fehler (HTTPException) geworfen statt still zu degradieren.
+    """
+    if LLM_PROVIDER == "local":
+        from openai import APIConnectionError, APIError
+
+        try:
+            response = _get_local_client().chat.completions.create(
+                model=LOCAL_MODEL_EXPAND,
+                max_tokens=max_tokens,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": f"{user_msg}\n\n/no_think"},
+                ],
+            )
+        except APIConnectionError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    f"Lokaler LLM-Server nicht erreichbar unter {LOCAL_BASE_URL}. "
+                    f"Läuft der Server (z. B. Ollama)? ({exc})"
+                ),
+            )
+        except APIError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Fehler vom lokalen LLM-Server ({LOCAL_MODEL_EXPAND}): {exc}",
+            )
+        text = response.choices[0].message.content or ""
+        return _strip_think(text)
+
+    # Default: Anthropic
+    response = _get_client().messages.create(
+        model=EXPAND_MODEL,
+        max_tokens=max_tokens,
+        system=system,
+        messages=[{"role": "user", "content": user_msg}],
+    )
+    return response.content[0].text.strip()
+
+
 HYDE_SYSTEM = """\
 Du bist ein Liebherr-Kran-Experte. Deine einzige Aufgabe: Schreibe einen kurzen
 hypothetischen Textausschnitt (2-3 Sätze) so, wie er in einer Liebherr-Bedienungs-
@@ -75,15 +160,12 @@ def expand_query(query: str, context: str = "") -> str:
             f"{context_block}\n"
             f"Frage: {query}"
         )
-        response = _get_client().messages.create(
-            model=EXPAND_MODEL,
-            max_tokens=120,
-            system=HYDE_SYSTEM,
-            messages=[{"role": "user", "content": user_msg}],
-        )
-        hypothesis = response.content[0].text.strip()
+        hypothesis = _mode2_complete(HYDE_SYSTEM, user_msg, max_tokens=120)
         logger.info("HYDE '%s' → '%s'", query[:60], hypothesis[:120])
         return hypothesis
+    except HTTPException:
+        # Lokaler Modus ohne Fallback: klaren Fehler durchreichen.
+        raise
     except Exception as exc:
         logger.warning("HyDE fehlgeschlagen: %s", exc)
         return query
@@ -116,13 +198,7 @@ def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
         candidates_block = "\n".join(lines)
 
         user_msg = f"Frage: {query}\n\nSeiten:\n{candidates_block}"
-        response = _get_client().messages.create(
-            model=EXPAND_MODEL,
-            max_tokens=30,
-            system=RERANKER_SYSTEM,
-            messages=[{"role": "user", "content": user_msg}],
-        )
-        raw = response.content[0].text.strip()
+        raw = _mode2_complete(RERANKER_SYSTEM, user_msg, max_tokens=30)
         indices = [int(x.strip()) - 1 for x in raw.split(",") if x.strip().isdigit()]
         # Keep only valid indices, deduplicate, limit to top_n
         seen: set[int] = set()
@@ -141,6 +217,9 @@ def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
                 selected.append(c)
         logger.info("RERANK '%s' → %s", query[:60], raw[:40])
         return selected
+    except HTTPException:
+        # Lokaler Modus ohne Fallback: klaren Fehler durchreichen.
+        raise
     except Exception as exc:
         logger.warning("Reranker fehlgeschlagen: %s", exc)
         return candidates[:top_n]
