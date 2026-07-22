@@ -57,6 +57,17 @@ LOCAL_API_KEY     = os.environ.get("LOCAL_API_KEY", "ollama")
 _local_client = None
 
 
+def log_mode2_provider() -> None:
+    """Loggt beim Serverstart, welcher Provider die zwei Modus-2-Calls bedient."""
+    if LLM_PROVIDER == "local":
+        logger.info(
+            "Modus-2-Provider=local model=%s url=%s (answer/verify/parse bleiben Anthropic)",
+            LOCAL_MODEL_EXPAND, LOCAL_BASE_URL,
+        )
+    else:
+        logger.info("Modus-2-Provider=anthropic model=%s", EXPAND_MODEL)
+
+
 def _get_local_client():
     """OpenAI-kompatibler Client für den lokalen LLM-Server (z. B. Ollama)."""
     global _local_client

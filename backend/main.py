@@ -38,7 +38,7 @@ from pydantic import BaseModel
 load_dotenv()
 
 from backend.search import search, reset_index, extract_facets, count_hits
-from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer
+from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer, log_mode2_provider
 from backend.agent import run_agent
 from backend.rule_agent import run_rule_agent
 
@@ -81,6 +81,7 @@ def _load_errorcodes() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _load_errorcodes()
+    log_mode2_provider()
     # Pre-warm semantic model so first request isn't slow
     try:
         from backend.search import _load_semantic
