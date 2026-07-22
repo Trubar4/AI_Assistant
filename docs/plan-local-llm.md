@@ -45,6 +45,11 @@
 2. **Aufruf-Abzweigung** für `expand_query()` und `rerank()`:
    Anthropic-Messages-Format vs. OpenAI `chat.completions`. Da beide Calls
    tool-frei sind (nur system + user), ist die Abzweigung schlank.
+   - **Qwen3-Thinking-Mode abschalten:** Qwen3 gibt per Default einen
+     `<think>…</think>`-Block aus. Für Modus 2 unerwünscht (verunreinigt die
+     HyDE-Passage und die Reranking-Nummernliste). Gegenmaßnahme doppelt:
+     `/no_think` im Prompt/System **und** `<think>…</think>` in der Antwort
+     serverseitig strippen.
 3. **Konfiguration** (Env-Variablen), Vorschlag:
    - `LLM_PROVIDER=anthropic|local` (Default: `anthropic` → Render unverändert)
    - `LOCAL_BASE_URL=http://localhost:11434/v1`
@@ -60,6 +65,19 @@
 1. Ollama installieren, `ollama pull qwen3:8b` (Tag ist 8b, nicht 7b)
 2. `.env` lokal: `LLM_PROVIDER=local` (+ die vier Local-Variablen)
 3. Auf Render: nichts ändern (kein `LLM_PROVIDER` gesetzt → Default Anthropic)
+
+### Vorab-Test bereits durchgeführt (Stand 2026-07)
+- Ollama läuft auf dem Notebook (v0.32.1), Rechte vorhanden.
+- **Firmen-Proxy blockiert `ollama pull`** (`max retries exceeded: EOF` mitten
+  im Download). Workaround, der funktioniert hat:
+  1. GGUF im Browser von Hugging Face laden
+     (`Qwen/Qwen3-4B-GGUF` → `Qwen3-4B-Q4_K_M.gguf`, ~2,5 GB).
+  2. `Modelfile` mit einer Zeile: `FROM C:\...\Qwen3-4B-Q4_K_M.gguf`
+  3. `ollama create qwen3:4b -f Modelfile` (rein lokal, kein Netzwerk).
+- `qwen3:4b` liefert sauberes Deutsch. Für die Umsetzung ausreichend;
+  `qwen3:8b` bei Bedarf über denselben Browser-Import-Weg.
+- Konsequenz fürs Setup: der lokale Modellbezug läuft über GGUF-Import,
+  nicht über `ollama pull`, solange der Proxy aktiv ist.
 
 ## Test
 - Lokal: `/ask` mit `LLM_PROVIDER=local` → prüfen, dass HyDE + Reranking
