@@ -58,14 +58,15 @@ _local_client = None
 
 
 def log_mode2_provider() -> None:
-    """Loggt beim Serverstart, welcher Provider die zwei Modus-2-Calls bedient."""
+    """Loggt beim Serverstart, welcher Provider Modus 2 und Modus 3 bedient."""
     if LLM_PROVIDER == "local":
         logger.info(
-            "Modus-2-Provider=local model=%s url=%s (answer/verify/parse bleiben Anthropic)",
+            "LLM-Provider=local model=%s url=%s | Modus 2 (expand/rerank) + "
+            "Modus 3 (agent_local) lokal; parse_context bleibt Anthropic",
             LOCAL_MODEL_EXPAND, LOCAL_BASE_URL,
         )
     else:
-        logger.info("Modus-2-Provider=anthropic model=%s", EXPAND_MODEL)
+        logger.info("LLM-Provider=anthropic (Modus 2 + Modus 3 über Anthropic)")
 
 
 def _get_local_client():
@@ -86,43 +87,51 @@ def _strip_think(text: str) -> str:
     return _THINK_RE.sub("", text).strip()
 
 
+def local_complete(system: str, user_msg: str, max_tokens: int) -> str:
+    """Ein einzelner, zustandsloser Completion-Call gegen den lokalen LLM-Server.
+
+    Für Qwen3 wird der Thinking-Mode via /no_think abgeschaltet und ein etwaiger
+    <think>…</think>-Block aus der Antwort entfernt. Kein Fallback: ist der Server
+    nicht erreichbar, wird ein klarer Fehler (HTTPException) geworfen.
+
+    Wird sowohl von Modus 2 (expand_query, rerank) als auch vom lokalen
+    Modus-3-Agenten (agent_local) genutzt.
+    """
+    from openai import APIConnectionError, APIError
+
+    try:
+        response = _get_local_client().chat.completions.create(
+            model=LOCAL_MODEL_EXPAND,
+            max_tokens=max_tokens,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": f"{user_msg}\n\n/no_think"},
+            ],
+        )
+    except APIConnectionError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Lokaler LLM-Server nicht erreichbar unter {LOCAL_BASE_URL}. "
+                f"Läuft der Server (z. B. Ollama)? ({exc})"
+            ),
+        )
+    except APIError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Fehler vom lokalen LLM-Server ({LOCAL_MODEL_EXPAND}): {exc}",
+        )
+    text = response.choices[0].message.content or ""
+    return _strip_think(text)
+
+
 def _mode2_complete(system: str, user_msg: str, max_tokens: int) -> str:
     """Ein einzelner, zustandsloser, tool-freier Completion-Call für Modus 2.
 
-    Routet je nach LLM_PROVIDER an Anthropic oder den lokalen OpenAI-kompatiblen
-    Endpunkt. Für das lokale Qwen3-Modell wird der Thinking-Mode via /no_think
-    abgeschaltet und ein etwaiger <think>…</think>-Block aus der Antwort entfernt.
-
-    Kein Fallback im lokalen Modus: ist der Server nicht erreichbar, wird ein
-    klarer Fehler (HTTPException) geworfen statt still zu degradieren.
+    Routet je nach LLM_PROVIDER an Anthropic oder den lokalen Endpunkt.
     """
     if LLM_PROVIDER == "local":
-        from openai import APIConnectionError, APIError
-
-        try:
-            response = _get_local_client().chat.completions.create(
-                model=LOCAL_MODEL_EXPAND,
-                max_tokens=max_tokens,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": f"{user_msg}\n\n/no_think"},
-                ],
-            )
-        except APIConnectionError as exc:
-            raise HTTPException(
-                status_code=503,
-                detail=(
-                    f"Lokaler LLM-Server nicht erreichbar unter {LOCAL_BASE_URL}. "
-                    f"Läuft der Server (z. B. Ollama)? ({exc})"
-                ),
-            )
-        except APIError as exc:
-            raise HTTPException(
-                status_code=502,
-                detail=f"Fehler vom lokalen LLM-Server ({LOCAL_MODEL_EXPAND}): {exc}",
-            )
-        text = response.choices[0].message.content or ""
-        return _strip_think(text)
+        return local_complete(system, user_msg, max_tokens)
 
     # Default: Anthropic
     response = _get_client().messages.create(

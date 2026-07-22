@@ -40,7 +40,7 @@ from pydantic import BaseModel
 load_dotenv()
 
 from backend.search import search, reset_index, extract_facets, count_hits
-from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer, log_mode2_provider
+from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer, log_mode2_provider, LLM_PROVIDER
 from backend.agent import run_agent
 from backend.rule_agent import run_rule_agent, _normalize_query
 
@@ -372,6 +372,15 @@ async def ask_agent(req: AgentRequest) -> AgentResponse:
 
     if use_rule:
         result = run_rule_agent(
+            question=q,
+            context=req.context.strip(),
+            conversation=req.conversation or [],
+        )
+    elif LLM_PROVIDER == "local":
+        # Modus 3 lokal: deterministische Pipeline + max. 2 Modell-Calls
+        # (Hybrid mit Eskalation) statt fragilem Tool-Loop auf qwen3:4b.
+        from backend.agent_local import run_agent_local
+        result = run_agent_local(
             question=q,
             context=req.context.strip(),
             conversation=req.conversation or [],
