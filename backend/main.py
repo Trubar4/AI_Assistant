@@ -19,6 +19,8 @@ logging.basicConfig(
     format="%(levelname)s:%(name)s: %(message)s",
 )
 
+logger = logging.getLogger(__name__)
+
 from dotenv import load_dotenv
 
 # Inject Windows/macOS system cert store so Python's httpx trusts
@@ -40,7 +42,7 @@ load_dotenv()
 from backend.search import search, reset_index, extract_facets, count_hits
 from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer, log_mode2_provider
 from backend.agent import run_agent
-from backend.rule_agent import run_rule_agent
+from backend.rule_agent import run_rule_agent, _normalize_query
 
 # ---------------------------------------------------------------------------
 # Error code database (optional — loaded once at startup)
@@ -257,6 +259,26 @@ def _keyword_search(query: str, limit: int = 8) -> list[ErrorCodeMatch]:
     return results[:limit]
 
 
+def _merge_candidates(*lists: list[dict], top_n: int = 50) -> list[dict]:
+    """Führt mehrere search()-Kandidatenlisten zusammen (Union nach filename).
+
+    Pro Seite wird der höhere der beiden search()-Scores behalten und danach
+    absteigend sortiert. Die Skala (RRF × 1000) bleibt exakt wie bei einem
+    einzelnen search()-Aufruf — die Konfidenz-Schwelle in ask() (18.0) bleibt
+    also gültig. Zweck ist reiner Recall-Gewinn: eine Seite, die nur eine der
+    Queries findet, landet trotzdem im Topf für den Reranker.
+    """
+    by_fname: dict[str, dict] = {}
+    for lst in lists:
+        for c in lst:
+            fn = c["filename"]
+            prev = by_fname.get(fn)
+            if prev is None or c.get("score", 0) > prev.get("score", 0):
+                by_fname[fn] = c
+    merged = sorted(by_fname.values(), key=lambda c: c.get("score", 0), reverse=True)
+    return merged[:top_n]
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -273,7 +295,25 @@ async def ask_question(req: AskRequest) -> AskResponse:
     # damit die hypothetische Passage konfigurationsrelevant ist.
     expanded_q = expand_query(q, context=ctx)
 
-    candidates = search(expanded_q, top_n=50)   # Triple-RRF → 50 candidates
+    # Multi-Query-Fusion (Trick aus Modus 1): Die Suche darf sich nicht allein
+    # auf die HyDE-Passage verlassen — driftet die Hypothese thematisch ab, fällt
+    # die richtige Seite sonst komplett aus den Kandidaten und der Reranker kann
+    # sie nicht mehr retten. Deshalb zusätzlich mit der normalisierten Original-
+    # frage (Fragesatz-Ballast entfernt) suchen und beide Trefferlisten mergen.
+    # So garantiert der direkte Titel-BM25-Treffer den Recall, HyDE liefert die
+    # Paraphrasen-/Synonym-Recall obendrauf.
+    normalized_q = _normalize_query(q)
+    cand_hyde = search(expanded_q, top_n=50)    # Triple-RRF → 50 candidates
+    cand_norm = (
+        search(normalized_q, top_n=50)
+        if normalized_q and normalized_q.lower() != expanded_q.lower()
+        else []
+    )
+    candidates = _merge_candidates(cand_hyde, cand_norm, top_n=50)
+    logger.info(
+        "FUSION hyde=%d norm=%d ('%s') → %d Kandidaten",
+        len(cand_hyde), len(cand_norm), normalized_q[:50], len(candidates),
+    )
     if not candidates:
         return AskResponse(
             answer=(
