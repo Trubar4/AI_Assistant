@@ -696,6 +696,10 @@
         flex: 1 1 100%;      /* Regelbasiert/Klassisch/Assistent in eine volle Zeile */
       }
       .mode-toggle__btn { flex: 1; }   /* Buttons gleichmäßig über die Breite */
+      /* Meldungen-Tab: Eingabe + 3 Buttons passen nicht in eine 390px-Zeile →
+         Eingabefeld in die erste Zeile, Buttons (inkl. Nachschlagen) darunter. */
+      .errorcode-row { flex-wrap: wrap; }
+      .errorcode-row .lds-input { flex: 1 1 100%; min-width: 0; }
       .app-scroll {
         padding-bottom: calc(var(--s-6) + 64px + env(safe-area-inset-bottom));
       }
