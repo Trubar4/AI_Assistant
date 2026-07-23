@@ -60,10 +60,11 @@ _local_client = None
 def log_mode2_provider() -> None:
     """Loggt beim Serverstart, welcher Provider Modus 2 und Modus 3 bedient."""
     if LLM_PROVIDER == "local":
+        agent_mode = os.environ.get("AGENT_LOCAL_MODE", "tools").strip().lower()
         logger.info(
             "LLM-Provider=local model=%s url=%s | Modus 2 (expand/rerank) + "
-            "Modus 3 (agent_local) lokal; parse_context bleibt Anthropic",
-            LOCAL_MODEL_EXPAND, LOCAL_BASE_URL,
+            "Modus 3 (agent_local, mode=%s) lokal; parse_context bleibt Anthropic",
+            LOCAL_MODEL_EXPAND, LOCAL_BASE_URL, agent_mode,
         )
     else:
         logger.info("LLM-Provider=anthropic (Modus 2 + Modus 3 über Anthropic)")

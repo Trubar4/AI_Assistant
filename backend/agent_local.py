@@ -21,6 +21,7 @@ Damit: max. 2 Modell-Calls (statt bis zu 6), kein Tool-Calling-Protokoll,
 kleiner Kontext. answer/verify/Modus-1/Render bleiben unberührt.
 """
 
+import json
 import logging
 import os
 import re
@@ -32,10 +33,22 @@ from backend.rule_agent import (
     _STOPWORDS,
 )
 from backend.search import search, _load_index
-from backend.agent_tools import read_page, grep_manual, bal_search
-from backend.claude_client import local_complete
+from backend.agent_tools import read_page, grep_manual, bal_search, TOOL_SCHEMAS, TOOL_FN
+from backend.claude_client import (
+    local_complete,
+    _get_local_client,
+    _strip_think,
+    LOCAL_MODEL_EXPAND,
+    LOCAL_BASE_URL,
+)
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
+
+# pipeline = deterministische Pipeline + 1 Synthese (robust, wenig Modell-Last)
+# tools    = Seeded Tool-Loop: Retrieval vorgeben, dann darf das Modell mit
+#            read_page/grep_manual/bal_search/search über mehrere Runden nachfassen
+AGENT_LOCAL_MODE   = os.environ.get("AGENT_LOCAL_MODE", "tools").strip().lower()
 
 # Tuning — Schwellen auf der RRF×1000-Skala (wie in ask()); je nach aktiver
 # semantischer Suche verschiebt sich die Skala, daher per Env kalibrierbar.
@@ -43,6 +56,11 @@ TOP_N_SEARCH       = 15
 MAX_CONTEXT_CHARS  = int(os.environ.get("AGENT_LOCAL_MAX_CONTEXT", "3500"))
 LOW_SCORE_NOMODEL  = float(os.environ.get("AGENT_LOCAL_MIN_SCORE", "8.0"))   # darunter: kein Modell-Call
 ESCALATE_SCORE     = float(os.environ.get("AGENT_LOCAL_ESCALATE_SCORE", "25.0"))  # darunter: Eskalation
+
+# Tool-Loop-Grenzen (bewusst höher als die Pipeline, aber gedeckelt)
+TOOL_MAX_ROUNDS      = int(os.environ.get("AGENT_LOCAL_MAX_ROUNDS", "6"))
+TOOL_MAX_TOOL_ROUNDS = int(os.environ.get("AGENT_LOCAL_MAX_TOOL_ROUNDS", "4"))
+TOOL_READ_MAX_CHARS  = int(os.environ.get("AGENT_LOCAL_READ_CHARS", "3000"))
 
 AGENT_LOCAL_SYSTEM = """\
 Du bist ein Assistent für Liebherr-Kranbediener und Servicetechniker (LR 1104).
@@ -198,8 +216,169 @@ def _escalate(question: str, context: str, seen: set[str]) -> list[dict]:
     return hits[:2]
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Seeded Tool-Loop (AGENT_LOCAL_MODE=tools)
+#
+# Das deterministische Retrieval liefert die erste Trefferliste vor (der Schritt,
+# an dem ein 4B-Modell am ehesten scheitert). Danach darf das Modell über native
+# Function-Calls (Ollama, OpenAI-Format) selbst read_page/grep_manual/bal_search/
+# search aufrufen, um nachzufassen, und antwortet abschließend als Text.
+# ═══════════════════════════════════════════════════════════════════════════
+
+AGENT_TOOLLOOP_SYSTEM = """\
+Du bist ein Assistent für Liebherr-Kranbediener und Servicetechniker (LR 1104).
+Deine Aufgabe: die EXAKTE Manual-Seite finden, die die Frage beantwortet, und
+den gefragten Wert nennen.
+
+Du hast Werkzeuge:
+- read_page(filename): liest eine Seite vollständig. Nutze es für Tabellenwerte.
+- grep_manual(pattern): Volltext-Regex-Suche für exakte Werte (z. B. "74 m").
+- bal_search(keywords): exakter Seitentitel-Index.
+- search(query): erneute BM25+Semantic-Suche mit besseren Begriffen.
+
+Vorgehen:
+1. Dir werden bereits gefundene Kandidaten-Seiten genannt. Wähle die
+   vielversprechendste und lies sie mit read_page.
+2. Reicht das nicht, nutze grep_manual/bal_search/search gezielt nach.
+3. Höchstens wenige Runden. Dann ANTWORTE.
+
+Antwortregeln (wenn du fertig bist, gib NUR die Antwort als Text zurück, KEIN
+weiterer Tool-Aufruf):
+- Deutsch, 1–2 kurze Sätze. Nenne den Wert direkt. Bei Abbildungen die Fig.-Nummer.
+- Tabellen stehen als Zeilen "Zeilenkopf: Spalte=Wert | ...". Lies die passende
+  Zeile exakt ab. Leere Zelle ("—"): "In der Tabelle ist für diese Konfiguration
+  kein Wert eingetragen."
+- Steht die Information nicht im Manual: sage das klar, erfinde nichts.
+/no_think\
+"""
+
+
+def _oai_tools() -> list[dict]:
+    """Übersetzt die Anthropic-TOOL_SCHEMAS ins OpenAI-Function-Format."""
+    return [
+        {"type": "function", "function": {
+            "name": s["name"],
+            "description": s["description"],
+            "parameters": s["input_schema"],
+        }}
+        for s in TOOL_SCHEMAS
+    ]
+
+
+def _dispatch_local_tool(name: str, args: dict) -> str:
+    """Führt ein Tool aus (read_page im Loop mit kleinerer Obergrenze für 4B)."""
+    fn = TOOL_FN.get(name)
+    if fn is None:
+        return json.dumps({"error": f"Unbekanntes Tool: {name}"})
+    try:
+        if name == "read_page":
+            args = {**args, "max_chars": TOOL_READ_MAX_CHARS}
+        result = fn(**args)
+        return json.dumps(result, ensure_ascii=False)
+    except Exception as exc:
+        logger.warning("AgentLocal Tool %s fehlgeschlagen: %s", name, exc)
+        return json.dumps({"error": str(exc)})
+
+
+def _local_chat(messages: list[dict], tools: list[dict] | None, max_tokens: int):
+    """Ein Chat-Call gegen den lokalen Server; klarer Fehler statt Fallback."""
+    from openai import APIConnectionError, APIError
+    kwargs: dict = {"model": LOCAL_MODEL_EXPAND, "max_tokens": max_tokens, "messages": messages}
+    if tools:
+        kwargs["tools"] = tools
+        kwargs["tool_choice"] = "auto"
+    try:
+        return _get_local_client().chat.completions.create(**kwargs)
+    except APIConnectionError as exc:
+        raise HTTPException(status_code=503, detail=(
+            f"Lokaler LLM-Server nicht erreichbar unter {LOCAL_BASE_URL}. "
+            f"Läuft der Server (z. B. Ollama)? ({exc})"))
+    except APIError as exc:
+        raise HTTPException(status_code=502,
+                            detail=f"Fehler vom lokalen LLM-Server ({LOCAL_MODEL_EXPAND}): {exc}")
+
+
+def _seed_message(candidates: list[dict], context: str, question: str) -> str:
+    lines = [f"{i}. {c['title']} [{c['filename']}]" for i, c in enumerate(candidates[:8], 1)]
+    ctx_block = f"Maschinenkonfiguration: {context}\n\n" if context else ""
+    return (f"{ctx_block}Bereits gefundene Kandidaten-Seiten (Titel [Dateiname]):\n"
+            + "\n".join(lines) + f"\n\nFrage: {question}")
+
+
+def _run_tool_loop(question: str, context: str, candidates: list[dict]) -> tuple[str, list[dict], int]:
+    """Seeded Tool-Loop. Gibt (Antworttext, gelesene Quellen, Runden) zurück."""
+    tools = _oai_tools()
+    titles = _title_map()
+    messages: list[dict] = [
+        {"role": "system", "content": AGENT_TOOLLOOP_SYSTEM},
+        {"role": "user", "content": _seed_message(candidates, context, question)},
+    ]
+    read_order: list[str] = []          # Reihenfolge gelesener Seiten → Quellen
+    rounds = 0
+    tool_rounds = 0
+
+    while rounds < TOOL_MAX_ROUNDS:
+        rounds += 1
+        force_final = tool_rounds >= TOOL_MAX_TOOL_ROUNDS
+        resp = _local_chat(messages, tools=None if force_final else tools, max_tokens=700)
+        msg = resp.choices[0].message
+        tool_calls = getattr(msg, "tool_calls", None) or []
+
+        if tool_calls and not force_final:
+            tool_rounds += 1
+            messages.append({
+                "role": "assistant",
+                "content": msg.content or "",
+                "tool_calls": [
+                    {"id": tc.id, "type": "function",
+                     "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                    for tc in tool_calls
+                ],
+            })
+            for tc in tool_calls:
+                name = tc.function.name
+                try:
+                    args = json.loads(tc.function.arguments or "{}")
+                except Exception:
+                    args = {}
+                if name == "read_page" and args.get("filename"):
+                    fn = args["filename"]
+                    if fn not in read_order:
+                        read_order.append(fn)
+                logger.info("AgentLocal Tool: %s(%s)", name, str(args)[:100])
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": _dispatch_local_tool(name, args),
+                })
+            continue
+
+        # Finale Textantwort
+        answer = _strip_think(msg.content or "").strip()
+        if not answer:
+            answer = ("Ich konnte auf den gefundenen Seiten keine eindeutige Antwort "
+                      "formulieren. Bitte in den verlinkten Quellen nachschlagen.")
+        # Quellen: gelesene Seiten, sonst der beste Seed-Kandidat
+        srcs = [{"filename": fn, "title": titles.get(fn, fn)} for fn in read_order[:3]]
+        if not srcs and candidates:
+            c = candidates[0]
+            srcs = [{"filename": c["filename"], "title": c["title"]}]
+        return answer, srcs, rounds
+
+    # Runden erschöpft ohne finale Antwort
+    srcs = [{"filename": fn, "title": titles.get(fn, fn)} for fn in read_order[:3]]
+    return ("Die Suche hat das Rundenlimit erreicht. Bitte die Frage präzisieren "
+            "oder in den Quellen nachschlagen."), srcs, rounds
+
+
 def run_agent_local(question: str, context: str = "", conversation: list[dict] | None = None) -> dict:
-    """Lokaler Modus-3-Agent: deterministische Pipeline + max. 2 Modell-Calls."""
+    """Lokaler Modus-3-Agent.
+
+    Gemeinsame modellfreie Vorstufe (Clarification, Fusion-Retrieval,
+    Confidence-Gate), danach je nach AGENT_LOCAL_MODE:
+      - "tools"    (Default): Seeded Tool-Loop — Modell fasst mit Tools nach.
+      - "pipeline"          : deterministische Pipeline + max. 2 Modell-Calls.
+    """
     is_followup = bool(conversation)
 
     # Phase 1: Clarification (kein Modell)
@@ -253,12 +432,26 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
             "confidence": round(min(top_score / 40.0, 1.0), 2),
         }
 
+    # Seeded Tool-Loop: Retrieval vorgeben, dann darf das Modell nachfassen.
+    if AGENT_LOCAL_MODE == "tools":
+        logger.info("AgentLocal[tools]: Seed %d Kandidaten (Top-Score %.1f)", len(candidates), top_score)
+        answer, srcs, rounds = _run_tool_loop(question, context, candidates)
+        if not srcs:
+            srcs = [{"filename": r["filename"], "title": r["title"]} for r in filtered[:3]]
+        return {
+            "type": "answer",
+            "answer": answer,
+            "sources": srcs[:3],
+            "rounds": rounds,
+            "confidence": round(min(top_score / 40.0, 1.0), 2),
+        }
+
     # Phase 4+5: Kontext aufbereiten + EINE Synthese
     top = filtered[0]
     answer = _synthesize(top, context, question)
     rounds = 1
     used = list(filtered[:3])
-    logger.info("AgentLocal: Synthese (Score %.1f) → %s", top_score, answer[:100])
+    logger.info("AgentLocal[pipeline]: Synthese (Score %.1f) → %s", top_score, answer[:100])
 
     # Phase 6: Eskalation — EIN gezielter Lookup bei schwacher Antwort
     if _needs_escalation(answer, question, top_score):
