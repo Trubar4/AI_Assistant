@@ -267,15 +267,20 @@ _LOCAL_TOOL_SCHEMAS = TOOL_SCHEMAS + [LOOKUP_TABLE_SCHEMA]
 _LOCAL_TOOL_FN = {**TOOL_FN, "lookup_table": lookup_table}
 
 
-def _oai_tools() -> list[dict]:
-    """Übersetzt die lokalen Tool-Schemas ins OpenAI-Function-Format."""
+def _oai_tools(include_table: bool = True) -> list[dict]:
+    """Übersetzt die lokalen Tool-Schemas ins OpenAI-Function-Format.
+
+    lookup_table wird nur bei Wertfragen angeboten — sonst ruft das Modell es
+    auch bei Wo-/Wie-Fragen auf, bekommt '—' und behauptet fälschlich
+    'kein Wert eingetragen'."""
+    schemas = _LOCAL_TOOL_SCHEMAS if include_table else TOOL_SCHEMAS
     return [
         {"type": "function", "function": {
             "name": s["name"],
             "description": s["description"],
             "parameters": s["input_schema"],
         }}
-        for s in _LOCAL_TOOL_SCHEMAS
+        for s in schemas
     ]
 
 
@@ -328,28 +333,25 @@ def _extract_row_col(question: str, context: str) -> tuple[str | None, str | Non
     return row, col
 
 
-def _prelookup_table(question: str, context: str, candidates: list[dict]) -> tuple[dict | None, dict | None]:
+def _prelookup_table(intent_text: str, context: str, candidates: list[dict],
+                     search_query: str | None = None) -> tuple[dict | None, dict | None]:
     """Wenn die Frage nach einem Wert klingt und eine Länge/Einscherung vorkommt,
     deterministisch die passende Tabelle suchen. Die richtige Tabellenseite ist
-    oft NICHT der Top-Treffer, darum breiter Pool: Fusion-Kandidaten + gezielte
-    Titel-Suche. lookup_table ist präzise (Zeile im Zahlbereich UND Spalte muss
-    existieren), Fehltreffer sind damit unwahrscheinlich. Exakte Treffer werden
-    gerundeten vorgezogen."""
-    if not _VALUE_QUESTION_RE.search(question):
+    oft NICHT der Top-Treffer der (durch die Konfig verwässerten) Hauptsuche,
+    darum breiter Pool: Fusion-Kandidaten + eine gezielte, nach Relevanz
+    gerankte Suche über die reine Sach-Frage (search_query, ohne Konfig-Ballast).
+    lookup_table ist präzise (Zeile im Zahlbereich UND Spalte muss existieren),
+    Fehltreffer sind damit unwahrscheinlich. Exakte Treffer schlagen gerundete."""
+    if not _VALUE_QUESTION_RE.search(intent_text):
         return None, None
-    row, col = _extract_row_col(question, context)
+    row, col = _extract_row_col(intent_text, context)
     if not row:
         return None, None
 
-    titles = _title_map()
-    pool: list[tuple[str, str]] = [(c["filename"], c["title"]) for c in candidates[:12]]
-    keys = [w for w in _normalize_query(question).split()
-            if len(w) > 3 and w.lower() not in _STOPWORDS]
-    if keys:
-        for h in bal_search(" ".join(keys[:3])):
-            fn = h.get("filename")
-            if fn and "error" not in h:
-                pool.append((fn, h.get("title", titles.get(fn, fn))))
+    pool: list[tuple[str, str]] = [(c["filename"], c["title"]) for c in candidates[:20]]
+    # Gezielte, gerankte Suche nach der Tabellenseite über die reine Sach-Frage.
+    for r in search(search_query or intent_text, top_n=25):
+        pool.append((r["filename"], r["title"]))
 
     best: tuple[dict, dict] | None = None
     seen: set[str] = set()
@@ -452,9 +454,21 @@ def _seed_message(candidates: list[dict], context: str, question: str,
     return seed + f"\n\nFrage: {question}"
 
 
-def _run_tool_loop(question: str, context: str, candidates: list[dict]) -> tuple[str, list[dict], int]:
+def _looks_like_nonanswer(answer: str, question: str) -> bool:
+    """Erkennt Nicht-Antworten: leer, zu kurz oder bloße Wiederholung der Frage."""
+    a = (answer or "").strip().lower().rstrip("?.! ")
+    if len(a) < 12:
+        return True
+    q = question.strip().lower().rstrip("?.! ")
+    if a == q or (len(a) > 20 and a in q) or (len(q) > 20 and q in a):
+        return True
+    return False
+
+
+def _run_tool_loop(question: str, context: str, candidates: list[dict],
+                   include_table: bool = True) -> tuple[str, list[dict], int]:
     """Seeded Tool-Loop. Gibt (Antworttext, gelesene Quellen, Runden) zurück."""
-    tools = _oai_tools()
+    tools = _oai_tools(include_table=include_table)
     titles = _title_map()
     messages: list[dict] = [
         {"role": "system", "content": AGENT_TOOLLOOP_SYSTEM},
@@ -513,7 +527,7 @@ def _run_tool_loop(question: str, context: str, candidates: list[dict]) -> tuple
 
         # Finale Textantwort
         answer = _strip_think(msg.content or "").strip()
-        if not answer:
+        if _looks_like_nonanswer(answer, question):
             answer = ("Ich konnte auf den gefundenen Seiten keine eindeutige Antwort "
                       "formulieren. Bitte in den verlinkten Quellen nachschlagen.")
         # Quellen: gelesene Seiten, sonst der beste Seed-Kandidat
@@ -593,9 +607,17 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
     # Seeded Tool-Loop: Retrieval vorgeben, dann darf das Modell nachfassen.
     if AGENT_LOCAL_MODE == "tools":
         conf = round(min(top_score / 40.0, 1.0), 2)
+        # Sach-Text = Frage + Konversation (für Wert-Erkennung + Länge/Einscherung).
+        intent_text = raw_query
+        is_value = bool(_VALUE_QUESTION_RE.search(intent_text))
+        # Für die gezielte Tabellensuche die reine Sach-Frage nutzen: bei einer
+        # Rückfrage-Antwort ist das die ursprüngliche Frage (ohne Konfig-Ballast,
+        # der die richtige Tabellenseite im Ranking verdrängt).
+        content_q = next((m["content"] for m in (conversation or [])
+                          if m.get("role") == "user"), question)
 
         # Fast-Path: Tabellenwert deterministisch → kein Loop, kein Abdriften.
-        pre, page = _prelookup_table(question, context, candidates)
+        pre, page = _prelookup_table(intent_text, context, candidates, search_query=content_q)
         if pre and page:
             logger.info("AgentLocal[tools]: Tabellen-Fast-Path '%s' (%s)",
                         page["title"][:50], pre["treffer"])
@@ -607,8 +629,9 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
             return {"type": "answer", "answer": answer, "sources": srcs[:3],
                     "rounds": 1, "confidence": conf}
 
-        logger.info("AgentLocal[tools]: Seed %d Kandidaten (Top-Score %.1f)", len(candidates), top_score)
-        answer, srcs, rounds = _run_tool_loop(question, context, candidates)
+        logger.info("AgentLocal[tools]: Seed %d Kandidaten (Top-Score %.1f, value=%s)",
+                    len(candidates), top_score, is_value)
+        answer, srcs, rounds = _run_tool_loop(question, context, candidates, include_table=is_value)
         answer = _ensure_german(_clean_answer_text(answer))
         if not srcs:
             srcs = [{"filename": r["filename"], "title": r["title"]} for r in filtered[:3]]
