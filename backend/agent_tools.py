@@ -237,6 +237,156 @@ def bal_search(keywords: str, max_results: int = 10) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Tool: lookup_table — deterministische Tabellenwert-Suche
+#
+# Kleine lokale Modelle lesen Tabellen unzuverlässig. Statt dem Modell die
+# ganze Tabelle zu geben, suchen wir die passende Zeile (Zahlenachse, z. B.
+# Auslegerlänge) und optional Spalte (z. B. Einscherung) selbst und liefern
+# nur die passende bzw. die nächst kleinere/größere Zeile sauber formatiert.
+# ---------------------------------------------------------------------------
+
+_LEAD_NUM_RE = re.compile(r"\d+(?:[.,]\d+)?")
+
+
+def _lead_num(s: str) -> float | None:
+    """Erste Zahl am Anfang eines Zell-/Zeilentextes (z. B. '75 m246 ft' → 75)."""
+    m = _LEAD_NUM_RE.match(s.strip())
+    if not m:
+        return None
+    try:
+        return float(m.group(0).replace(",", "."))
+    except ValueError:
+        return None
+
+
+def _clean_val(s: str) -> str:
+    """Nur den metrischen Anteil behalten: '690 kg1,521 lb' → '690 kg', '75 m246 ft' → '75 m'."""
+    s = s.strip()
+    if s in ("", "—", "-"):
+        return "—"
+    m = re.match(r"\d[\d.,]*\s*[A-Za-zäöü°%]+", s)
+    return m.group(0).strip() if m else s
+
+
+def _parse_table_grid(table_html: str) -> tuple[list[str], list[list[str]]]:
+    """Tabelle → (Kopfzeile, Datenzeilen) als flache Zelllisten (colspan expandiert)."""
+    rows = re.findall(r"<tr[^>]*>(.*?)</tr>", table_html, re.S | re.I)
+    parsed: list[list[str]] = []
+    for row in rows:
+        flat: list[str] = []
+        for text, span in _extract_cells(row):
+            flat.append(text)
+            flat.extend([""] * (span - 1))
+        parsed.append(flat)
+    if len(parsed) < 2:
+        return [], []
+    headers = parsed[0]
+    n = len(headers)
+    data: list[list[str]] = []
+    for r in parsed[1:]:
+        r = (r + ["—"] * n)[:n]
+        r = [c if c else "—" for c in r]
+        if not re.search(r"\d", " ".join(r)):   # Sub-Header ohne Zahlen überspringen
+            continue
+        data.append(r)
+    return headers, data
+
+
+def _find_col(headers: list[str], col_value: str) -> int | None:
+    cv = col_value.strip().lower()
+    for i, h in enumerate(headers):
+        hl = h.strip().lower()
+        if hl == cv or (cv and cv == _clean_val(h).lower()):
+            return i
+    # Zahl-Spalten (Einscherung 1..10): exakter Zahlvergleich
+    cvn = _lead_num(col_value)
+    if cvn is not None:
+        for i, h in enumerate(headers):
+            if _lead_num(h) == cvn:
+                return i
+    return None
+
+
+def lookup_table(filename: str, row_value: str, col_value: str = "") -> dict:
+    """Sucht in den Tabellen einer Seite die Zeile mit Zahlenwert row_value
+    (z. B. '74 m') und optional die Spalte col_value (z. B. '6' für 6-fach).
+
+    Gibt die exakte Zeile zurück — oder, wenn kein exakter Zeilenwert existiert,
+    die nächst kleinere UND die nächst größere Zeile. So kann das Modell den
+    Wert nicht verwechseln und muss keine Spalten zählen.
+    """
+    path = _MANUALS / filename
+    if not path.exists():
+        return {"error": f"Datei nicht gefunden: {filename}"}
+    target = _lead_num(row_value)
+    if target is None:
+        return {"error": f"row_value enthält keine Zahl: {row_value!r}"}
+
+    raw = path.read_text(encoding="utf-8", errors="replace")
+    best: dict | None = None
+    for th in re.findall(r"<table[^>]*>.*?</table>", raw, re.S | re.I):
+        headers, data = _parse_table_grid(th)
+        labeled = [(_lead_num(r[0]), r) for r in data]
+        labeled = [(n, r) for n, r in labeled if n is not None]
+        if len(labeled) < 2:
+            continue
+        col_idx = _find_col(headers, col_value) if col_value else None
+        if col_value and col_idx is None:
+            continue                      # gewünschte Spalte fehlt → falsche Tabelle
+        nums = sorted({n for n, _ in labeled})
+        if target < min(nums) or target > max(nums):
+            continue                      # Ziel außerhalb des Zeilenbereichs
+
+        exact = [r for n, r in labeled if n == target]
+        picks: list[tuple[str, float, list[str]]] = []
+        if exact:
+            picks.append(("exakt", target, exact[0]))
+        else:
+            smaller = max((n for n in nums if n < target), default=None)
+            larger  = min((n for n in nums if n > target), default=None)
+            for kind, val in (("nächst kleiner", smaller), ("nächst größer", larger)):
+                if val is not None:
+                    row = next(r for n, r in labeled if n == val)
+                    picks.append((kind, val, row))
+        if not picks:
+            continue
+        cand = {"headers": headers, "col_idx": col_idx, "picks": picks,
+                "exact": bool(exact)}
+        if best is None or (cand["exact"] and not best["exact"]):
+            best = cand
+        if best["exact"]:
+            break
+
+    if best is None:
+        return {"error": "Keine passende Tabellenzeile gefunden.",
+                "filename": filename, "row_value": row_value}
+
+    headers, col_idx, picks = best["headers"], best["col_idx"], best["picks"]
+    col_header = _clean_val(headers[col_idx]) if col_idx is not None else None
+    lines: list[str] = []
+    rows_out: list[dict] = []
+    for kind, val, row in picks:
+        label = _clean_val(row[0])
+        if col_idx is not None:
+            cell = _clean_val(row[col_idx])
+            lines.append(f"{kind}: Zeile {label} → Spalte '{col_header}' = {cell}")
+            rows_out.append({"kind": kind, "row": label, "column": col_header, "value": cell})
+        else:
+            pairs = " | ".join(f"{_clean_val(headers[i])}={_clean_val(c)}"
+                               for i, c in enumerate(row) if i > 0 and _clean_val(c) != "—")
+            lines.append(f"{kind}: Zeile {label} → {pairs}")
+            rows_out.append({"kind": kind, "row": label, "cells": pairs})
+
+    return {
+        "filename": filename,
+        "gesucht": {"zeile": row_value, "spalte": col_value or None},
+        "treffer": "exakt" if best["exact"] else "gerundet (nächst kleiner/größer)",
+        "text": "\n".join(lines),
+        "zeilen": rows_out,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Tool-Schemas für Claude tool_use API
 # ---------------------------------------------------------------------------
 
@@ -311,4 +461,27 @@ TOOL_FN = {
     "read_page":   read_page,
     "grep_manual": grep_manual,
     "bal_search":  bal_search,
+}
+
+# Zusatz-Tool nur für den lokalen Agenten (agent_local) — nicht im geteilten
+# TOOL_SCHEMAS, damit der Anthropic-Agent/Render unverändert bleibt.
+LOOKUP_TABLE_SCHEMA = {
+    "name": "lookup_table",
+    "description": (
+        "Sucht in den Tabellen einer Manual-Seite den exakten Wert. Gib die Seite, "
+        "den Zeilenwert (Zahlenachse, z. B. Auslegerlänge '74 m') und optional den "
+        "Spaltenwert (z. B. '6' für 6-fache Einscherung) an. Liefert die passende "
+        "Zeile — oder, wenn kein exakter Zeilenwert existiert, die nächst kleinere "
+        "UND größere Zeile. IMMER dieses Tool für Zahlenwerte aus Tabellen nutzen, "
+        "nie Tabellen selbst zählen."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "filename": {"type": "string", "description": "HTML-Dateiname der Seite mit der Tabelle"},
+            "row_value": {"type": "string", "description": "Zeilenwert mit Zahl, z. B. '74 m'"},
+            "col_value": {"type": "string", "description": "Optionaler Spaltenwert, z. B. '6' (Einscherung)"},
+        },
+        "required": ["filename", "row_value"],
+    },
 }

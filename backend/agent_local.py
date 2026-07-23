@@ -33,7 +33,10 @@ from backend.rule_agent import (
     _STOPWORDS,
 )
 from backend.search import search, _load_index
-from backend.agent_tools import read_page, grep_manual, bal_search, TOOL_SCHEMAS, TOOL_FN
+from backend.agent_tools import (
+    read_page, grep_manual, bal_search, lookup_table,
+    TOOL_SCHEMAS, TOOL_FN, LOOKUP_TABLE_SCHEMA,
+)
 from backend.claude_client import (
     local_complete,
     _get_local_client,
@@ -227,47 +230,58 @@ def _escalate(question: str, context: str, seen: set[str]) -> list[dict]:
 
 AGENT_TOOLLOOP_SYSTEM = """\
 Du bist ein Assistent für Liebherr-Kranbediener und Servicetechniker (LR 1104).
-Deine Aufgabe: die EXAKTE Manual-Seite finden, die die Frage beantwortet, und
-den gefragten Wert nennen.
+Deine Aufgabe: die EXAKTE Manual-Seite finden und den gefragten Wert nennen.
 
-Du hast Werkzeuge:
-- read_page(filename): liest eine Seite vollständig. Nutze es für Tabellenwerte.
-- grep_manual(pattern): Volltext-Regex-Suche für exakte Werte (z. B. "74 m").
+Werkzeuge:
+- lookup_table(filename, row_value, col_value): Tabellenwert exakt nachschlagen.
+  IMMER für Zahlenwerte aus Tabellen (Gewicht, Traglast, Länge) nutzen —
+  z. B. lookup_table("ID_...html", "74 m", "6"). Niemals Tabellen selbst zählen.
+- read_page(filename): liest eine Seite vollständig (Fließtext, Schritte).
+- grep_manual(pattern): Volltext-Regex für exakte Werte.
 - bal_search(keywords): exakter Seitentitel-Index.
-- search(query): erneute BM25+Semantic-Suche mit besseren Begriffen.
+- search(query): erneute Suche mit besseren Begriffen (HÖCHSTENS einmal).
 
 Vorgehen:
-1. Dir werden bereits gefundene Kandidaten-Seiten genannt. Wähle die
-   vielversprechendste und lies sie mit read_page.
-2. Reicht das nicht, nutze grep_manual/bal_search/search gezielt nach.
-3. Höchstens wenige Runden. Dann ANTWORTE.
+1. Dir werden Kandidaten-Seiten (und ggf. bereits extrahierte Tabellenzeilen)
+   genannt. Für einen Zahlenwert aus einer Tabelle rufe lookup_table auf der
+   passendsten Seite auf. Sonst read_page.
+2. Reicht es nicht, gezielt grep_manual/bal_search/search.
+3. Wenige Runden, dann ANTWORTE.
 
-Antwortregeln (wenn du fertig bist, gib NUR die Antwort als Text zurück, KEIN
-weiterer Tool-Aufruf):
-- Deutsch, 1–2 kurze Sätze. Nenne den Wert direkt. Bei Abbildungen die Fig.-Nummer.
-- Tabellen stehen als Zeilen "Zeilenkopf: Spalte=Wert | ...". Lies die passende
-  Zeile exakt ab. Leere Zelle ("—"): "In der Tabelle ist für diese Konfiguration
-  kein Wert eingetragen."
-- Steht die Information nicht im Manual: sage das klar, erfinde nichts.
+HARTE REGELN:
+- Antworte NIE allein aus Titeln oder Suchsnippets — die enthalten oft nicht
+  den Wert. Immer erst lookup_table oder read_page.
+- Gib den WERT an, nicht eine Beschreibung, wo die Info steht.
+- Die gesuchte Größe (z. B. Gewicht in kg/t) darf NICHT mit einem Wert aus der
+  Frage (z. B. Auslegerlänge in m) verwechselt werden.
+- Leere Zelle ("—"): "Für diese Konfiguration ist kein Wert eingetragen."
+- Nicht im Manual: sage das klar, erfinde nichts.
+
+Finale Antwort: Deutsch, 1–2 kurze Sätze, nur der Wert. KEIN Tool-Aufruf mehr.
 /no_think\
 """
 
 
+# Tools für den lokalen Loop: die geteilten + das Tabellen-Tool (nur lokal).
+_LOCAL_TOOL_SCHEMAS = TOOL_SCHEMAS + [LOOKUP_TABLE_SCHEMA]
+_LOCAL_TOOL_FN = {**TOOL_FN, "lookup_table": lookup_table}
+
+
 def _oai_tools() -> list[dict]:
-    """Übersetzt die Anthropic-TOOL_SCHEMAS ins OpenAI-Function-Format."""
+    """Übersetzt die lokalen Tool-Schemas ins OpenAI-Function-Format."""
     return [
         {"type": "function", "function": {
             "name": s["name"],
             "description": s["description"],
             "parameters": s["input_schema"],
         }}
-        for s in TOOL_SCHEMAS
+        for s in _LOCAL_TOOL_SCHEMAS
     ]
 
 
 def _dispatch_local_tool(name: str, args: dict) -> str:
     """Führt ein Tool aus (read_page im Loop mit kleinerer Obergrenze für 4B)."""
-    fn = TOOL_FN.get(name)
+    fn = _LOCAL_TOOL_FN.get(name)
     if fn is None:
         return json.dumps({"error": f"Unbekanntes Tool: {name}"})
     try:
@@ -298,22 +312,95 @@ def _local_chat(messages: list[dict], tools: list[dict] | None, max_tokens: int)
                             detail=f"Fehler vom lokalen LLM-Server ({LOCAL_MODEL_EXPAND}): {exc}")
 
 
-def _seed_message(candidates: list[dict], context: str, question: str) -> str:
+def _extract_row_col(question: str, context: str) -> tuple[str | None, str | None]:
+    """Zeilen-/Spaltenwert für die Tabellensuche aus Frage+Kontext ableiten:
+    Länge in Metern → Zeile, Einscherung (…-fach / …x) → Spalte."""
+    text = f"{context} {question}"
+    row = None
+    m = re.search(r"(\d+(?:[.,]\d+)?)\s*m\b", text, re.I)
+    if m:
+        row = f"{m.group(1)} m"
+    col = None
+    # "6-fach", "6-facher", "6fach", "6-fache Einscherung" oder "6x"
+    m = re.search(r"(\d+)\s*-?\s*fach", text, re.I) or re.search(r"(\d+)\s*x\b", text, re.I)
+    if m:
+        col = m.group(1)
+    return row, col
+
+
+def _prelookup_table(question: str, context: str, candidates: list[dict]) -> tuple[dict | None, dict | None]:
+    """Wenn die Frage nach einem Wert klingt und eine Länge/Einscherung vorkommt,
+    deterministisch die passende Tabelle suchen. Die richtige Tabellenseite ist
+    oft NICHT der Top-Treffer, darum breiter Pool: Fusion-Kandidaten + gezielte
+    Titel-Suche. lookup_table ist präzise (Zeile im Zahlbereich UND Spalte muss
+    existieren), Fehltreffer sind damit unwahrscheinlich. Exakte Treffer werden
+    gerundeten vorgezogen."""
+    if not _VALUE_QUESTION_RE.search(question):
+        return None, None
+    row, col = _extract_row_col(question, context)
+    if not row:
+        return None, None
+
+    titles = _title_map()
+    pool: list[tuple[str, str]] = [(c["filename"], c["title"]) for c in candidates[:12]]
+    keys = [w for w in _normalize_query(question).split()
+            if len(w) > 3 and w.lower() not in _STOPWORDS]
+    if keys:
+        for h in bal_search(" ".join(keys[:3])):
+            fn = h.get("filename")
+            if fn and "error" not in h:
+                pool.append((fn, h.get("title", titles.get(fn, fn))))
+
+    best: tuple[dict, dict] | None = None
+    seen: set[str] = set()
+    for fn, title in pool:
+        if fn in seen:
+            continue
+        seen.add(fn)
+        res = lookup_table(fn, row, col or "")
+        if "error" in res or not res.get("zeilen"):
+            continue
+        hit = (res, {"filename": fn, "title": title})
+        if res.get("treffer") == "exakt":
+            return hit                       # exakter Zeilentreffer gewinnt sofort
+        if best is None:
+            best = hit
+    return best if best else (None, None)
+
+
+def _seed_message(candidates: list[dict], context: str, question: str,
+                  prelookup: dict | None = None, prelookup_page: dict | None = None) -> str:
     lines = [f"{i}. {c['title']} [{c['filename']}]" for i, c in enumerate(candidates[:8], 1)]
     ctx_block = f"Maschinenkonfiguration: {context}\n\n" if context else ""
-    return (f"{ctx_block}Bereits gefundene Kandidaten-Seiten (Titel [Dateiname]):\n"
-            + "\n".join(lines) + f"\n\nFrage: {question}")
+    seed = (f"{ctx_block}Bereits gefundene Kandidaten-Seiten (Titel [Dateiname]):\n"
+            + "\n".join(lines))
+    if prelookup and prelookup_page:
+        seed += (
+            f"\n\nVorab aus der Tabelle auf \"{prelookup_page['title']}\" "
+            f"[{prelookup_page['filename']}] extrahiert ({prelookup['treffer']}):\n"
+            f"{prelookup['text']}\n"
+            "Wenn diese Zeilen die Frage beantworten, nutze sie direkt."
+        )
+    return seed + f"\n\nFrage: {question}"
 
 
 def _run_tool_loop(question: str, context: str, candidates: list[dict]) -> tuple[str, list[dict], int]:
     """Seeded Tool-Loop. Gibt (Antworttext, gelesene Quellen, Runden) zurück."""
     tools = _oai_tools()
     titles = _title_map()
+    # Deterministische Tabellen-Vorsuche → passende Zeilen gleich in den Seed.
+    prelookup, prelookup_page = _prelookup_table(question, context, candidates)
+    if prelookup_page:
+        logger.info("AgentLocal[tools]: Tabellen-Vorsuche Treffer auf '%s' (%s)",
+                    prelookup_page["title"][:50], prelookup["treffer"])
     messages: list[dict] = [
         {"role": "system", "content": AGENT_TOOLLOOP_SYSTEM},
-        {"role": "user", "content": _seed_message(candidates, context, question)},
+        {"role": "user", "content": _seed_message(candidates, context, question,
+                                                  prelookup, prelookup_page)},
     ]
     read_order: list[str] = []          # Reihenfolge gelesener Seiten → Quellen
+    if prelookup_page:
+        read_order.append(prelookup_page["filename"])
     rounds = 0
     tool_rounds = 0
 
@@ -341,7 +428,7 @@ def _run_tool_loop(question: str, context: str, candidates: list[dict]) -> tuple
                     args = json.loads(tc.function.arguments or "{}")
                 except Exception:
                     args = {}
-                if name == "read_page" and args.get("filename"):
+                if name in ("read_page", "lookup_table") and args.get("filename"):
                     fn = args["filename"]
                     if fn not in read_order:
                         read_order.append(fn)
