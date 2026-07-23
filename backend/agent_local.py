@@ -368,6 +368,74 @@ def _prelookup_table(question: str, context: str, candidates: list[dict]) -> tup
     return best if best else (None, None)
 
 
+def _answer_from_table(pre: dict) -> str:
+    """Baut die Antwort DETERMINISTISCH aus den extrahierten Tabellenzeilen —
+    kein Modell, damit der vorgelegte Wert nicht ignoriert/halluziniert wird."""
+    picks = pre.get("zeilen", [])
+    row_q = pre["gesucht"]["zeile"]
+    col_q = pre["gesucht"]["spalte"]
+    exact = pre.get("treffer") == "exakt"
+    if col_q:
+        einsch = f"{col_q}-facher Einscherung"
+        vals = [(z.get("row", ""), z.get("value", "—")) for z in picks]
+        nonempty = [(r, v) for r, v in vals if v not in ("—", "", "-")]
+        if not nonempty:
+            rows = " und ".join(r for r, _ in vals) or row_q
+            return (f"Für die Auslegerlänge {row_q} ist bei {einsch} kein Wert in der "
+                    f"Tabelle eingetragen (geprüft: {rows}).")
+        if exact and len(nonempty) == 1:
+            r, v = nonempty[0]
+            return f"Laut Tabelle: {v} (Auslegerlänge {r}, {einsch})."
+        parts = "; ".join(f"{r} → {v}" for r, v in nonempty)
+        return (f"Für {row_q} gibt es keinen exakten Tabellenwert; nächstgelegene "
+                f"Zeilen bei {einsch}: {parts}.")
+    parts = "; ".join(f"{z.get('row', '')}: {z.get('cells', '')}" for z in picks)
+    return f"Tabellenwerte nahe {row_q}: {parts}."
+
+
+def _clean_answer_text(t: str) -> str:
+    """Entfernt Markdown-Ballast (Codefences, Blockquotes, **fett**) und Umbrüche."""
+    if not t:
+        return t
+    t = re.sub(r"```.*?```", "", t, flags=re.S)
+    t = re.sub(r"^\s*>\s?", "", t, flags=re.M)
+    t = t.replace("**", "").replace("__", "")
+    t = re.sub(r"\n{2,}", " ", t).strip()
+    return t
+
+
+# Distinkt englische Wörter (nicht auch deutsch) → Sprach-Erkennung
+_EN_RE = re.compile(
+    r"\b(the|and|this|that|must|with|for|which|required|provided|value|specific|"
+    r"according|further|additional|would|need|following|length|main|after|be|is|"
+    r"are|of|to|installation|cable|boom|consult)\b", re.I)
+
+_GERMAN_REFORMAT_SYSTEM = (
+    "Du bist Redakteur. Gib den folgenden Inhalt in EINEM knappen, sachlichen "
+    "deutschen Satz wieder. Keine Anführungszeichen, kein Markdown, keine Zusätze, "
+    "kein Englisch. Sagt der Inhalt, dass keine genaue Angabe vorhanden ist, "
+    "formuliere genau das kurz auf Deutsch.\n/no_think")
+
+
+def _ensure_german(answer: str) -> str:
+    """Englische Modell-Antworten einmal auf Deutsch umformulieren."""
+    if not answer:
+        return answer
+    hits = len({m.group(0).lower() for m in _EN_RE.finditer(answer)})
+    if hits < 4:
+        return answer
+    logger.info("AgentLocal: Antwort wirkt englisch (%d Marker) → Umformulierung", hits)
+    try:
+        de = local_complete(_GERMAN_REFORMAT_SYSTEM,
+                            f"Inhalt:\n{answer}", max_tokens=180)
+        de = _clean_answer_text(de)
+        return de or answer
+    except HTTPException:
+        raise
+    except Exception:
+        return answer
+
+
 def _seed_message(candidates: list[dict], context: str, question: str,
                   prelookup: dict | None = None, prelookup_page: dict | None = None) -> str:
     lines = [f"{i}. {c['title']} [{c['filename']}]" for i, c in enumerate(candidates[:8], 1)]
@@ -388,21 +456,14 @@ def _run_tool_loop(question: str, context: str, candidates: list[dict]) -> tuple
     """Seeded Tool-Loop. Gibt (Antworttext, gelesene Quellen, Runden) zurück."""
     tools = _oai_tools()
     titles = _title_map()
-    # Deterministische Tabellen-Vorsuche → passende Zeilen gleich in den Seed.
-    prelookup, prelookup_page = _prelookup_table(question, context, candidates)
-    if prelookup_page:
-        logger.info("AgentLocal[tools]: Tabellen-Vorsuche Treffer auf '%s' (%s)",
-                    prelookup_page["title"][:50], prelookup["treffer"])
     messages: list[dict] = [
         {"role": "system", "content": AGENT_TOOLLOOP_SYSTEM},
-        {"role": "user", "content": _seed_message(candidates, context, question,
-                                                  prelookup, prelookup_page)},
+        {"role": "user", "content": _seed_message(candidates, context, question)},
     ]
     read_order: list[str] = []          # Reihenfolge gelesener Seiten → Quellen
-    if prelookup_page:
-        read_order.append(prelookup_page["filename"])
     rounds = 0
     tool_rounds = 0
+    nudged = False                      # Lesezwang: max. ein Anstoß
 
     while rounds < TOOL_MAX_ROUNDS:
         rounds += 1
@@ -438,6 +499,16 @@ def _run_tool_loop(question: str, context: str, candidates: list[dict]) -> tuple
                     "tool_call_id": tc.id,
                     "content": _dispatch_local_tool(name, args),
                 })
+            continue
+
+        # Lesezwang: keine Antwort aus Titeln/Snippets ohne gelesene Seite.
+        if not read_order and not nudged and not force_final:
+            nudged = True
+            messages.append({"role": "assistant", "content": msg.content or ""})
+            messages.append({"role": "user", "content": (
+                "Du hast noch KEINE Seite gelesen und darfst nicht aus Titeln oder "
+                "Snippets antworten. Lies zuerst die vielversprechendste Kandidaten-"
+                "Seite mit read_page (oder nutze lookup_table), dann antworte.")})
             continue
 
         # Finale Textantwort
@@ -521,17 +592,28 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
 
     # Seeded Tool-Loop: Retrieval vorgeben, dann darf das Modell nachfassen.
     if AGENT_LOCAL_MODE == "tools":
+        conf = round(min(top_score / 40.0, 1.0), 2)
+
+        # Fast-Path: Tabellenwert deterministisch → kein Loop, kein Abdriften.
+        pre, page = _prelookup_table(question, context, candidates)
+        if pre and page:
+            logger.info("AgentLocal[tools]: Tabellen-Fast-Path '%s' (%s)",
+                        page["title"][:50], pre["treffer"])
+            answer = _clean_answer_text(_answer_from_table(pre))
+            srcs = [{"filename": page["filename"], "title": page["title"]}]
+            for r in filtered[:2]:
+                if r["filename"] != page["filename"]:
+                    srcs.append({"filename": r["filename"], "title": r["title"]})
+            return {"type": "answer", "answer": answer, "sources": srcs[:3],
+                    "rounds": 1, "confidence": conf}
+
         logger.info("AgentLocal[tools]: Seed %d Kandidaten (Top-Score %.1f)", len(candidates), top_score)
         answer, srcs, rounds = _run_tool_loop(question, context, candidates)
+        answer = _ensure_german(_clean_answer_text(answer))
         if not srcs:
             srcs = [{"filename": r["filename"], "title": r["title"]} for r in filtered[:3]]
-        return {
-            "type": "answer",
-            "answer": answer,
-            "sources": srcs[:3],
-            "rounds": rounds,
-            "confidence": round(min(top_score / 40.0, 1.0), 2),
-        }
+        return {"type": "answer", "answer": answer, "sources": srcs[:3],
+                "rounds": rounds, "confidence": conf}
 
     # Phase 4+5: Kontext aufbereiten + EINE Synthese
     top = filtered[0]
