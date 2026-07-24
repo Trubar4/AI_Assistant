@@ -368,10 +368,19 @@ Nicht-Fast-Path-Fragen fallen sauber in den Loop.
   ich den Lastort?" — „Hauptausleger 74 m" wird nicht mehr injiziert → „Bildschirmseite
   Windenkonfiguration" ist wieder unter den Treffern (vorher durch den Kontext verdrängt).
 
+**Erledigt (Forts.):**
+- ✅ **Dokumenttyp-Boost fragesensitiv** (`search._page_matches_query_doctype`): eine
+  Referenzseite wird nur noch angehoben, wenn die Frage ein **nicht-generisches**
+  Sachwort mit dem Titel teilt (generische wie „bildschirmseite"/„…ausleger" zählen
+  nicht). Effekt: „…Lastort konfigurieren?" → „Bildschirmseite Windenkonfiguration"
+  ist jetzt **#1** (statt #5); „Wahl des richtigen Lasthakens" wird bei einer
+  Lasthaken-Frage weiterhin angehoben (Tabellen-Fast-Path 1900 kg bleibt).
+- ✅ **Clarification-Robustheit**: konkrete Konfig-Werte werden vor dem Satisfier-Check
+  als kanonische Tokens angehängt, damit „74 m?" (Satzende), „6x", „124 t" die
+  Satisfier („ m "/„fach"/…) erfüllen — keine überflüssige Rückfrage mehr, wenn die
+  Angabe schon da ist. Echte Rückfrage (ohne Länge) bleibt.
+
 **Geplant / offen:**
-- **Dokumenttyp-Boost feinjustieren**: im Lastort-Fall stehen die „Auslegerkonfiguration"-
-  Seiten weiter auf #1–4 (Boost auf „auslegerkonfiguration"); „Windenkonfiguration" ist
-  jetzt zwar enthalten (#5), aber nicht oben. Ggf. Boost kontext-/fragesensitiv machen.
 - **Semantik auf Render**: siehe §11 — 768-dim-Modell passt nicht in 512 MB Free;
   Optionen: größere Instanz, ONNX-Query-Encoder oder kleines MiniLM (384-dim,
   Embeddings neu erzeugen).

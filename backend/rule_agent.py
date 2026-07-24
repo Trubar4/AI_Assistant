@@ -115,6 +115,18 @@ def _needs_clarification(question: str, context: str) -> str | None:
     """Rückfrage wenn eine essentielle Info fehlt und weder Kontext noch Frage sie enthält."""
     # Satisfier-Check über Kontext UND Frage — Frage kann die Info schon enthalten
     combined = (context + " " + question).lower()
+    # Robustheit: konkrete Konfig-Werte als kanonische Tokens anhängen, damit
+    # Satisfier wie " m " / "fach" auch bei "74 m?" (Satzende) oder "6x"/"124t"
+    # greifen — sonst kommt trotz vorhandener Angabe eine überflüssige Rückfrage.
+    extra = []
+    if re.search(r"\d+\s*m\b", combined):
+        extra.append("meter länge m ")
+    if re.search(r"\d+\s*-?\s*fach|\b\d+\s*x\b", combined):
+        extra.append("fach einscherung ")
+    if re.search(r"\d+\s*(?:t|kg)\b", combined):
+        extra.append("gewicht ")
+    if extra:
+        combined = combined + " " + " ".join(extra)
     for trigger_kws, satisfier_kws, question_text in _CLARIFICATION_RULES:
         if _keywords_in_text(trigger_kws, question):
             if not _keywords_in_text(satisfier_kws, combined):

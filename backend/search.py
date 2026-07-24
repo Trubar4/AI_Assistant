@@ -402,6 +402,41 @@ def _is_reference_page(title: str) -> bool:
     return any(w in t for w in _DOCTYPE_WORDS)
 
 
+# Zu generische Titel-/Fragewörter: taugen NICHT als Topik-Beleg für den Boost
+# (stehen in vielen Titeln, z. B. jede „Bildschirmseite …" / jeder „…ausleger").
+_DOCTYPE_GENERIC = {
+    "bildschirmseite", "hauptausleger", "nadelausleger", "ausleger",
+    "maschine", "seite", "tabelle", "übersicht", "konfiguration",
+}
+
+
+def _doctype_query_terms(query: str) -> set[str]:
+    """Sachwörter der Frage (≥4 Zeichen, keine Stopp-/Generikwörter)."""
+    return {w for w in re.findall(r"[a-zäöüß]{4,}", query.lower())
+            if w not in _STOPWORDS_DE and w not in _DOCTYPE_GENERIC}
+
+
+def _page_matches_query_doctype(title: str, q_terms: set[str]) -> bool:
+    """True, wenn (1) der Titel eine Referenz-/Tabellenseite kennzeichnet
+    (Dokumenttyp-Wort) UND (2) die Frage ein aussagekräftiges (nicht-generisches)
+    Sachwort mit dem Titel teilt. Der Boost wirkt so fragesensitiv:
+    - „Wahl des richtigen Lasthakens" wird bei einer Lasthaken-Frage angehoben
+      (gemeinsames „lasthaken"), obwohl das Dokumenttyp-Wort „wahl" nicht in der
+      Frage steht.
+    - „Bildschirmseite Auslegerkonfiguration" wird bei einer Lastort-Frage NICHT
+      angehoben (nur das generische „bildschirmseite" wäre gemeinsam)."""
+    t = title.lower()
+    if not any(w in t for w in _DOCTYPE_WORDS):
+        return False
+    title_terms = {w for w in re.findall(r"[a-zäöüß]{4,}", t)
+                   if w not in _STOPWORDS_DE and w not in _DOCTYPE_GENERIC}
+    for qt in q_terms:
+        for tt in title_terms:
+            if qt == tt or (len(qt) >= 5 and qt in tt) or (len(tt) >= 5 and tt in qt):
+                return True
+    return False
+
+
 def _rrf(rankings: list[list[tuple[str, float]]]) -> dict[str, float]:
     """Combine ranked lists via RRF. Each list is [(filename, score), ...]."""
     scores: dict[str, float] = {}
@@ -448,17 +483,20 @@ def search(
     if not rrf_scores:
         return []
 
-    # Dokumenttyp-Prior: Referenz-/Konfigurationsseiten (Zusammenstellung,
-    # Übersicht, Wahl, Traglast-/Einscherung-Tabellen …) tragen die Werte, die
-    # Nutzer suchen, stehen aber oft unter vielen gleichnamigen Verfahrensseiten.
-    # Ein moderater Boost hebt sie — GENERISCH über den Seitentyp im Titel, nicht
-    # über einzelne Themen. Wirkt nur auf bereits gefundene Kandidaten (fname ist
-    # in rrf_scores), promotet also keine völlig irrelevanten Seiten.
+    # Dokumenttyp-Prior (FRAGESENSITIV): Referenz-/Konfigurationsseiten
+    # (Zusammenstellung, Übersicht, Wahl, Traglast-/Einscherung-Tabellen …) tragen
+    # die Werte, die Nutzer suchen. Der Boost greift aber NUR, wenn die Frage auch
+    # von diesem Dokumenttyp handelt (gemeinsames Sachwort) — sonst würden z. B.
+    # „Auslegerkonfiguration"-Seiten jede Frage dominieren (Lastort-Fall). Generisch
+    # über den Seitentyp, kein Themen-Hardcoding; wirkt nur auf bereits gefundene
+    # Kandidaten.
     if _DOCTYPE_BOOST != 1.0:
-        for fname in rrf_scores:
-            entry = index_by_filename.get(fname)
-            if entry and _is_reference_page(entry.get("title", "")):
-                rrf_scores[fname] *= _DOCTYPE_BOOST
+        q_terms = _doctype_query_terms(query)
+        if q_terms:
+            for fname in rrf_scores:
+                entry = index_by_filename.get(fname)
+                if entry and _page_matches_query_doctype(entry.get("title", ""), q_terms):
+                    rrf_scores[fname] *= _DOCTYPE_BOOST
 
     sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 
