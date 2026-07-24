@@ -30,6 +30,7 @@ from backend.rule_agent import (
     _needs_clarification,
     _normalize_query,
     _filter_by_score_gap,
+    _extract_snippet,
     _STOPWORDS,
 )
 from backend.search import search, _load_index
@@ -48,10 +49,13 @@ from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
-# pipeline = deterministische Pipeline + 1 Synthese (robust, wenig Modell-Last)
-# tools    = Seeded Tool-Loop: Retrieval vorgeben, dann darf das Modell mit
-#            read_page/grep_manual/bal_search/search über mehrere Runden nachfassen
-AGENT_LOCAL_MODE   = os.environ.get("AGENT_LOCAL_MODE", "tools").strip().lower()
+# Verhalten für NICHT-Tabellenfragen (Tabellenwerte laufen immer über den
+# deterministischen Fast-Path):
+#   sources  (Default) = Quellen + wörtlicher Snippet, KEIN LLM-Fließtext.
+#                        Anti-Halluzination: richtige Seiten zeigen, Nutzer liest.
+#   tools              = Seeded Tool-Loop (Modell formuliert; Halluzinationsrisiko).
+#   pipeline           = eine Modell-Synthese aus der Top-Seite (+ Eskalation).
+AGENT_LOCAL_MODE   = os.environ.get("AGENT_LOCAL_MODE", "sources").strip().lower()
 
 # Tuning — Schwellen auf der RRF×1000-Skala (wie in ask()); je nach aktiver
 # semantischer Suche verschiebt sich die Skala, daher per Env kalibrierbar.
@@ -574,13 +578,40 @@ def _run_tool_loop(question: str, context: str, candidates: list[dict],
             "oder in den Quellen nachschlagen."), srcs, rounds
 
 
+_SOURCES_LEAD = "Wahrscheinlich relevante Manual-Seiten — bitte dort nachschlagen:"
+
+
+def _sources_answer(filtered: list[dict], question: str, conf: float) -> dict:
+    """Anti-Halluzinations-Antwort: Quellen + wörtlicher Snippet, KEIN Modell.
+
+    Der Snippet ist verbatim aus dem Seitentext (kein generierter Fließtext),
+    dient nur als Vorschau. Die eigentliche Antwort sind die verlinkten Seiten.
+    """
+    top = filtered[0]
+    keywords = [w for w in _normalize_query(question).split()
+                if len(w) > 3 and w.lower() not in _STOPWORDS]
+    snippet = _extract_snippet(top["filename"], keywords)
+    answer = _SOURCES_LEAD
+    if snippet:
+        answer = f"{_SOURCES_LEAD}\n\nAuszug aus „{top['title']}“ (wörtlich):\n{snippet}"
+    return {
+        "type": "answer",
+        "answer": answer,
+        "sources": [{"filename": r["filename"], "title": r["title"]} for r in filtered[:3]],
+        "rounds": 0,
+        "confidence": conf,
+    }
+
+
 def run_agent_local(question: str, context: str = "", conversation: list[dict] | None = None) -> dict:
     """Lokaler Modus-3-Agent.
 
-    Gemeinsame modellfreie Vorstufe (Clarification, Fusion-Retrieval,
-    Confidence-Gate), danach je nach AGENT_LOCAL_MODE:
-      - "tools"    (Default): Seeded Tool-Loop — Modell fasst mit Tools nach.
-      - "pipeline"          : deterministische Pipeline + max. 2 Modell-Calls.
+    Modellfreie Vorstufe (Clarification, Fusion-Retrieval, Confidence-Gate),
+    dann deterministischer Tabellen-Fast-Path (wörtlicher Wert + Quelle). Ist
+    das keine Tabellenfrage, entscheidet AGENT_LOCAL_MODE:
+      - "sources" (Default): Quellen + wörtlicher Snippet, KEIN LLM-Fließtext.
+      - "tools"            : Seeded Tool-Loop (Modell formuliert, Risiko).
+      - "pipeline"         : eine Modell-Synthese aus der Top-Seite.
     """
     is_followup = bool(conversation)
 
@@ -635,36 +666,31 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
             "confidence": round(min(top_score / 40.0, 1.0), 2),
         }
 
-    # Seeded Tool-Loop: Retrieval vorgeben, dann darf das Modell nachfassen.
+    conf = round(min(top_score / 40.0, 1.0), 2)
+
+    # ── Deterministischer Tabellen-Fast-Path (immer, modusunabhängig) ─────────
+    # Der EINZIGE sichere "formulierte" Wert: wörtlich aus der Tabelle, mit Quelle
+    # — keine Halluzination. Reine Sach-Frage (bei Rückfrage die ursprüngliche)
+    # für die gezielte Tabellensuche, damit Konfig-Ballast das Ranking nicht stört.
+    content_q = next((m["content"] for m in (conversation or [])
+                      if m.get("role") == "user"), question)
+    pre, page = _prelookup_table(raw_query, context, candidates, search_query=content_q)
+    if pre and page:
+        logger.info("AgentLocal: Tabellen-Fast-Path '%s' (%s)", page["title"][:50], pre["treffer"])
+        answer = _clean_answer_text(_answer_from_table(pre))
+        srcs = [{"filename": page["filename"], "title": page["title"]}]
+        for r in filtered[:2]:
+            if r["filename"] != page["filename"]:
+                srcs.append({"filename": r["filename"], "title": r["title"]})
+        return {"type": "answer", "answer": answer, "sources": srcs[:3],
+                "rounds": 1, "confidence": conf}
+
+    # ── Nicht-Tabellenfrage ───────────────────────────────────────────────────
     if AGENT_LOCAL_MODE == "tools":
-        conf = round(min(top_score / 40.0, 1.0), 2)
-        # Sach-Text = Frage + Konversation (für Wert-Erkennung + Länge/Einscherung).
-        intent_text = raw_query
-        # lookup_table nur anbieten, wenn ein echter Zellen-Zugriff (Zeile UND
-        # Spalte) möglich ist — sonst missbraucht das Modell es bei "wie viele"-
-        # Fragen und papageit einen fremden Tabellenwert.
-        _row, _col = _extract_row_col(intent_text, context)
+        # Experimentell: Modell darf mit Tools nachfassen (Halluzinationsrisiko).
+        _row, _col = _extract_row_col(raw_query, context)
         has_cell = bool(_row and _col)
-        # Für die gezielte Tabellensuche die reine Sach-Frage nutzen: bei einer
-        # Rückfrage-Antwort ist das die ursprüngliche Frage (ohne Konfig-Ballast,
-        # der die richtige Tabellenseite im Ranking verdrängt).
-        content_q = next((m["content"] for m in (conversation or [])
-                          if m.get("role") == "user"), question)
-
-        # Fast-Path: Tabellenwert deterministisch → kein Loop, kein Abdriften.
-        pre, page = _prelookup_table(intent_text, context, candidates, search_query=content_q)
-        if pre and page:
-            logger.info("AgentLocal[tools]: Tabellen-Fast-Path '%s' (%s)",
-                        page["title"][:50], pre["treffer"])
-            answer = _clean_answer_text(_answer_from_table(pre))
-            srcs = [{"filename": page["filename"], "title": page["title"]}]
-            for r in filtered[:2]:
-                if r["filename"] != page["filename"]:
-                    srcs.append({"filename": r["filename"], "title": r["title"]})
-            return {"type": "answer", "answer": answer, "sources": srcs[:3],
-                    "rounds": 1, "confidence": conf}
-
-        logger.info("AgentLocal[tools]: Seed %d Kandidaten (Top-Score %.1f, cell=%s)",
+        logger.info("AgentLocal[tools]: Seed %d Kandidaten (Score %.1f, cell=%s)",
                     len(candidates), top_score, has_cell)
         answer, srcs, rounds = _run_tool_loop(question, context, candidates, include_table=has_cell)
         answer = _ensure_german(_clean_answer_text(answer))
@@ -673,37 +699,31 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
         return {"type": "answer", "answer": answer, "sources": srcs[:3],
                 "rounds": rounds, "confidence": conf}
 
-    # Phase 4+5: Kontext aufbereiten + EINE Synthese
-    top = filtered[0]
-    answer = _synthesize(top, context, question)
-    rounds = 1
-    used = list(filtered[:3])
-    logger.info("AgentLocal[pipeline]: Synthese (Score %.1f) → %s", top_score, answer[:100])
+    if AGENT_LOCAL_MODE == "pipeline":
+        # Experimentell: eine Modell-Synthese aus der Top-Seite (+ Eskalation).
+        top = filtered[0]
+        answer = _synthesize(top, context, question)
+        rounds = 1
+        used = list(filtered[:3])
+        logger.info("AgentLocal[pipeline]: Synthese (Score %.1f) → %s", top_score, answer[:80])
+        if _needs_escalation(answer, question, top_score):
+            seen = {r["filename"] for r in filtered}
+            esc = _escalate(question, context, seen)
+            if esc:
+                logger.info("AgentLocal[pipeline]: Eskalation → %s", esc[0]["title"][:60])
+                answer2 = _synthesize(esc[0], context, question)
+                rounds = 2
+                used = esc[:1] + used
+                if not _WEAK_ANSWER_RE.search(answer2):
+                    answer = answer2
+        if _WEAK_ANSWER_RE.search(answer):
+            answer = ("Diese Information ließ sich auf den gefundenen Seiten nicht eindeutig "
+                      "belegen. Bitte schlagen Sie in den verlinkten Quellen nach.")
+        return {"type": "answer", "answer": answer,
+                "sources": [{"filename": r["filename"], "title": r["title"]} for r in used[:3]],
+                "rounds": rounds, "confidence": conf}
 
-    # Phase 6: Eskalation — EIN gezielter Lookup bei schwacher Antwort
-    if _needs_escalation(answer, question, top_score):
-        seen = {r["filename"] for r in filtered}
-        esc = _escalate(question, context, seen)
-        if esc:
-            logger.info("AgentLocal: Eskalation → %s", esc[0]["title"][:60])
-            answer2 = _synthesize(esc[0], context, question)
-            rounds = 2
-            # Eskalierte Seite als primäre Quelle voranstellen
-            used = esc[:1] + used
-            # Bessere Antwort bevorzugen: die eskalierte, wenn sie nicht schwach ist
-            if not _WEAK_ANSWER_RE.search(answer2):
-                answer = answer2
-
-    # NICHT_IM_MATERIAL sauber in Anzeigetext übersetzen
-    if _WEAK_ANSWER_RE.search(answer):
-        answer = ("Diese Information ließ sich auf den gefundenen Seiten nicht eindeutig "
-                  "belegen. Bitte schlagen Sie in den verlinkten Quellen nach.")
-
-    sources = [{"filename": r["filename"], "title": r["title"]} for r in used[:3]]
-    return {
-        "type": "answer",
-        "answer": answer,
-        "sources": sources,
-        "rounds": rounds,
-        "confidence": round(min(top_score / 40.0, 1.0), 2),
-    }
+    # ── DEFAULT "sources": Quellen + wörtlicher Snippet, KEIN LLM-Fließtext ────
+    # Anti-Halluzination: die richtigen Seiten zeigen, der Nutzer liest selbst.
+    # Kein Modell-Call → keine erfundenen Werte, kein Englisch, keine Frage-Echos.
+    return _sources_answer(filtered, question, conf)
