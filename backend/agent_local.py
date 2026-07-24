@@ -333,6 +333,29 @@ def _extract_row_col(question: str, context: str) -> tuple[str | None, str | Non
     return row, col
 
 
+def _content_tokens(text: str) -> set[str]:
+    """Sachwörter (≥5 Zeichen, keine Stoppwörter) einer Zeichenkette."""
+    return {w for w in re.findall(r"[a-zäöüß]{5,}", text.lower()) if w not in _STOPWORDS}
+
+
+# Zu generische Substantive: taugen NICHT als Relevanzbeleg (stehen in halbem Manual)
+_GENERIC_TOKENS = {"hauptausleger", "nadelausleger", "ausleger", "maschine",
+                   "konfiguration", "manual", "seite", "tabelle", "wert", "werte"}
+
+
+def _topically_related(query: str, title: str) -> bool:
+    """True, wenn Frage und Seitentitel ein aussagekräftiges Sachwort teilen
+    (Substring-Match in beide Richtungen, damit Flexionsformen wie
+    'Lasthaken'/'Lasthakens' greifen). Rein generisch, kein Themen-Hardcoding."""
+    q_tokens = _content_tokens(query) - _GENERIC_TOKENS
+    t_tokens = _content_tokens(title)
+    for q in q_tokens:
+        for t in t_tokens:
+            if q == t or (len(q) >= 6 and q in t) or (len(t) >= 6 and t in q):
+                return True
+    return False
+
+
 def _prelookup_table(intent_text: str, context: str, candidates: list[dict],
                      search_query: str | None = None) -> tuple[dict | None, dict | None]:
     """Wenn die Frage nach einem Wert klingt und eine Länge/Einscherung vorkommt,
@@ -345,9 +368,13 @@ def _prelookup_table(intent_text: str, context: str, candidates: list[dict],
     if not _VALUE_QUESTION_RE.search(intent_text):
         return None, None
     row, col = _extract_row_col(intent_text, context)
-    if not row:
+    # Präzisions-Gate 1: nur echter Zellen-Zugriff (Zeile UND Spalte). Ohne
+    # Spaltenachse (z. B. "wie viele …") ist "irgendeine Tabelle mit dieser
+    # Zeile" zu schwach → selbstbewusst-falsche Antworten. Dann lieber Loop.
+    if not row or not col:
         return None, None
 
+    rel_ref = f"{search_query or ''} {intent_text}"
     pool: list[tuple[str, str]] = [(c["filename"], c["title"]) for c in candidates[:20]]
     # Gezielte, gerankte Suche nach der Tabellenseite über die reine Sach-Frage.
     for r in search(search_query or intent_text, top_n=25):
@@ -359,7 +386,11 @@ def _prelookup_table(intent_text: str, context: str, candidates: list[dict],
         if fn in seen:
             continue
         seen.add(fn)
-        res = lookup_table(fn, row, col or "")
+        # Präzisions-Gate 2: Seite muss thematisch zur Frage passen (gemeinsames
+        # Sachwort) — verhindert Treffer auf einer fremden Tabelle mit passender Zeile.
+        if not _topically_related(rel_ref, title):
+            continue
+        res = lookup_table(fn, row, col)
         if "error" in res or not res.get("zeilen"):
             continue
         hit = (res, {"filename": fn, "title": title})
@@ -609,7 +640,11 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
         conf = round(min(top_score / 40.0, 1.0), 2)
         # Sach-Text = Frage + Konversation (für Wert-Erkennung + Länge/Einscherung).
         intent_text = raw_query
-        is_value = bool(_VALUE_QUESTION_RE.search(intent_text))
+        # lookup_table nur anbieten, wenn ein echter Zellen-Zugriff (Zeile UND
+        # Spalte) möglich ist — sonst missbraucht das Modell es bei "wie viele"-
+        # Fragen und papageit einen fremden Tabellenwert.
+        _row, _col = _extract_row_col(intent_text, context)
+        has_cell = bool(_row and _col)
         # Für die gezielte Tabellensuche die reine Sach-Frage nutzen: bei einer
         # Rückfrage-Antwort ist das die ursprüngliche Frage (ohne Konfig-Ballast,
         # der die richtige Tabellenseite im Ranking verdrängt).
@@ -629,9 +664,9 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
             return {"type": "answer", "answer": answer, "sources": srcs[:3],
                     "rounds": 1, "confidence": conf}
 
-        logger.info("AgentLocal[tools]: Seed %d Kandidaten (Top-Score %.1f, value=%s)",
-                    len(candidates), top_score, is_value)
-        answer, srcs, rounds = _run_tool_loop(question, context, candidates, include_table=is_value)
+        logger.info("AgentLocal[tools]: Seed %d Kandidaten (Top-Score %.1f, cell=%s)",
+                    len(candidates), top_score, has_cell)
+        answer, srcs, rounds = _run_tool_loop(question, context, candidates, include_table=has_cell)
         answer = _ensure_german(_clean_answer_text(answer))
         if not srcs:
             srcs = [{"filename": r["filename"], "title": r["title"]} for r in filtered[:3]]
