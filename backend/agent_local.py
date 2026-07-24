@@ -452,13 +452,26 @@ def _run_tool_loop(question: str, context: str, candidates: list[dict],
 _SOURCES_LEAD = "Wahrscheinlich relevante Manual-Seiten — bitte dort nachschlagen:"
 
 
-def _sources_answer(filtered: list[dict], question: str, conf: float) -> dict:
+_SOURCES_GAP_RATIO = 0.65   # Quelle zeigen, wenn Score ≥ 65 % des Top-Scores
+_SOURCES_MAX       = 5      # bis zu 5 (statt 3): die richtige Seite fällt sonst
+                            # leicht aus den Top-3 (z. B. Lastort → Windenkonfiguration #5)
+
+
+def _sources_answer(candidates: list[dict], question: str, conf: float) -> dict:
     """Anti-Halluzinations-Antwort: Quellen + wörtlicher Snippet, KEIN Modell.
 
     Der Snippet ist verbatim aus dem Seitentext (kein generierter Fließtext),
     dient nur als Vorschau. Die eigentliche Antwort sind die verlinkten Seiten.
+    Es werden bis zu _SOURCES_MAX Seiten oberhalb des Score-Gaps gezeigt, damit
+    die tatsächlich passende Seite nicht knapp aus den Top-3 fällt. Breadcrumb/
+    Kurzbeschreibung ergänzt main._enrich_sources deterministisch.
     """
-    top = filtered[0]
+    top = candidates[0]
+    top_score = top.get("score", 0)
+    min_score = top_score * _SOURCES_GAP_RATIO
+    picks = [c for c in candidates if c.get("score", 0) >= min_score][:_SOURCES_MAX]
+    if not picks:
+        picks = candidates[:_SOURCES_MAX]
     keywords = [w for w in _normalize_query(question).split()
                 if len(w) > 3 and w.lower() not in _STOPWORDS]
     snippet = _extract_snippet(top["filename"], keywords)
@@ -468,7 +481,7 @@ def _sources_answer(filtered: list[dict], question: str, conf: float) -> dict:
     return {
         "type": "answer",
         "answer": answer,
-        "sources": [{"filename": r["filename"], "title": r["title"]} for r in filtered[:3]],
+        "sources": [{"filename": r["filename"], "title": r["title"]} for r in picks],
         "rounds": 0,
         "confidence": conf,
     }
@@ -600,4 +613,6 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
     # ── DEFAULT "sources": Quellen + wörtlicher Snippet, KEIN LLM-Fließtext ────
     # Anti-Halluzination: die richtigen Seiten zeigen, der Nutzer liest selbst.
     # Kein Modell-Call → keine erfundenen Werte, kein Englisch, keine Frage-Echos.
-    return _sources_answer(filtered, question, conf)
+    # Volle Kandidatenliste übergeben, damit bis zu 5 Treffer oberhalb des Gaps
+    # gezeigt werden (die passende Seite fällt sonst leicht aus den Top-3).
+    return _sources_answer(candidates, question, conf)

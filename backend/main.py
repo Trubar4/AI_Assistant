@@ -208,6 +208,8 @@ class AgentRequest(BaseModel):
 class AgentSource(BaseModel):
     filename: str
     title: str
+    breadcrumb: list[str] = []   # deterministisch aus dem Index (unterscheidet gleichnamige Seiten)
+    snippet: str = ""            # kurzer Kontext-Auszug (kein LLM)
 
 
 class AgentResponse(BaseModel):
@@ -291,6 +293,38 @@ def _merge_candidates(*lists: list[dict], top_n: int = 50) -> list[dict]:
                 by_fname[fn] = c
     merged = sorted(by_fname.values(), key=lambda c: c.get("score", 0), reverse=True)
     return merged[:top_n]
+
+
+def _enrich_sources(sources: list[dict]) -> list[dict]:
+    """Reichert Agent-Quellen deterministisch (KEIN LLM) mit Breadcrumb + kurzem
+    Snippet aus dem Suchindex an. So sind gleichnamige Seiten (z. B. zwei
+    verschiedene „Montagefunktionen ausschalten") an ihrem Pfad unterscheidbar."""
+    if not sources:
+        return sources
+    try:
+        from backend.search import _load_index
+        idx = {e["filename"]: e for e in (_load_index() or [])}
+    except Exception:
+        return sources
+    out = []
+    for s in sources:
+        e = idx.get(s.get("filename", ""))
+        enriched = dict(s)
+        if e:
+            if not enriched.get("breadcrumb"):
+                # letzte bis zu 3 Ebenen (ohne den Blatt-Titel selbst, wenn identisch)
+                bc = list(e.get("breadcrumb") or [])
+                if bc and bc[-1] == e.get("title"):
+                    bc = bc[:-1]
+                enriched["breadcrumb"] = bc[-3:]
+            if not enriched.get("snippet"):
+                text = (e.get("text") or "").strip()
+                if not text and e.get("steps"):
+                    text = e["steps"][0]
+                if text:
+                    enriched["snippet"] = text[:140].rsplit(" ", 1)[0] + ("…" if len(text) > 140 else "")
+        out.append(enriched)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -431,7 +465,7 @@ async def ask_agent(req: AgentRequest) -> AgentResponse:
         type=result["type"],
         answer=result.get("answer", ""),
         question=result.get("question", ""),
-        sources=[AgentSource(**s) for s in result.get("sources", [])],
+        sources=[AgentSource(**s) for s in _enrich_sources(result.get("sources", []))],
         rounds=result.get("rounds", 0),
         conversation=result.get("messages", []),
         confidence=result.get("confidence", 1.0),

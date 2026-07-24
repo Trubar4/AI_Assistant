@@ -8,18 +8,26 @@ in einer neuen Konversation sofort verfügbar sind.
 
 ## 1. Überblick: die drei Modi
 
-| Modus | Endpoint | Implementierung | LLM? |
-|------|----------|-----------------|------|
-| 1 · Lokal (ohne Modell) | `/ask_agent` (mode=rule) | `agent_local.py` mit `mode="sources"` (erzwungen modellfrei) | **nein** |
-| 2 · Klassisch | `/ask` | `claude_client.py` (`expand_query`, `rerank`) | ja (HyDE + Reranking) |
-| 3 · Assistent | `/ask_agent` | `agent.py` (Anthropic) **oder** `agent_local.py` (lokal) | konfigurierbar |
+Die UI hat **zwei** Modi; der Assistent hat zwei Backends:
 
-> **Merge Modus 1 → „Modus 3 lokal ohne Modell":** Der frühere regelbasierte Agent
-> (`run_rule_agent`) wird nicht mehr direkt aufgerufen; `mode=rule` läuft jetzt über
-> `run_agent_local(mode="sources")` — derselbe deterministische Pfad wie Modus 3
-> lokal, hart modellfrei (kein Anthropic, kein lokales LLM), **inkl. der Composition-/
-> Tabellen-Fast-Paths** (die dem alten Modus 1 fehlten). `rule_agent.py` bleibt als
-> geteilte Helfer-Bibliothek (Clarification, Query-Normalisierung, Snippet, Score-Gap).
+| UI-Modus | Endpoint | Implementierung | LLM? |
+|------|----------|-----------------|------|
+| **Klassisch** | `/ask` | `claude_client.py` (`expand_query`, `rerank`) | ja (HyDE + Reranking) |
+| **Assistent → Lokal** | `/ask_agent` (backend=local) | `agent_local.py` (`sources`) | **nein** (deterministisch) |
+| **Assistent → Claude** | `/ask_agent` (backend=anthropic) | `agent.py` (Anthropic) | ja (agentischer Tool-Loop) |
+
+> **Merge Modus 1 → „Assistent → Lokal":** Der frühere eigenständige Modus 1
+> („Regelbasiert"/„Lokal") war bei Default-Config identisch zu „Assistent → Lokal"
+> (beide `agent_local/sources`, modellfrei). Er wurde als eigener UI-Modus entfernt;
+> „Auto" als Backend entfällt (Standard ist **Lokal**). Der Endpoint `mode=rule` bleibt
+> rückwärtskompatibel und läuft über `run_agent_local(mode="sources")` (hart
+> modellfrei). `rule_agent.py` bleibt geteilte Helfer-Bibliothek (Clarification,
+> Query-Normalisierung, Snippet, Score-Gap).
+>
+> **Wann nutzt „Assistent → Lokal" das lokale LLM (qwen)?** Im Default `sources`: **nie**
+> (voll deterministisch). Nur die experimentellen `AGENT_LOCAL_MODE=tools|pipeline`
+> lassen qwen formulieren. qwen läuft sonst nur in Modus „Klassisch" bei
+> `LLM_PROVIDER=local` (HyDE + Reranking).
 
 **Provider-Schalter** `LLM_PROVIDER=anthropic|local` (Default `anthropic`):
 - `anthropic`: alles wie bisher, Render unverändert.
@@ -326,12 +334,23 @@ Nicht-Fast-Path-Fragen fallen sauber in den Loop.
   (`ma_context_fields`) gehalten → An-/Abhaken **ohne** Re-Analyse, übersteht Reload.
 
 **Erledigt (Forts.):**
-- ✅ **Modus 1 verschmolzen**: `mode=rule` läuft über `run_agent_local(mode="sources")`
-  (siehe §1). Der frühere separate `run_rule_agent`-Pfad entfällt; Modus 1 gewinnt die
-  deterministischen Fast-Paths, bleibt 100 % modellfrei. UI-Label „Regelbasiert" →
-  „Lokal" (Tooltip: offline, ohne KI-Modell, deterministisch).
+- ✅ **Modus 1 verschmolzen**: eigener UI-Modus entfernt; „Assistent" hat jetzt nur
+  noch die Backends **Lokal / Claude** (kein „Auto"), Standard Lokal (siehe §1).
+- ✅ **Quellen mit Breadcrumb + Kurz-Snippet** (`main._enrich_sources`, deterministisch,
+  KEIN LLM): gleichnamige Seiten (z. B. zwei „Montagefunktionen ausschalten") sind an
+  ihrem Pfad unterscheidbar. Frontend zeigt Breadcrumb über dem Titel.
+- ✅ **Bis zu 5 Quellen** im lokalen Quellen-Modus (statt 3, oberhalb des Score-Gaps),
+  damit die passende Seite nicht knapp aus den Top-3 fällt (z. B. Lastort →
+  „Bildschirmseite Windenkonfiguration" ist jetzt enthalten).
+- ✅ **Clarification-Präzision**: Trigger „last" entfernt (matchte als Substring
+  „Lastort"/„Ballast" → falsche Rückfragen).
 
 **Geplant / offen:**
+- ⏭️ **NÄCHSTES TODO — Per-Frage-Relevanz der Konfig**: nur die zur Frage passenden
+  Konfig-Werte in Suche/HyDE injizieren statt immer den ganzen Kontext. Beispiel:
+  „Auf welcher Bildschirmseite konfiguriere ich den Lastort?" — der Kontext
+  „Hauptausleger 74 m" ist hier irrelevant und drängt (samt Dokumenttyp-Boost auf
+  „Auslegerkonfiguration") die richtige „Windenkonfiguration"-Seite nach unten.
 - **Semantik auf Render**: siehe §11 — 768-dim-Modell passt nicht in 512 MB Free;
   Optionen: größere Instanz, ONNX-Query-Encoder oder kleines MiniLM (384-dim,
   Embeddings neu erzeugen).

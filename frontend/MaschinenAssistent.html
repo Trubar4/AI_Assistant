@@ -786,19 +786,15 @@
   <span id="online-status" style="font:400 12px/16px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3)">Offline</span>
   <!-- Mode Toggle -->
   <div class="mode-toggle" id="mode-toggle">
-    <button class="mode-toggle__btn mode-toggle__btn--active" id="mode-btn-rule"
-      onclick="setMode('rule')" title="Lokal & offline · ohne KI-Modell · deterministisch (Regeln + Tabellen/Zusammenstellung) · sofort · kostenlos">Lokal</button>
-    <button class="mode-toggle__btn" id="mode-btn-classic"
+    <button class="mode-toggle__btn mode-toggle__btn--active" id="mode-btn-classic"
       onclick="setMode('classic')" title="Geringe Kosten · Schnell · KI-Antwort">Klassisch</button>
     <button class="mode-toggle__btn" id="mode-btn-agent"
-      onclick="setMode('agent')" title="Höhere Kosten · Langsamer · Mehrschrittiger KI-Assistent">Assistent</button>
+      onclick="setMode('agent')" title="Mehrschrittiger Assistent – lokal (deterministisch) oder mit Claude">Assistent</button>
   </div>
   <!-- Backend für "Assistent" (nur in diesem Modus sichtbar) -->
   <div class="mode-toggle" id="backend-toggle" style="display:none">
-    <button class="mode-toggle__btn mode-toggle__btn--active" id="be-auto"
-      onclick="setBackend('')" title="Folgt der Server-Einstellung (LLM_PROVIDER)">Auto</button>
-    <button class="mode-toggle__btn" id="be-local"
-      onclick="setBackend('local')" title="Lokales Modell – offline, deterministisch">Lokal</button>
+    <button class="mode-toggle__btn mode-toggle__btn--active" id="be-local"
+      onclick="setBackend('local')" title="Lokal & offline · ohne KI-Modell · deterministisch (Regeln + Tabellen/Zusammenstellung) · sofort · kostenlos">Lokal</button>
     <button class="mode-toggle__btn" id="be-anthropic"
       onclick="setBackend('anthropic')" title="Claude – beste Qualität, benötigt Internet + API-Key">Claude</button>
   </div>
@@ -1138,7 +1134,7 @@ async function loadServerConfig() {
     if (cfg.local_backend_enabled === false) {
       const btn = document.getElementById('be-local');
       if (btn) btn.style.display = 'none';
-      if (_agentBackend === 'local') setBackend('');   // auf Auto zurück
+      setBackend('anthropic');   // kein lokales Backend → Claude (Render)
     }
   } catch { /* Config optional — UI bleibt wie sie ist */ }
 }
@@ -1353,25 +1349,30 @@ async function analyseContext() {
 // ── Mode ──────────────────────────────────────────────────────────────────
 
 const MODE_KEY = 'ma_mode';
-let _mode = localStorage.getItem(MODE_KEY) || new URLSearchParams(location.search).get('mode') || 'rule';
+// Modi: "classic" (Klassisch) und "agent" (Assistent). Der frühere Modus "rule"
+// ("Lokal") ist in Assistent → Backend "Lokal" verschmolzen → migrieren.
+let _mode = localStorage.getItem(MODE_KEY) || new URLSearchParams(location.search).get('mode') || 'agent';
+if (_mode === 'rule') _mode = 'agent';
 
 function setMode(m) {
+  if (m === 'rule') m = 'agent';
   _mode = m;
   localStorage.setItem(MODE_KEY, m);
   document.getElementById('mode-btn-classic').classList.toggle('mode-toggle__btn--active', m === 'classic');
   document.getElementById('mode-btn-agent').classList.toggle('mode-toggle__btn--active', m === 'agent');
-  document.getElementById('mode-btn-rule').classList.toggle('mode-toggle__btn--active', m === 'rule');
   // Backend-Umschalter nur im Assistent-Modus zeigen
   document.getElementById('backend-toggle').style.display = (m === 'agent') ? '' : 'none';
 }
 
-// Backend für den Assistenten (Lokal / Claude / Auto) — an /ask_agent mitgesendet
+// Backend für den Assistenten: "local" (deterministisch, offline) oder
+// "anthropic" (Claude). Kein "Auto" mehr → Standard ist Lokal. Ein alter
+// leerer/"" (Auto)-Wert migriert auf Lokal.
 const BACKEND_KEY = 'ki-agent-backend';
-let _agentBackend = localStorage.getItem(BACKEND_KEY) || '';
+let _agentBackend = localStorage.getItem(BACKEND_KEY) || 'local';
 function setBackend(b) {
+  if (!b) b = 'local';
   _agentBackend = b;
   localStorage.setItem(BACKEND_KEY, b);
-  document.getElementById('be-auto').classList.toggle('mode-toggle__btn--active', b === '');
   document.getElementById('be-local').classList.toggle('mode-toggle__btn--active', b === 'local');
   document.getElementById('be-anthropic').classList.toggle('mode-toggle__btn--active', b === 'anthropic');
 }
@@ -1381,6 +1382,13 @@ setMode(_mode);
 function escalateQuery(question, targetMode) {
   // Wechselt den Modus und stellt dieselbe Frage erneut
   setMode(targetMode);
+  sendQuestion({ question });
+}
+
+function escalateToClaude(question) {
+  // Assistent-Modus mit Claude-Backend und dieselbe Frage erneut stellen
+  setMode('agent');
+  setBackend('anthropic');
   sendQuestion({ question });
 }
 
@@ -1509,7 +1517,11 @@ async function submitClarification(id) {
 
 function renderAgentAnswer(data, mode, question) {
   const rounds = data.rounds > 1 ? `${data.rounds} Suchschritte` : '1 Suchschritt';
-  const sourcesHtml = (data.sources || []).map(s => `
+  const sourcesHtml = (data.sources || []).map(s => {
+    const crumb = (s.breadcrumb && s.breadcrumb.length)
+      ? `<div class="source-item__crumb">${s.breadcrumb.map(escHtml).join(' › ')}</div>` : '';
+    const snip = s.snippet ? `<div class="source-item__snippet">${escHtml(s.snippet)}</div>` : '';
+    return `
     <div class="source-item" role="button" tabindex="0"
       data-url="/manuals/${escHtml(s.filename)}"
       data-title="${escHtml(s.title || s.filename)}"
@@ -1517,13 +1529,17 @@ function renderAgentAnswer(data, mode, question) {
       onkeydown="if(event.key==='Enter')openManual(this.dataset.url, this.dataset.title)">
       <div class="icon">${icon('doc', 16)}</div>
       <div class="source-item__info">
+        ${crumb}
         <div class="source-item__title">${escHtml(s.title || s.filename)}</div>
+        ${snip}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
-  // Eskalations-Hinweis bei niedrigem Konfidenz-Score im Regelbasiert-Modus
+  // Eskalations-Hinweis bei niedriger Übereinstimmung im lokalen (modellfreien)
+  // Backend — dann Klassisch oder Claude anbieten.
   const confidence = typeof data.confidence === 'number' ? data.confidence : 1.0;
-  const lowConfidence = mode === 'rule' && confidence < 0.6;
+  const lowConfidence = _agentBackend !== 'anthropic' && confidence < 0.6;
   const escalationHtml = lowConfidence ? `
     <div class="escalation-hint">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -1533,12 +1549,12 @@ function renderAgentAnswer(data, mode, question) {
         Klassisch versuchen
       </button>
       <button class="lds-btn lds-btn--secondary lds-btn--sm escalation-btn"
-        onclick="escalateQuery(${JSON.stringify(question || '').replace(/"/g,'&quot;')}, 'agent')">
-        Assistent fragen
+        onclick="escalateToClaude(${JSON.stringify(question || '').replace(/"/g,'&quot;')})">
+        Mit Claude
       </button>
     </div>` : '';
 
-  const modeLabel = mode === 'rule' ? 'Regelbasiert' : 'Assistent';
+  const modeLabel = 'Assistent · ' + (_agentBackend === 'anthropic' ? 'Claude' : 'Lokal');
 
   return `
     <div class="agent-bubble">

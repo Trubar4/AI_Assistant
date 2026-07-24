@@ -77,7 +77,9 @@ def _normalize_query(question: str) -> str:
 # ---------------------------------------------------------------------------
 _CLARIFICATION_RULES: list[tuple[list[str], list[str], str]] = [
     (
-        ["traglast", "tragfähigkeit", "tragen", "heben", "last", "kapazität"],
+        # "last" bewusst NICHT als Trigger: matcht als Substring "Lastort",
+        # "Ballast", "Belastung" → falsche Rückfragen. Traglast-Begriffe genügen.
+        ["traglast", "tragfähigkeit", "tragen", "heben", "kapazität"],
         ["ausleger", "einscherung", "meter", " m ", "länge", "50m", "60m", "70m", "74m", "75m", "80m"],
         "Welche Auslegerlänge und Einscherung (z. B. 74 m, 6-fach) verwenden Sie?",
     ),
