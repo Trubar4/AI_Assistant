@@ -328,6 +328,20 @@ def bm25_candidate_titles(query: str, top_k: int = 25) -> list[str]:
 # ---------------------------------------------------------------------------
 _RRF_K = 60
 
+# Dokumenttyp-Prior (generisch, kein Themen-Hardcoding): Titel-Wörter, die eine
+# Referenz-/Konfigurations-/Tabellenseite kennzeichnen — dort stehen die Werte,
+# die Nutzer nachschlagen. Boost per Env kalibrierbar (1.0 = aus).
+_DOCTYPE_BOOST = float(os.environ.get("SEARCH_DOCTYPE_BOOST", "1.25"))
+_DOCTYPE_WORDS = (
+    "zusammenstellung", "übersicht", "wahl", "auslegerkonfiguration",
+    "traglasttabelle", "einscherplan", "längen", "gewichte",
+)
+
+
+def _is_reference_page(title: str) -> bool:
+    t = title.lower()
+    return any(w in t for w in _DOCTYPE_WORDS)
+
 
 def _rrf(rankings: list[list[tuple[str, float]]]) -> dict[str, float]:
     """Combine ranked lists via RRF. Each list is [(filename, score), ...]."""
@@ -374,6 +388,18 @@ def search(
     rrf_scores = _rrf(rankings)
     if not rrf_scores:
         return []
+
+    # Dokumenttyp-Prior: Referenz-/Konfigurationsseiten (Zusammenstellung,
+    # Übersicht, Wahl, Traglast-/Einscherung-Tabellen …) tragen die Werte, die
+    # Nutzer suchen, stehen aber oft unter vielen gleichnamigen Verfahrensseiten.
+    # Ein moderater Boost hebt sie — GENERISCH über den Seitentyp im Titel, nicht
+    # über einzelne Themen. Wirkt nur auf bereits gefundene Kandidaten (fname ist
+    # in rrf_scores), promotet also keine völlig irrelevanten Seiten.
+    if _DOCTYPE_BOOST != 1.0:
+        for fname in rrf_scores:
+            entry = index_by_filename.get(fname)
+            if entry and _is_reference_page(entry.get("title", "")):
+                rrf_scores[fname] *= _DOCTYPE_BOOST
 
     sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 
