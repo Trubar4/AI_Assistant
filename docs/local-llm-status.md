@@ -306,19 +306,25 @@ Nicht-Fast-Path-Fragen fallen sauber in den Loop.
 
 ---
 
-## 14. Geplant / offen (noch nicht umgesetzt)
+## 14. Erledigt / geplant
 
+**Erledigt:**
+- ✅ **Regelbasierter Konfig-Parser für LOKAL** (`claude_client._rule_parse_context`):
+  bei `LLM_PROVIDER=local` läuft `parse_context` rein regelbasiert — kein Anthropic
+  UND kein lokales LLM. Normalisierung nach `vocab_rules.json` (74m→„74 m",
+  6-fach→„6x", …), generische Klassifikation, atomare Zerlegung trennerloser Eingaben.
+- ✅ **Konfig-Checkboxen** (Frontend): geparste Felder sind an-/abhakbare Chips; nur
+  angehakte fließen in den Kontext (`acceptContext` filtert nach `enabled`). Der
+  vollständige Feld-Satz inkl. abgehakter Elemente wird in `localStorage`
+  (`ma_context_fields`) gehalten → An-/Abhaken **ohne** Re-Analyse, übersteht Reload.
+
+**Geplant / offen:**
 - **Modus 1 verschmelzen**: der regelbasierte Agent (`rule_agent`) ist als eigener
   UI-Modus weitgehend redundant zu „Modus 3 lokal / sources" (dieser importiert
   ohnehin `_needs_clarification`, `_normalize_query`, `_filter_by_score_gap`,
   `_extract_snippet`). Perspektivisch zu „Modus 3 lokal ohne Modell" zusammenführen.
-- **Regelbasierter Konfig-Parser für LOKAL**: `parse_context()` läuft aktuell IMMER
-  über Anthropic. Für einen echten Offline-Betrieb (`LLM_PROVIDER=local`) soll die
-  Konfig-Analyse **rein regelbasiert** erfolgen — **kein** Anthropic UND **kein**
-  lokales LLM (das kleine Modell ist zu unzuverlässig für strukturiertes Parsen).
-  Fallback: Split + Vocab-Normalisierung aus `data/vocab_rules.json`.
 - **Semantik auf Render**: siehe §11 — 768-dim-Modell passt nicht in 512 MB Free;
   Optionen: größere Instanz, ONNX-Query-Encoder oder kleines MiniLM (384-dim,
   Embeddings neu erzeugen).
-- **Konfig-UX**: Elemente an-/abhaken statt löschen+neu analysieren; per-Frage-
-  Relevanz der Konfig für die Suche.
+- **Per-Frage-Relevanz der Konfig**: nur die zur Frage passenden Konfig-Werte in
+  Suche/HyDE injizieren (statt immer den ganzen Kontext).

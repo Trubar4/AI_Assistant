@@ -395,6 +395,39 @@
       border-color: var(--r-state-danger, #c0392b);
       background: var(--r-state-danger-subtle, #fdf0ef);
     }
+    /* An-/abhaken: der Chip-Körper ist ein Umschalter (ohne den Entfernen-Button). */
+    .ctx-chip__toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-1);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 0;
+      font: inherit;
+      color: inherit;
+    }
+    .ctx-chip__check {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1.5px solid var(--r-outline-bright);
+      color: var(--r-on-accent-default, #fff);
+      background: var(--r-accent-default, #1a7f5a);
+      flex: 0 0 auto;
+    }
+    .ctx-chip--off {
+      opacity: 0.55;
+      background: var(--r-surface-high, #f0f0f0);
+    }
+    .ctx-chip--off .ctx-chip__val { text-decoration: line-through; }
+    .ctx-chip--off .ctx-chip__check {
+      background: transparent;
+      color: transparent;
+    }
     .ctx-chip__key {
       font: 500 11px/14px var(--font-text-m);
       color: var(--r-on-surface-muted);
@@ -1124,11 +1157,16 @@ async function checkHealth() {
 
 // ── Kontext-Panel (Ansatz C: Freitext → LLM-Parse → Chip-Bestätigung) ────
 
-const CONTEXT_KEY     = 'ma_context';          // canonical string für /ask
-const CONTEXT_RAW_KEY = 'ma_context_raw';      // original Freitext für Bearbeiten
+const CONTEXT_KEY      = 'ma_context';          // canonical string für /ask (nur aktive Felder)
+const CONTEXT_RAW_KEY  = 'ma_context_raw';      // original Freitext für Bearbeiten
+const CONTEXT_FIELDS_KEY = 'ma_context_fields'; // vollständige Felder inkl. enabled (an-/abhaken ohne Re-Analyse)
 
 // Interne State
-let _ctxFields = [];   // [{key, value, hits, valid}, ...]
+let _ctxFields = [];   // [{key, value, hits, valid, enabled}, ...]
+
+function _saveCtxFields() {
+  try { localStorage.setItem(CONTEXT_FIELDS_KEY, JSON.stringify(_ctxFields)); } catch {}
+}
 
 function _getContext() {
   return localStorage.getItem(CONTEXT_KEY) || '';
@@ -1168,29 +1206,46 @@ function _renderChips() {
   const container = document.getElementById('ctx-fields');
   container.innerHTML = '';
   _ctxFields.forEach((f, i) => {
+    const on = f.enabled !== false;   // default an
     const chip = document.createElement('span');
-    chip.className = 'ctx-chip' + (f.valid ? '' : ' ctx-chip--invalid');
+    chip.className = 'ctx-chip' + (f.valid ? '' : ' ctx-chip--invalid') + (on ? '' : ' ctx-chip--off');
     chip.title = f.valid ? `${f.hits} Treffer im Manual` : 'Begriff nicht im Manual gefunden';
+    const check = on
+      ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
+      : '';
     chip.innerHTML =
-      `<span class="ctx-chip__key">${escHtml(f.key)}:</span>${escHtml(f.value)}` +
+      `<button class="ctx-chip__toggle" onclick="toggleCtxField(${i})" ` +
+      `title="${on ? 'Für die Suche deaktivieren' : 'Für die Suche aktivieren'}">` +
+        `<span class="ctx-chip__check">${check}</span>` +
+        `<span class="ctx-chip__key">${escHtml(f.key)}:</span>` +
+        `<span class="ctx-chip__val">${escHtml(f.value)}</span>` +
+      `</button>` +
       `<button class="ctx-chip__del" onclick="removeCtxField(${i})" title="Entfernen">` +
       `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
     container.appendChild(chip);
   });
 
-  // Warnung bei ungültigen Feldern
-  const invalid = _ctxFields.filter(f => !f.valid);
+  // Warnung bei ungültigen Feldern (nur aktive zählen)
+  const invalid = _ctxFields.filter(f => !f.valid && f.enabled !== false);
   const warn = document.getElementById('ctx-warn-text');
   if (invalid.length) {
     warn.style.display = 'inline';
-    warn.textContent = `${invalid.length} Begriff(e) nicht im Manual gefunden (rot markiert).`;
+    warn.textContent = `${invalid.length} aktive(r) Begriff(e) nicht im Manual gefunden (rot markiert).`;
   } else {
     warn.style.display = 'none';
   }
 }
 
+function toggleCtxField(idx) {
+  const f = _ctxFields[idx];
+  f.enabled = (f.enabled === false);   // umschalten (undefined → false)
+  _saveCtxFields();
+  _renderChips();
+}
+
 function removeCtxField(idx) {
   _ctxFields.splice(idx, 1);
+  _saveCtxFields();
   if (_ctxFields.length === 0) {
     _showInputView();
   } else {
@@ -1205,6 +1260,7 @@ function clearContext() {
   document.getElementById('context-active-badge').style.display = 'none';
   localStorage.removeItem(CONTEXT_KEY);
   localStorage.removeItem(CONTEXT_RAW_KEY);
+  localStorage.removeItem(CONTEXT_FIELDS_KEY);
 }
 
 function editContext() {
@@ -1213,9 +1269,18 @@ function editContext() {
 
 function acceptContext() {
   if (_ctxFields.length === 0) return;
-  const canonical = _ctxFields.map(f => `${f.key}: ${f.value}`).join(' / ');
-  localStorage.setItem(CONTEXT_KEY, canonical);
-  document.getElementById('context-active-badge').style.display = 'inline-flex';
+  // Nur angehakte Felder fließen in die Suche ein.
+  const active = _ctxFields.filter(f => f.enabled !== false);
+  const canonical = active.map(f => `${f.key}: ${f.value}`).join(' / ');
+  _saveCtxFields();   // vollständige Felder (inkl. abgehakter) für später behalten
+  if (canonical) {
+    localStorage.setItem(CONTEXT_KEY, canonical);
+    document.getElementById('context-active-badge').style.display = 'inline-flex';
+  } else {
+    // Alles abgehakt → kein aktiver Kontext, Felder bleiben aber erhalten.
+    localStorage.removeItem(CONTEXT_KEY);
+    document.getElementById('context-active-badge').style.display = 'none';
+  }
   document.getElementById('context-panel').style.display = 'none';
 }
 
@@ -1246,9 +1311,10 @@ async function analyseContext() {
     if (!resp.ok) throw new Error(resp.statusText);
     const data = await resp.json();
     _ctxFields = data.fields.map(f => ({
-      key: f.key, value: f.value, hits: f.hits, valid: f.valid
+      key: f.key, value: f.value, hits: f.hits, valid: f.valid, enabled: true
     }));
     localStorage.setItem(CONTEXT_RAW_KEY, raw);
+    _saveCtxFields();
     _showParsedView();
   } catch (e) {
     alert('Analyse fehlgeschlagen: ' + e.message);
@@ -1262,16 +1328,26 @@ async function analyseContext() {
 (function restoreContext() {
   const canonical = localStorage.getItem(CONTEXT_KEY);
   const raw       = localStorage.getItem(CONTEXT_RAW_KEY);
-  if (canonical) {
-    document.getElementById('context-active-badge').style.display = 'inline-flex';
-    // Felder aus canonical string rekonstruieren (key: value / key: value)
+  const stored    = localStorage.getItem(CONTEXT_FIELDS_KEY);
+  // Vollständige Felder (inkl. abgehakter) bevorzugt aus dem Feld-Store laden,
+  // damit deaktivierte Elemente ohne Re-Analyse erhalten bleiben.
+  if (stored) {
+    try {
+      _ctxFields = JSON.parse(stored).map(f => ({
+        key: f.key, value: f.value, hits: f.hits ?? 1, valid: f.valid !== false,
+        enabled: f.enabled !== false,
+      }));
+    } catch { _ctxFields = []; }
+  } else if (canonical) {
+    // Rückwärtskompatibel: Felder aus canonical string rekonstruieren.
     _ctxFields = canonical.split(' / ').map(part => {
       const sep = part.indexOf(': ');
-      if (sep > 0) return {key: part.slice(0, sep), value: part.slice(sep + 2), hits: 1, valid: true};
-      return {key: 'Konfiguration', value: part, hits: 1, valid: true};
+      if (sep > 0) return {key: part.slice(0, sep), value: part.slice(sep + 2), hits: 1, valid: true, enabled: true};
+      return {key: 'Konfiguration', value: part, hits: 1, valid: true, enabled: true};
     }).filter(f => f.value);
-    if (raw) document.getElementById('context-input').value = raw;
   }
+  if (canonical) document.getElementById('context-active-badge').style.display = 'inline-flex';
+  if (raw) document.getElementById('context-input').value = raw;
 })();
 
 // ── Mode ──────────────────────────────────────────────────────────────────
