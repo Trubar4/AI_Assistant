@@ -43,6 +43,7 @@ from backend.search import search, reset_index, extract_facets, count_hits
 from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer, log_mode2_provider, LLM_PROVIDER
 from backend.agent import run_agent
 from backend.rule_agent import _normalize_query
+from backend.fastpaths import relevant_context
 
 # ---------------------------------------------------------------------------
 # Error code database (optional — loaded once at startup)
@@ -348,10 +349,15 @@ async def ask_question(req: AskRequest) -> AskResponse:
         logger.info("Klassisch: QWEN angefragt, lokales Backend aus → Anthropic")
         provider = "anthropic"
 
+    # Per-Frage-Relevanz: nur die zur Frage passenden Konfig-Felder ins Retrieval
+    # (HyDE/Rerank) geben. Verhindert, dass irrelevanter Kontext (z. B. „Hauptausleger
+    # 74 m" bei einer Bildschirm-Navigationsfrage) die richtige Seite verdrängt.
+    rel_ctx = relevant_context(q, ctx)
+
     # HyDE: BM25-Titelscan nur gegen die echte Frage — Kontext-Tokens würden
-    # die Titeltreffer verzerren. Kontext fließt aber in den HyDE-Prompt ein,
-    # damit die hypothetische Passage konfigurationsrelevant ist.
-    expanded_q = expand_query(q, context=ctx, provider=provider)
+    # die Titeltreffer verzerren. Der (relevante) Kontext fließt aber in den
+    # HyDE-Prompt ein, damit die hypothetische Passage konfigurationsrelevant ist.
+    expanded_q = expand_query(q, context=rel_ctx, provider=provider)
 
     # Multi-Query-Fusion (Trick aus Modus 1): Die Suche darf sich nicht allein
     # auf die HyDE-Passage verlassen — driftet die Hypothese thematisch ab, fällt
@@ -386,7 +392,7 @@ async def ask_question(req: AskRequest) -> AskResponse:
     facets = extract_facets(candidates, top_k=10)
     # Reranker bekommt Kontext + Frage explizit, damit konfigurationsrelevante
     # Seiten (z. B. "74m Hauptausleger") höher bewertet werden.
-    rerank_q = f"{ctx}\n\n{q}" if ctx else q
+    rerank_q = f"{rel_ctx}\n\n{q}" if rel_ctx else q
     results = rerank(rerank_q, candidates, top_n=req.top_n, provider=provider)
     va: VerifiedAnswer = ask(q, results)                         # original query für Anzeige
     return AskResponse(

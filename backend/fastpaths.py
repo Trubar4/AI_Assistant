@@ -321,6 +321,58 @@ def seilfuehrung_fastpath(question: str, context: str, conf: float = 1.0) -> dic
             "rounds": 0, "confidence": conf}
 
 
+# ── Per-Frage-Relevanz der Konfig ───────────────────────────────────────────
+
+def _split_context_fields(context: str) -> list[tuple[str, str]]:
+    """Zerlegt den kanonischen Kontext ("Schlüssel: Wert / Schlüssel: Wert") in
+    (Schlüssel, Wert)-Paare. Teile ohne ": " werden als ("", Wert) geführt."""
+    fields: list[tuple[str, str]] = []
+    for part in re.split(r"\s*/\s*", context or ""):
+        part = part.strip()
+        if not part:
+            continue
+        if ": " in part:
+            k, v = part.split(": ", 1)
+            fields.append((k.strip(), v.strip()))
+        else:
+            fields.append(("", part))
+    return fields
+
+
+def relevant_context(question: str, context: str) -> str:
+    """Reduziert den Konfig-Kontext auf die zur Frage passenden Felder — nur fürs
+    Retrieval (Suche/HyDE/Rerank), NICHT für die Fast-Paths (die lesen den vollen
+    Kontext weiter). Generisch, kein Themen-Hardcoding:
+
+    Ein Feld bleibt, wenn
+      (a) es ein aussagekräftiges Sachwort mit der Frage teilt (topische Überlappung), ODER
+      (b) die Frage nach einem Wert/einer Menge fragt UND das Feld numerisch ist
+          (Länge/Einscherung/Gewicht sind die Dimensionen der Traglast-/Tabellenfragen).
+
+    So wird z. B. bei „Auf welcher Bildschirmseite konfiguriere ich den Lastort?"
+    der irrelevante Kontext „Hauptausleger 74 m" NICHT injiziert (verdrängt sonst
+    die richtige „Windenkonfiguration"-Seite)."""
+    context = (context or "").strip()
+    if not context:
+        return ""
+    fields = _split_context_fields(context)
+    if not fields:
+        return context
+    q_tokens = _content_tokens(question) - _GENERIC_TOKENS
+    q_value = bool(_VALUE_QUESTION_RE.search(question) or _COUNT_Q_RE.search(question))
+    kept: list[str] = []
+    for k, v in fields:
+        f_tokens = _content_tokens(f"{k} {v}") - _GENERIC_TOKENS
+        overlap = any(
+            a == b or (len(a) >= 6 and a in b) or (len(b) >= 6 and b in a)
+            for a in q_tokens for b in f_tokens
+        )
+        numeric = bool(re.search(r"\d", v))
+        if overlap or (q_value and numeric):
+            kept.append(f"{k}: {v}" if k else v)
+    return " / ".join(kept)
+
+
 # ── Retrieval-Helfer (für Agenten ohne eigenes Vorab-Retrieval) ─────────────
 
 def retrieve_fusion(raw_query: str, context: str = "", top_n: int = 15) -> list[dict]:

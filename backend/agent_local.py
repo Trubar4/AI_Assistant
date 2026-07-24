@@ -39,7 +39,7 @@ from backend.agent_tools import (
     TOOL_SCHEMAS, TOOL_FN, LOOKUP_TABLE_SCHEMA,
 )
 from backend.fastpaths import (
-    run_fastpaths,
+    run_fastpaths, relevant_context,
     _config_tokens, _extract_row_col, _clean_answer_text, _VALUE_QUESTION_RE,
 )
 from backend.claude_client import (
@@ -560,14 +560,17 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
 
     # Phase 2: Retrieval — Fusion (kein Modell). Bei assist="qwen" ergänzt qwen
     # HyDE + Rerank NUR das Retrieval (Auswahl), nie die Antwort.
+    # Per-Frage-Relevanz: nur die passenden Konfig-Felder ins Retrieval geben
+    # (die Fast-Paths unten lesen weiter den VOLLEN Kontext).
+    rel_ctx = relevant_context(raw_query, context)
     normalized = _normalize_query(raw_query)
     lists = [search(raw_query, top_n=TOP_N_SEARCH)]
     if normalized and normalized.lower() != raw_query.lower():
         lists.append(search(normalized, top_n=TOP_N_SEARCH))
-    if context:
-        lists.append(search(f"{context} {normalized}", top_n=TOP_N_SEARCH))
+    if rel_ctx:
+        lists.append(search(f"{rel_ctx} {normalized}", top_n=TOP_N_SEARCH))
     if assist == "qwen":
-        candidates = _qwen_assisted_retrieval(raw_query, context, lists)
+        candidates = _qwen_assisted_retrieval(raw_query, rel_ctx, lists)
         logger.info("AgentLocal: qwen-Assist Retrieval → %d Kandidaten", len(candidates))
     else:
         candidates = _merge(*lists)

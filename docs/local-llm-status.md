@@ -359,12 +359,19 @@ Nicht-Fast-Path-Fragen fallen sauber in den Loop.
   nie. Provider-Override in `expand_query`/`rerank`; `/ask` bekam `backend`-Feld;
   `run_agent_local(assist="qwen")`. Render graut QWEN aus (Gating).
 
+**Erledigt (Forts.):**
+- ✅ **Per-Frage-Relevanz der Konfig** (`fastpaths.relevant_context`, deterministisch):
+  nur die zur Frage passenden Konfig-Felder gehen ins **Retrieval** (Suche/HyDE/Rerank
+  in `/ask` und `agent_local`); die **Fast-Paths lesen weiter den vollen Kontext**.
+  Regel: Feld bleibt bei topischer Wort-Überlappung ODER wenn die Frage nach Wert/Menge
+  fragt und das Feld numerisch ist. Beispiel: „Auf welcher Bildschirmseite konfiguriere
+  ich den Lastort?" — „Hauptausleger 74 m" wird nicht mehr injiziert → „Bildschirmseite
+  Windenkonfiguration" ist wieder unter den Treffern (vorher durch den Kontext verdrängt).
+
 **Geplant / offen:**
-- ⏭️ **NÄCHSTES TODO — Per-Frage-Relevanz der Konfig**: nur die zur Frage passenden
-  Konfig-Werte in Suche/HyDE injizieren statt immer den ganzen Kontext. Beispiel:
-  „Auf welcher Bildschirmseite konfiguriere ich den Lastort?" — der Kontext
-  „Hauptausleger 74 m" ist hier irrelevant und drängt (samt Dokumenttyp-Boost auf
-  „Auslegerkonfiguration") die richtige „Windenkonfiguration"-Seite nach unten.
+- **Dokumenttyp-Boost feinjustieren**: im Lastort-Fall stehen die „Auslegerkonfiguration"-
+  Seiten weiter auf #1–4 (Boost auf „auslegerkonfiguration"); „Windenkonfiguration" ist
+  jetzt zwar enthalten (#5), aber nicht oben. Ggf. Boost kontext-/fragesensitiv machen.
 - **Semantik auf Render**: siehe §11 — 768-dim-Modell passt nicht in 512 MB Free;
   Optionen: größere Instanz, ONNX-Query-Encoder oder kleines MiniLM (384-dim,
   Embeddings neu erzeugen).
