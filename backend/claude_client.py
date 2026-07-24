@@ -126,12 +126,16 @@ def local_complete(system: str, user_msg: str, max_tokens: int) -> str:
     return _strip_think(text)
 
 
-def _mode2_complete(system: str, user_msg: str, max_tokens: int) -> str:
+def _mode2_complete(system: str, user_msg: str, max_tokens: int,
+                    provider: str | None = None) -> str:
     """Ein einzelner, zustandsloser, tool-freier Completion-Call für Modus 2.
 
-    Routet je nach LLM_PROVIDER an Anthropic oder den lokalen Endpunkt.
+    Routet an Anthropic oder den lokalen Endpunkt. `provider` überschreibt den
+    globalen LLM_PROVIDER pro Request ("local" = qwen, "anthropic" = Claude) —
+    so kann die UI HyDE/Rerank je Anfrage auf QWEN oder Claude legen.
     """
-    if LLM_PROVIDER == "local":
+    prov = (provider or LLM_PROVIDER).strip().lower()
+    if prov == "local":
         return local_complete(system, user_msg, max_tokens)
 
     # Default: Anthropic
@@ -159,7 +163,7 @@ Maximal 60 Wörter.\
 """
 
 
-def expand_query(query: str, context: str = "") -> str:
+def expand_query(query: str, context: str = "", provider: str | None = None) -> str:
     """Generate a TOC-guided hypothetical document (HyDE) for BM25+semantic retrieval.
 
     1. BM25 title-scan gives the LLM vocabulary hints — uses only the actual question
@@ -181,7 +185,7 @@ def expand_query(query: str, context: str = "") -> str:
             f"{context_block}\n"
             f"Frage: {query}"
         )
-        hypothesis = _mode2_complete(HYDE_SYSTEM, user_msg, max_tokens=120)
+        hypothesis = _mode2_complete(HYDE_SYSTEM, user_msg, max_tokens=120, provider=provider)
         logger.info("HYDE '%s' → '%s'", query[:60], hypothesis[:120])
         return hypothesis
     except HTTPException:
@@ -204,9 +208,11 @@ Relevanz. Beispiel: 3,7,1,12,5\
 """
 
 
-def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
+def rerank(query: str, candidates: list[dict], top_n: int = 5,
+           provider: str | None = None) -> list[dict]:
     """LLM-based reranker: selects top_n from candidates by reading title+snippet.
 
+    `provider` überschreibt LLM_PROVIDER pro Request (QWEN vs. Claude).
     Falls back to returning candidates[:top_n] on any error.
     """
     if len(candidates) <= top_n:
@@ -219,7 +225,7 @@ def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
         candidates_block = "\n".join(lines)
 
         user_msg = f"Frage: {query}\n\nSeiten:\n{candidates_block}"
-        raw = _mode2_complete(RERANKER_SYSTEM, user_msg, max_tokens=30)
+        raw = _mode2_complete(RERANKER_SYSTEM, user_msg, max_tokens=30, provider=provider)
         indices = [int(x.strip()) - 1 for x in raw.split(",") if x.strip().isdigit()]
         # Keep only valid indices, deduplicate, limit to top_n
         seen: set[int] = set()

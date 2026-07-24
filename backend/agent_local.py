@@ -487,8 +487,37 @@ def _sources_answer(candidates: list[dict], question: str, conf: float) -> dict:
     }
 
 
+def _qwen_assisted_retrieval(raw_query: str, context: str, base_lists: list) -> list[dict]:
+    """QWEN-Retrieval-Assist (nur Suche/Auswahl, KEINE Antwortformulierung):
+    zusätzlich eine qwen-HyDE-Passage suchen und die Kandidaten per qwen-Rerank
+    ordnen. Best-effort — fällt der lokale Server aus, wird ohne Assist
+    fortgesetzt (die Antwort bleibt ohnehin deterministisch). Beim Rerank werden
+    absteigende Synthetik-Scores gesetzt, damit die Rerank-Reihenfolge für die
+    nachgelagerte Score-Logik (Gate, Quellen-Auswahl) maßgeblich ist."""
+    from backend.claude_client import expand_query as _expand, rerank as _rerank
+    lists = list(base_lists)
+    try:
+        hyde = _expand(raw_query, context=context, provider="local")
+        if hyde and hyde.strip().lower() != raw_query.strip().lower():
+            lists.append(search(hyde, top_n=TOP_N_SEARCH))
+    except Exception as exc:
+        logger.warning("AgentLocal[qwen]: HyDE übersprungen (%s)", exc)
+    cands = _merge(*lists, top_n=30)
+    try:
+        if len(cands) > TOP_N_SEARCH:
+            reranked = _rerank(raw_query, cands, top_n=TOP_N_SEARCH, provider="local")
+            if reranked:
+                base = max((c.get("score", 0) for c in reranked), default=1.0) or 1.0
+                for i, c in enumerate(reranked):
+                    c["score"] = round(base * (1.0 - 0.02 * i), 2)
+                cands = reranked
+    except Exception as exc:
+        logger.warning("AgentLocal[qwen]: Rerank übersprungen (%s)", exc)
+    return cands[:TOP_N_SEARCH]
+
+
 def run_agent_local(question: str, context: str = "", conversation: list[dict] | None = None,
-                    mode: str | None = None) -> dict:
+                    mode: str | None = None, assist: str | None = None) -> dict:
     """Lokaler Modus-3-Agent.
 
     Modellfreie Vorstufe (Clarification, Fusion-Retrieval, Confidence-Gate),
@@ -529,14 +558,19 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
     else:
         raw_query = question
 
-    # Phase 2: Retrieval — Fusion (kein Modell)
+    # Phase 2: Retrieval — Fusion (kein Modell). Bei assist="qwen" ergänzt qwen
+    # HyDE + Rerank NUR das Retrieval (Auswahl), nie die Antwort.
     normalized = _normalize_query(raw_query)
     lists = [search(raw_query, top_n=TOP_N_SEARCH)]
     if normalized and normalized.lower() != raw_query.lower():
         lists.append(search(normalized, top_n=TOP_N_SEARCH))
     if context:
         lists.append(search(f"{context} {normalized}", top_n=TOP_N_SEARCH))
-    candidates = _merge(*lists)
+    if assist == "qwen":
+        candidates = _qwen_assisted_retrieval(raw_query, context, lists)
+        logger.info("AgentLocal: qwen-Assist Retrieval → %d Kandidaten", len(candidates))
+    else:
+        candidates = _merge(*lists)
 
     if not candidates:
         return {"type": "answer", "answer": "Keine passenden Seiten im Manual gefunden.",

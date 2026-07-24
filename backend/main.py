@@ -159,6 +159,7 @@ class AskRequest(BaseModel):
     question: str
     top_n: int = 5
     context: str = ""   # persistenter Maschinen-/Konfigurations-Kontext
+    backend: str = ""   # "qwen" | "anthropic" | "" → HyDE/Rerank-Anbieter (Klassisch)
 
 
 class SourceLink(BaseModel):
@@ -338,10 +339,19 @@ async def ask_question(req: AskRequest) -> AskResponse:
 
     ctx = req.context.strip()
 
+    # Anbieter für HyDE/Rerank (Klassisch): "qwen"→lokal, "anthropic"→Claude,
+    # leer→globaler LLM_PROVIDER. Ohne lokales Backend (Render) wird QWEN sicher
+    # auf Anthropic heruntergestuft (kein Ollama erreichbar).
+    _backend = (req.backend or "").strip().lower()
+    provider = "local" if _backend == "qwen" else ("anthropic" if _backend == "anthropic" else None)
+    if provider == "local" and not _local_backend_enabled:
+        logger.info("Klassisch: QWEN angefragt, lokales Backend aus → Anthropic")
+        provider = "anthropic"
+
     # HyDE: BM25-Titelscan nur gegen die echte Frage — Kontext-Tokens würden
     # die Titeltreffer verzerren. Kontext fließt aber in den HyDE-Prompt ein,
     # damit die hypothetische Passage konfigurationsrelevant ist.
-    expanded_q = expand_query(q, context=ctx)
+    expanded_q = expand_query(q, context=ctx, provider=provider)
 
     # Multi-Query-Fusion (Trick aus Modus 1): Die Suche darf sich nicht allein
     # auf die HyDE-Passage verlassen — driftet die Hypothese thematisch ab, fällt
@@ -377,7 +387,7 @@ async def ask_question(req: AskRequest) -> AskResponse:
     # Reranker bekommt Kontext + Frage explizit, damit konfigurationsrelevante
     # Seiten (z. B. "74m Hauptausleger") höher bewertet werden.
     rerank_q = f"{ctx}\n\n{q}" if ctx else q
-    results = rerank(rerank_q, candidates, top_n=req.top_n)
+    results = rerank(rerank_q, candidates, top_n=req.top_n, provider=provider)
     va: VerifiedAnswer = ask(q, results)                         # original query für Anzeige
     return AskResponse(
         answer=va.answer,
@@ -416,50 +426,40 @@ async def ask_agent(req: AgentRequest) -> AgentResponse:
     if not q:
         raise HTTPException(status_code=422, detail="question must not be empty")
 
-    use_rule = (req.mode == "rule") or (_rule_mode and req.mode != "agent")
+    # Assistent-Backend bestimmen. Drei Optionen:
+    #   rule      — deterministisch, KEIN LLM (Fast-Paths + Quellen)
+    #   qwen      — deterministische Antwort, aber qwen-Assist im Retrieval
+    #               (HyDE + Rerank); braucht ein lokales Backend (Ollama)
+    #   anthropic — agentischer Claude-Loop (formuliert)
+    # Reihenfolge: Request-Feld agent_backend, sonst Env AGENT_BACKEND. Legacy:
+    # mode=rule / "local" / "auto" / leer → rule (deterministischer Default,
+    # läuft überall, auch auf Render ohne API-Key).
+    backend = (req.agent_backend or os.environ.get("AGENT_BACKEND", "")).strip().lower()
+    if req.mode == "rule" or backend in ("", "auto", "local"):
+        backend = "rule"
+    if backend not in ("rule", "qwen", "anthropic"):
+        backend = "rule"
+    # QWEN braucht ein lokales Backend (Ollama). Fehlt es (z. B. Render), sicher
+    # auf Regelbasiert herunterstufen — kein 503 gegen localhost.
+    if backend == "qwen" and not _local_backend_enabled:
+        logger.info("Assistent: QWEN angefragt, lokales Backend aus → Regelbasiert")
+        backend = "rule"
 
-    if use_rule:
-        # Merge: der frühere Modus 1 ("Regelbasiert") ist jetzt „Modus 3 lokal ohne
-        # Modell" — derselbe deterministische Pfad wie agent_local, aber mit
-        # mode="sources" hart modellfrei erzwungen (kein Anthropic, kein lokales
-        # LLM), inkl. der Composition-/Tabellen-Fast-Paths. run_rule_agent bleibt
-        # als geteilte Helfer-Bibliothek (rule_agent) erhalten, wird aber nicht
-        # mehr direkt aufgerufen.
+    if backend == "anthropic":
+        result = run_agent(
+            question=q,
+            context=req.context.strip(),
+            conversation=req.conversation or [],
+        )
+    else:
         from backend.agent_local import run_agent_local
         result = run_agent_local(
             question=q,
             context=req.context.strip(),
             conversation=req.conversation or [],
             mode="sources",
+            assist=("qwen" if backend == "qwen" else None),
         )
-    else:
-        # Umschaltbar: welcher Agent bedient "Assistent"? Reihenfolge:
-        #   1. Request-Feld agent_backend (Laufzeit-Umschalter aus der UI)
-        #   2. Env AGENT_BACKEND
-        #   3. "auto" → folgt LLM_PROVIDER (local → agent_local, sonst Anthropic)
-        # So kann Modus 2 lokal laufen und Modus 3 trotzdem über Claude (bessere
-        # Qualität), wenn online + ANTHROPIC_API_KEY vorhanden.
-        backend = (req.agent_backend or os.environ.get("AGENT_BACKEND", "auto")).strip().lower()
-        if backend == "auto" or backend not in ("local", "anthropic"):
-            backend = "local" if LLM_PROVIDER == "local" else "anthropic"
-        # Sicherheitsnetz: ist das lokale Backend deaktiviert (Default auf
-        # Anthropic-Instanzen), niemals lokal ausführen — sonst 503 gegen localhost.
-        if backend == "local" and not _local_backend_enabled:
-            logger.info("Lokales Backend deaktiviert (ENABLE_LOCAL_BACKEND=false) → Anthropic")
-            backend = "anthropic"
-        if backend == "local":
-            from backend.agent_local import run_agent_local
-            result = run_agent_local(
-                question=q,
-                context=req.context.strip(),
-                conversation=req.conversation or [],
-            )
-        else:
-            result = run_agent(
-                question=q,
-                context=req.context.strip(),
-                conversation=req.conversation or [],
-            )
 
     return AgentResponse(
         type=result["type"],

@@ -622,6 +622,12 @@
       font-family: var(--font-text-m);
       font-weight: 500;
     }
+    .mode-toggle__btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      background: transparent;
+    }
+    .mode-toggle__btn:disabled:hover { background: transparent; }
 
     /* ── Agent-Bubble ───────────────────────────────────────── */
     .agent-bubble {
@@ -791,12 +797,21 @@
     <button class="mode-toggle__btn" id="mode-btn-agent"
       onclick="setMode('agent')" title="Mehrschrittiger Assistent – lokal (deterministisch) oder mit Claude">Assistent</button>
   </div>
-  <!-- Backend für "Assistent" (nur in diesem Modus sichtbar) -->
+  <!-- Backend für "Assistent" (nur in diesem Modus sichtbar): Regelbasiert / QWEN / Claude -->
   <div class="mode-toggle" id="backend-toggle" style="display:none">
-    <button class="mode-toggle__btn mode-toggle__btn--active" id="be-local"
-      onclick="setBackend('local')" title="Lokal & offline · ohne KI-Modell · deterministisch (Regeln + Tabellen/Zusammenstellung) · sofort · kostenlos">Lokal</button>
+    <button class="mode-toggle__btn mode-toggle__btn--active" id="be-rule"
+      onclick="setBackend('rule')" title="Regelbasiert · lokal & offline · KEIN KI-Modell · deterministisch (Regeln + Tabellen/Zusammenstellung) · sofort · kostenlos">Regelbasiert</button>
+    <button class="mode-toggle__btn" id="be-qwen"
+      onclick="setBackend('qwen')" title="QWEN · lokales Modell hilft nur bei der Suche (HyDE + Reranking) · Antwort bleibt deterministisch · benötigt lokalen Server">QWEN</button>
     <button class="mode-toggle__btn" id="be-anthropic"
-      onclick="setBackend('anthropic')" title="Claude – beste Qualität, benötigt Internet + API-Key">Claude</button>
+      onclick="setBackend('anthropic')" title="Claude – beste Qualität, formuliert die Antwort · benötigt Internet + API-Key">Claude</button>
+  </div>
+  <!-- Backend für "Klassisch" (nur in diesem Modus sichtbar): QWEN / Claude -->
+  <div class="mode-toggle" id="classic-backend-toggle" style="display:none">
+    <button class="mode-toggle__btn mode-toggle__btn--active" id="cbe-qwen"
+      onclick="setClassicBackend('qwen')" title="QWEN · lokales Modell für HyDE + Reranking · benötigt lokalen Server">QWEN</button>
+    <button class="mode-toggle__btn" id="cbe-anthropic"
+      onclick="setClassicBackend('anthropic')" title="Claude für HyDE + Reranking · benötigt Internet + API-Key">Claude</button>
   </div>
 </header>
 
@@ -1132,9 +1147,14 @@ async function loadServerConfig() {
     if (!r.ok) return;
     const cfg = await r.json();
     if (cfg.local_backend_enabled === false) {
-      const btn = document.getElementById('be-local');
-      if (btn) btn.style.display = 'none';
-      setBackend('anthropic');   // kein lokales Backend → Claude (Render)
+      // Kein lokales Backend (z. B. Render): QWEN überall ausgrauen und die
+      // Auswahl umlenken — Assistent → Regelbasiert, Klassisch → Claude.
+      ['be-qwen', 'cbe-qwen'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) { b.disabled = true; b.title = 'Nicht verfügbar – kein lokales Modell auf diesem Server'; }
+      });
+      if (_agentBackend === 'qwen') setBackend('rule');
+      if (_classicBackend === 'qwen') setClassicBackend('anthropic');
     }
   } catch { /* Config optional — UI bleibt wie sie ist */ }
 }
@@ -1360,23 +1380,39 @@ function setMode(m) {
   localStorage.setItem(MODE_KEY, m);
   document.getElementById('mode-btn-classic').classList.toggle('mode-toggle__btn--active', m === 'classic');
   document.getElementById('mode-btn-agent').classList.toggle('mode-toggle__btn--active', m === 'agent');
-  // Backend-Umschalter nur im Assistent-Modus zeigen
+  // Backend-Umschalter je nach Modus zeigen
   document.getElementById('backend-toggle').style.display = (m === 'agent') ? '' : 'none';
+  document.getElementById('classic-backend-toggle').style.display = (m === 'classic') ? '' : 'none';
 }
 
-// Backend für den Assistenten: "local" (deterministisch, offline) oder
-// "anthropic" (Claude). Kein "Auto" mehr → Standard ist Lokal. Ein alter
-// leerer/"" (Auto)-Wert migriert auf Lokal.
+// Assistent-Backend: "rule" (Regelbasiert, kein LLM), "qwen" (lokales Modell nur
+// fürs Retrieval) oder "anthropic" (Claude). Standard: Regelbasiert. Alte Werte
+// migrieren ('local'/'' → 'rule').
 const BACKEND_KEY = 'ki-agent-backend';
-let _agentBackend = localStorage.getItem(BACKEND_KEY) || 'local';
+let _agentBackend = localStorage.getItem(BACKEND_KEY) || 'rule';
+if (_agentBackend === 'local' || !_agentBackend) _agentBackend = 'rule';
 function setBackend(b) {
-  if (!b) b = 'local';
+  if (!['rule', 'qwen', 'anthropic'].includes(b)) b = 'rule';
   _agentBackend = b;
   localStorage.setItem(BACKEND_KEY, b);
-  document.getElementById('be-local').classList.toggle('mode-toggle__btn--active', b === 'local');
+  document.getElementById('be-rule').classList.toggle('mode-toggle__btn--active', b === 'rule');
+  document.getElementById('be-qwen').classList.toggle('mode-toggle__btn--active', b === 'qwen');
   document.getElementById('be-anthropic').classList.toggle('mode-toggle__btn--active', b === 'anthropic');
 }
+
+// Klassisch-Backend: "qwen" oder "anthropic" (HyDE + Reranking-Anbieter).
+// Standard QWEN (lokal); auf Render ohne lokales Backend → Claude (loadServerConfig).
+const CLASSIC_BACKEND_KEY = 'ma_classic_backend';
+let _classicBackend = localStorage.getItem(CLASSIC_BACKEND_KEY) || 'qwen';
+if (_classicBackend !== 'anthropic') _classicBackend = 'qwen';
+function setClassicBackend(b) {
+  _classicBackend = (b === 'anthropic') ? 'anthropic' : 'qwen';
+  localStorage.setItem(CLASSIC_BACKEND_KEY, _classicBackend);
+  document.getElementById('cbe-qwen').classList.toggle('mode-toggle__btn--active', _classicBackend === 'qwen');
+  document.getElementById('cbe-anthropic').classList.toggle('mode-toggle__btn--active', _classicBackend === 'anthropic');
+}
 setBackend(_agentBackend);
+setClassicBackend(_classicBackend);
 setMode(_mode);
 
 function escalateQuery(question, targetMode) {
@@ -1445,7 +1481,7 @@ async function _sendClassic(q, loadDiv) {
     const resp = await fetch(API + '/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q, context: _getContext() }),
+      body: JSON.stringify({ question: q, context: _getContext(), backend: _classicBackend }),
     });
     const data = await resp.json();
     loadDiv.innerHTML = renderAnswer(q, data);
@@ -1554,7 +1590,8 @@ function renderAgentAnswer(data, mode, question) {
       </button>
     </div>` : '';
 
-  const modeLabel = 'Assistent · ' + (_agentBackend === 'anthropic' ? 'Claude' : 'Lokal');
+  const _beLabel = {rule: 'Regelbasiert', qwen: 'QWEN', anthropic: 'Claude'}[_agentBackend] || 'Regelbasiert';
+  const modeLabel = 'Assistent · ' + _beLabel;
 
   return `
     <div class="agent-bubble">
@@ -1655,7 +1692,7 @@ async function refineSearch(refineId, originalQuestion) {
     const resp = await fetch(API + '/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: refinedQ }),
+      body: JSON.stringify({ question: refinedQ, context: _getContext(), backend: _classicBackend }),
     });
     data = await resp.json();
   } catch {
@@ -1802,7 +1839,7 @@ async function askFromErrorCode(code, description) {
     const resp = await fetch(API + '/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: seededQ }),
+      body: JSON.stringify({ question: seededQ, context: _getContext(), backend: _classicBackend }),
     });
     data = await resp.json();
   } catch {

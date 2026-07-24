@@ -8,26 +8,36 @@ in einer neuen Konversation sofort verfügbar sind.
 
 ## 1. Überblick: die drei Modi
 
-Die UI hat **zwei** Modi; der Assistent hat zwei Backends:
+Die UI hat **zwei** Modi mit jeweils Backend-Umschaltern:
 
-| UI-Modus | Endpoint | Implementierung | LLM? |
-|------|----------|-----------------|------|
-| **Klassisch** | `/ask` | `claude_client.py` (`expand_query`, `rerank`) | ja (HyDE + Reranking) |
-| **Assistent → Lokal** | `/ask_agent` (backend=local) | `agent_local.py` (`sources`) | **nein** (deterministisch) |
-| **Assistent → Claude** | `/ask_agent` (backend=anthropic) | `agent.py` (Anthropic) | ja (agentischer Tool-Loop) |
+| UI | Backend | Endpoint | Retrieval | Finale Antwort |
+|----|---------|----------|-----------|----------------|
+| **Klassisch** | QWEN | `/ask` (backend=qwen) | HyDE+Rerank via qwen | Score + Quellen (kein LLM-Text) |
+| **Klassisch** | Claude | `/ask` (backend=anthropic) | HyDE+Rerank via Claude | Score + Quellen |
+| **Assistent** | Regelbasiert | `/ask_agent` (rule) | BM25/TF-IDF (kein LLM) | **deterministisch** (Fast-Paths+Quellen) |
+| **Assistent** | QWEN | `/ask_agent` (qwen) | + qwen-HyDE + qwen-Rerank | **deterministisch** (kein qwen-Text) |
+| **Assistent** | Claude | `/ask_agent` (anthropic) | agentischer Tool-Loop | Claude formuliert |
 
-> **Merge Modus 1 → „Assistent → Lokal":** Der frühere eigenständige Modus 1
-> („Regelbasiert"/„Lokal") war bei Default-Config identisch zu „Assistent → Lokal"
-> (beide `agent_local/sources`, modellfrei). Er wurde als eigener UI-Modus entfernt;
-> „Auto" als Backend entfällt (Standard ist **Lokal**). Der Endpoint `mode=rule` bleibt
-> rückwärtskompatibel und läuft über `run_agent_local(mode="sources")` (hart
-> modellfrei). `rule_agent.py` bleibt geteilte Helfer-Bibliothek (Clarification,
-> Query-Normalisierung, Snippet, Score-Gap).
+> **QWEN nur fürs Retrieval, nie fürs Formulieren.** HyDE erzeugt eine hypothetische
+> Passage, die *nur die Suche speist* (nie angezeigt); Reranking ist reine Auswahl —
+> beides ohne Halluzinationsrisiko. Die finale Antwort bleibt in Regelbasiert **und**
+> QWEN deterministisch (Fast-Paths + Quellen). qwen formuliert ausschließlich, wenn
+> man `AGENT_LOCAL_MODE=tools|pipeline` explizit setzt (experimentell).
 >
-> **Wann nutzt „Assistent → Lokal" das lokale LLM (qwen)?** Im Default `sources`: **nie**
-> (voll deterministisch). Nur die experimentellen `AGENT_LOCAL_MODE=tools|pipeline`
-> lassen qwen formulieren. qwen läuft sonst nur in Modus „Klassisch" bei
-> `LLM_PROVIDER=local` (HyDE + Reranking).
+> **Provider-Override:** `expand_query`/`rerank` (`claude_client`) nehmen pro Request
+> einen `provider` (`local`=qwen, `anthropic`=Claude); `_mode2_complete` routet danach.
+> `run_agent_local(assist="qwen")` ergänzt HyDE+Rerank best-effort (fällt der lokale
+> Server aus, wird ohne Assist fortgesetzt — die Antwort ist ohnehin deterministisch).
+>
+> **Render-Matrix** (kein Ollama, kein `sentence-transformers`; QWEN ausgegraut):
+> Klassisch → **Claude** (QWEN aus); Assistent → **Regelbasiert** (aktiv) / QWEN (aus) /
+> Claude (wählbar). „ohne Semantic" gilt für **alle** Render-Modi (nur BM25+TF-IDF);
+> Regelbasiert hat davon am wenigsten Kompensation.
+>
+> **Merge Modus 1:** Der frühere eigenständige „Lokal"-Modus ist als Assistent-Backend
+> **Regelbasiert** aufgegangen; `mode=rule` bleibt rückwärtskompatibel. `rule_agent.py`
+> bleibt geteilte Helfer-Bibliothek. Gating: `ENABLE_LOCAL_BACKEND=false` graut alle
+> QWEN-Optionen aus und stuft QWEN-Anfragen sicher herunter (Assistent→rule, Klassisch→Claude).
 
 **Provider-Schalter** `LLM_PROVIDER=anthropic|local` (Default `anthropic`):
 - `anthropic`: alles wie bisher, Render unverändert.
@@ -344,6 +354,10 @@ Nicht-Fast-Path-Fragen fallen sauber in den Loop.
   „Bildschirmseite Windenkonfiguration" ist jetzt enthalten).
 - ✅ **Clarification-Präzision**: Trigger „last" entfernt (matchte als Substring
   „Lastort"/„Ballast" → falsche Rückfragen).
+- ✅ **3-Backend-Struktur** (siehe §1): Assistent = Regelbasiert / QWEN / Claude,
+  Klassisch = QWEN / Claude. QWEN hilft nur beim Retrieval (HyDE+Rerank), formuliert
+  nie. Provider-Override in `expand_query`/`rerank`; `/ask` bekam `backend`-Feld;
+  `run_agent_local(assist="qwen")`. Render graut QWEN aus (Gating).
 
 **Geplant / offen:**
 - ⏭️ **NÄCHSTES TODO — Per-Frage-Relevanz der Konfig**: nur die zur Frage passenden
