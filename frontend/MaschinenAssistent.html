@@ -1093,6 +1093,23 @@ function closeManual() {
   switchView(_manualReturnView);
 }
 
+// ── Server-Konfiguration ───────────────────────────────────────────────────
+// Blendet den "Lokal"-Backend-Umschalter aus, wenn die Instanz kein lokales
+// Modell anbietet (Default auf Anthropic-Deployments wie Render). So ist dort
+// alles Lokale echt deaktiviert — kein Klick landet auf localhost.
+async function loadServerConfig() {
+  try {
+    const r = await fetch(API + '/config');
+    if (!r.ok) return;
+    const cfg = await r.json();
+    if (cfg.local_backend_enabled === false) {
+      const btn = document.getElementById('be-local');
+      if (btn) btn.style.display = 'none';
+      if (_agentBackend === 'local') setBackend('');   // auf Auto zurück
+    }
+  } catch { /* Config optional — UI bleibt wie sie ist */ }
+}
+
 // ── Health check ─────────────────────────────────────────────────────────
 
 async function checkHealth() {
@@ -1935,6 +1952,7 @@ function copyAnswer(btn) {
 // ── Init ──────────────────────────────────────────────────────────────────
 
 checkHealth();
+loadServerConfig();
 </script>
 
 </body>

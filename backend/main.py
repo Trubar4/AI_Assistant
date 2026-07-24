@@ -103,6 +103,16 @@ _agent_mode_env = os.environ.get("AGENT_MODE", "").lower()
 _rule_mode = _agent_mode_env == "rule" or os.environ.get("RULE_AGENT", "").lower() in ("1", "true")
 _DEFAULT_MODE = "rule" if _rule_mode else ("agent" if _agent_mode_env in ("1", "true") else "classic")
 
+# Lokales Modus-3-Backend (der "Lokal"-Umschalter der UI) ist nur aktiv, wenn
+# ausdrücklich gewünscht. Default: nur wenn der Provider ohnehin lokal läuft.
+# Auf einer Anthropic-Deployment-Instanz (z. B. Render) ist damit ALLES Lokale
+# sicher aus — ein versehentlicher "Lokal"-Klick landet nicht auf localhost:11434,
+# und die UI blendet den Button aus (siehe /config → local_backend_enabled).
+_local_backend_enabled = os.environ.get(
+    "ENABLE_LOCAL_BACKEND",
+    "true" if LLM_PROVIDER == "local" else "false",
+).strip().lower() in ("1", "true", "yes", "on")
+
 app = FastAPI(
     title="Maschinen-Assistent API",
     version="0.1.0",
@@ -136,7 +146,10 @@ async def root():
 
 @app.get("/config", include_in_schema=False)
 async def config() -> dict:
-    return {"default_mode": _DEFAULT_MODE}
+    return {
+        "default_mode": _DEFAULT_MODE,
+        "local_backend_enabled": _local_backend_enabled,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -387,6 +400,11 @@ async def ask_agent(req: AgentRequest) -> AgentResponse:
         backend = (req.agent_backend or os.environ.get("AGENT_BACKEND", "auto")).strip().lower()
         if backend == "auto" or backend not in ("local", "anthropic"):
             backend = "local" if LLM_PROVIDER == "local" else "anthropic"
+        # Sicherheitsnetz: ist das lokale Backend deaktiviert (Default auf
+        # Anthropic-Instanzen), niemals lokal ausführen — sonst 503 gegen localhost.
+        if backend == "local" and not _local_backend_enabled:
+            logger.info("Lokales Backend deaktiviert (ENABLE_LOCAL_BACKEND=false) → Anthropic")
+            backend = "anthropic"
         if backend == "local":
             from backend.agent_local import run_agent_local
             result = run_agent_local(
