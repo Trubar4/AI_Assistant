@@ -261,11 +261,53 @@ Das Skript prüft die Engine **vorab** und bricht sonst mit klarer Anleitung ab.
 
 ```
 backend/claude_client.py   Modus 2 lokal + local_complete + Fabrik
-backend/agent_local.py     Modus 3 lokal: Fast-Paths + sources/tools/pipeline
+backend/fastpaths.py       GETEILTE deterministische Fast-Paths (lokal + Claude)
+backend/agent_local.py     Modus 3 lokal: run_fastpaths + sources/tools/pipeline
+backend/agent.py           Modus 3 Claude: run_fastpaths VOR dem Tool-Loop
 backend/agent_tools.py     lookup_table + composition_* + Tools
 backend/search.py          Fusion, Dokumenttyp-Boost, Index-Augmentation
-backend/main.py            /ask_agent-Routing + AGENT_BACKEND-Umschalter
+backend/main.py            /ask_agent-Routing + AGENT_BACKEND + ENABLE_LOCAL_BACKEND
 preprocessing/ocr_compositions.py   OCR-Generator für compositions.json
 data/compositions.json     Zusammenstellungs-Daten (5 Seiten, 79 Zeilen)
 frontend/MaschinenAssistent.html    Responsive-Fixes + Backend-Umschalter
 ```
+
+---
+
+## 13. Geteilte Fast-Paths (Modus 3 lokal UND Claude)
+
+Die deterministischen Fast-Paths (Composition-Zählung/-Anordnung, Seilführungs-
+Position, Tabellenwert) lagen früher nur in `agent_local.py`. Sie sind jetzt in
+`backend/fastpaths.py` extrahiert und laufen in **beiden** Modus-3-Agenten
+**vor** der LLM-Schleife (`run_fastpaths()`):
+
+- **Lokal** (`agent_local.run_agent_local`): unverändertes Verhalten, ruft nur
+  noch `run_fastpaths(...)` statt der lokalen Kopien.
+- **Claude** (`agent.run_agent`): `_fastpath_answer()` macht ein Fusions-Retrieval
+  (`retrieve_fusion`) und ruft `run_fastpaths(...)` **vor** Triage/Tool-Loop. Greift
+  ein Fast-Path, kommt die Antwort deterministisch (0 LLM-Calls, kein API-Key nötig);
+  sonst normaler Loop wie bisher. Fehler im Fast-Path sind nie fatal (Fall-through).
+
+Damit beantwortet auch „Claude" Zusammenstellung/Tabellen exakt & halluzinationsfrei
+(löst den Test-2-Fall „Claude kann die Symbol-Tabelle nicht lesen"). Verifiziert:
+„74 m / 12 m Zwischenstücke" → 4 (0 LLM); „75 m / 5-fach Lasthaken" → 1900 kg (0 LLM);
+Nicht-Fast-Path-Fragen fallen sauber in den Loop.
+
+---
+
+## 14. Geplant / offen (noch nicht umgesetzt)
+
+- **Modus 1 verschmelzen**: der regelbasierte Agent (`rule_agent`) ist als eigener
+  UI-Modus weitgehend redundant zu „Modus 3 lokal / sources" (dieser importiert
+  ohnehin `_needs_clarification`, `_normalize_query`, `_filter_by_score_gap`,
+  `_extract_snippet`). Perspektivisch zu „Modus 3 lokal ohne Modell" zusammenführen.
+- **Regelbasierter Konfig-Parser für LOKAL**: `parse_context()` läuft aktuell IMMER
+  über Anthropic. Für einen echten Offline-Betrieb (`LLM_PROVIDER=local`) soll die
+  Konfig-Analyse **rein regelbasiert** erfolgen — **kein** Anthropic UND **kein**
+  lokales LLM (das kleine Modell ist zu unzuverlässig für strukturiertes Parsen).
+  Fallback: Split + Vocab-Normalisierung aus `data/vocab_rules.json`.
+- **Semantik auf Render**: siehe §11 — 768-dim-Modell passt nicht in 512 MB Free;
+  Optionen: größere Instanz, ONNX-Query-Encoder oder kleines MiniLM (384-dim,
+  Embeddings neu erzeugen).
+- **Konfig-UX**: Elemente an-/abhaken statt löschen+neu analysieren; per-Frage-
+  Relevanz der Konfig für die Suche.

@@ -35,11 +35,13 @@ from backend.rule_agent import (
 )
 from backend.search import search, _load_index
 from backend.agent_tools import (
-    read_page, grep_manual, bal_search, lookup_table, composition_count,
-    composition_arrangement, composition_seilfuehrung,
+    read_page, grep_manual, bal_search, lookup_table,
     TOOL_SCHEMAS, TOOL_FN, LOOKUP_TABLE_SCHEMA,
 )
-from collections import Counter
+from backend.fastpaths import (
+    run_fastpaths,
+    _config_tokens, _extract_row_col, _clean_answer_text, _VALUE_QUESTION_RE,
+)
 from backend.claude_client import (
     local_complete,
     _get_local_client,
@@ -92,18 +94,9 @@ _WEAK_ANSWER_RE = re.compile(
     re.I,
 )
 
-# Frage zielt auf einen exakten Wert (Zahl/Einheit) ab
-_VALUE_QUESTION_RE = re.compile(
-    r"\b(traglast|tragf|gewicht|länge|laenge|meter|\bm\b|tonnen|\bt\b|wert|"
-    r"teilenummer|nummer|winkel|druck|bar|einscherung|wieviel|wie viel|wie lang|wie schwer)",
-    re.I,
-)
-
-# Konfig-Werte aus dem Kontext: "74 m", "6x", "124 t", "6-fach"
-_CONFIG_TOKEN_RE = re.compile(
-    r"\d+\s*(?:m|t|x|fach|kg|bar|°)\b|\d+\s*[-]\s*fach|\b\d+x\b",
-    re.I,
-)
+# _VALUE_QUESTION_RE, _config_tokens, _extract_row_col, _clean_answer_text sowie
+# die deterministischen Fast-Paths liegen jetzt in backend/fastpaths.py (geteilt
+# mit dem Claude-Agenten) und werden oben importiert.
 
 
 def _title_map() -> dict:
@@ -123,20 +116,6 @@ def _merge(*lists: list[dict], top_n: int = TOP_N_SEARCH) -> list[dict]:
             if prev is None or c.get("score", 0) > prev.get("score", 0):
                 by_fname[fn] = c
     return sorted(by_fname.values(), key=lambda c: c.get("score", 0), reverse=True)[:top_n]
-
-
-def _config_tokens(context: str) -> list[str]:
-    """Extrahiert Konfig-Werte (74 m, 6x, 124 t …) aus dem Kontext."""
-    toks = [re.sub(r"\s+", " ", m.group(0)).strip() for m in _CONFIG_TOKEN_RE.finditer(context)]
-    # dedup, Reihenfolge erhalten
-    seen: set[str] = set()
-    out = []
-    for t in toks:
-        k = t.lower()
-        if k not in seen:
-            seen.add(k)
-            out.append(t)
-    return out
 
 
 def _focus_context(page_text: str, context: str) -> str:
@@ -323,124 +302,9 @@ def _local_chat(messages: list[dict], tools: list[dict] | None, max_tokens: int)
                             detail=f"Fehler vom lokalen LLM-Server ({LOCAL_MODEL_EXPAND}): {exc}")
 
 
-def _extract_row_col(question: str, context: str) -> tuple[str | None, str | None]:
-    """Zeilen-/Spaltenwert für die Tabellensuche aus Frage+Kontext ableiten:
-    Länge in Metern → Zeile, Einscherung (…-fach / …x) → Spalte."""
-    text = f"{context} {question}"
-    row = None
-    m = re.search(r"(\d+(?:[.,]\d+)?)\s*m\b", text, re.I)
-    if m:
-        row = f"{m.group(1)} m"
-    col = None
-    # "6-fach", "6-facher", "6fach", "6-fache Einscherung" oder "6x"
-    m = re.search(r"(\d+)\s*-?\s*fach", text, re.I) or re.search(r"(\d+)\s*x\b", text, re.I)
-    if m:
-        col = m.group(1)
-    return row, col
-
-
-def _content_tokens(text: str) -> set[str]:
-    """Sachwörter (≥5 Zeichen, keine Stoppwörter) einer Zeichenkette."""
-    return {w for w in re.findall(r"[a-zäöüß]{5,}", text.lower()) if w not in _STOPWORDS}
-
-
-# Zu generische Substantive: taugen NICHT als Relevanzbeleg (stehen in halbem Manual)
-_GENERIC_TOKENS = {"hauptausleger", "nadelausleger", "ausleger", "maschine",
-                   "konfiguration", "manual", "seite", "tabelle", "wert", "werte"}
-
-
-def _topically_related(query: str, title: str) -> bool:
-    """True, wenn Frage und Seitentitel ein aussagekräftiges Sachwort teilen
-    (Substring-Match in beide Richtungen, damit Flexionsformen wie
-    'Lasthaken'/'Lasthakens' greifen). Rein generisch, kein Themen-Hardcoding."""
-    q_tokens = _content_tokens(query) - _GENERIC_TOKENS
-    t_tokens = _content_tokens(title)
-    for q in q_tokens:
-        for t in t_tokens:
-            if q == t or (len(q) >= 6 and q in t) or (len(t) >= 6 and t in q):
-                return True
-    return False
-
-
-def _prelookup_table(intent_text: str, context: str, candidates: list[dict],
-                     search_query: str | None = None) -> tuple[dict | None, dict | None]:
-    """Wenn die Frage nach einem Wert klingt und eine Länge/Einscherung vorkommt,
-    deterministisch die passende Tabelle suchen. Die richtige Tabellenseite ist
-    oft NICHT der Top-Treffer der (durch die Konfig verwässerten) Hauptsuche,
-    darum breiter Pool: Fusion-Kandidaten + eine gezielte, nach Relevanz
-    gerankte Suche über die reine Sach-Frage (search_query, ohne Konfig-Ballast).
-    lookup_table ist präzise (Zeile im Zahlbereich UND Spalte muss existieren),
-    Fehltreffer sind damit unwahrscheinlich. Exakte Treffer schlagen gerundete."""
-    if not _VALUE_QUESTION_RE.search(intent_text):
-        return None, None
-    row, col = _extract_row_col(intent_text, context)
-    # Präzisions-Gate 1: nur echter Zellen-Zugriff (Zeile UND Spalte). Ohne
-    # Spaltenachse (z. B. "wie viele …") ist "irgendeine Tabelle mit dieser
-    # Zeile" zu schwach → selbstbewusst-falsche Antworten. Dann lieber Loop.
-    if not row or not col:
-        return None, None
-
-    rel_ref = f"{search_query or ''} {intent_text}"
-    pool: list[tuple[str, str]] = [(c["filename"], c["title"]) for c in candidates[:20]]
-    # Gezielte, gerankte Suche nach der Tabellenseite über die reine Sach-Frage.
-    for r in search(search_query or intent_text, top_n=25):
-        pool.append((r["filename"], r["title"]))
-
-    best: tuple[dict, dict] | None = None
-    seen: set[str] = set()
-    for fn, title in pool:
-        if fn in seen:
-            continue
-        seen.add(fn)
-        # Präzisions-Gate 2: Seite muss thematisch zur Frage passen (gemeinsames
-        # Sachwort) — verhindert Treffer auf einer fremden Tabelle mit passender Zeile.
-        if not _topically_related(rel_ref, title):
-            continue
-        res = lookup_table(fn, row, col)
-        if "error" in res or not res.get("zeilen"):
-            continue
-        hit = (res, {"filename": fn, "title": title})
-        if res.get("treffer") == "exakt":
-            return hit                       # exakter Zeilentreffer gewinnt sofort
-        if best is None:
-            best = hit
-    return best if best else (None, None)
-
-
-def _answer_from_table(pre: dict) -> str:
-    """Baut die Antwort DETERMINISTISCH aus den extrahierten Tabellenzeilen —
-    kein Modell, damit der vorgelegte Wert nicht ignoriert/halluziniert wird."""
-    picks = pre.get("zeilen", [])
-    row_q = pre["gesucht"]["zeile"]
-    col_q = pre["gesucht"]["spalte"]
-    exact = pre.get("treffer") == "exakt"
-    if col_q:
-        einsch = f"{col_q}-facher Einscherung"
-        vals = [(z.get("row", ""), z.get("value", "—")) for z in picks]
-        nonempty = [(r, v) for r, v in vals if v not in ("—", "", "-")]
-        if not nonempty:
-            rows = " und ".join(r for r, _ in vals) or row_q
-            return (f"Für die Auslegerlänge {row_q} ist bei {einsch} kein Wert in der "
-                    f"Tabelle eingetragen (geprüft: {rows}).")
-        if exact and len(nonempty) == 1:
-            r, v = nonempty[0]
-            return f"Laut Tabelle: {v} (Auslegerlänge {r}, {einsch})."
-        parts = "; ".join(f"{r} → {v}" for r, v in nonempty)
-        return (f"Für {row_q} gibt es keinen exakten Tabellenwert; nächstgelegene "
-                f"Zeilen bei {einsch}: {parts}.")
-    parts = "; ".join(f"{z.get('row', '')}: {z.get('cells', '')}" for z in picks)
-    return f"Tabellenwerte nahe {row_q}: {parts}."
-
-
-def _clean_answer_text(t: str) -> str:
-    """Entfernt Markdown-Ballast (Codefences, Blockquotes, **fett**) und Umbrüche."""
-    if not t:
-        return t
-    t = re.sub(r"```.*?```", "", t, flags=re.S)
-    t = re.sub(r"^\s*>\s?", "", t, flags=re.M)
-    t = t.replace("**", "").replace("__", "")
-    t = re.sub(r"\n{2,}", " ", t).strip()
-    return t
+# _extract_row_col, _content_tokens, _topically_related, _prelookup_table,
+# _answer_from_table, _clean_answer_text → nach backend/fastpaths.py verschoben
+# (geteilt mit dem Claude-Agenten), oben importiert.
 
 
 # Distinkt englische Wörter (nicht auch deutsch) → Sprach-Erkennung
@@ -580,125 +444,9 @@ def _run_tool_loop(question: str, context: str, candidates: list[dict],
             "oder in den Quellen nachschlagen."), srcs, rounds
 
 
-_COUNT_Q_RE = re.compile(r"\bwie\s*viele?\b|\banzahl\b|\bwieviele?\b", re.I)
-
-
-def _composition_fastpath(question: str, context: str, conf: float) -> dict | None:
-    """Deterministische Zählung aus der Auslegerzusammenstellung (OCR-Daten).
-    Trigger: "wie viele … Zwischenstücke/Segmente" + Segmentlänge + Auslegerlänge.
-    Kein Modell — Zählung aus data/compositions.json."""
-    text = f"{question} {context}"
-    if not _COUNT_Q_RE.search(question):
-        return None
-    if not re.search(r"zwischenstück|segment|bauteil", text, re.I):
-        return None
-    q_lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", question)]
-    ctx_lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", context)]
-    length = ctx_lens[0] if ctx_lens else (max(q_lens) if q_lens else None)
-    segment = next((n for n in q_lens if n != length), None)
-    if length is None or segment is None:
-        return None
-    boom = "nadelausleger" if re.search(r"nadelausleger", text, re.I) else "hauptausleger"
-    res = composition_count(boom, length, segment)
-    if "error" in res:
-        if res.get("error") == "length_not_found":
-            avail = ", ".join(f"{n} m" for n in res["available_lengths"])
-            logger.info("AgentLocal: Composition — Länge %d m nicht gelistet", length)
-            return {
-                "type": "answer",
-                "answer": (f"Für {length} m gibt es in „{res['title']}“ keine Zeile. "
-                           f"Verfügbare Auslegerlängen: {avail}."),
-                "sources": [{"filename": res["filename"], "title": res["title"]}],
-                "rounds": 0, "confidence": conf,
-            }
-        return None
-    logger.info("AgentLocal: Composition-Fast-Path %d×%d m bei %d m", res["count"], segment, length)
-    answer = (f"{res['count']} Zwischenstück(e) à {segment} m in der {length}-m-"
-              f"Zusammenstellung ({boom.capitalize()}). "
-              f"Segmente (ohne Anlenkstück/Kopf): "
-              f"{', '.join(str(x) + ' m' for x in res['zwischenstuecke'])}.")
-    return {
-        "type": "answer", "answer": answer,
-        "sources": [{"filename": res["filename"], "title": res["title"]}],
-        "rounds": 0, "confidence": conf,
-    }
-
-
-_ARRANGE_Q_RE = re.compile(r"anordnung|reihenfolge|aufbau|zusammenges|zusammenstell|"
-                           r"aus welchen|welche zwischenst|zusammensetz", re.I)
-
-
-def _arrangement_fastpath(question: str, context: str, conf: float) -> dict | None:
-    """Deterministische Segment-Reihenfolge aus der Zusammenstellung.
-    Trigger: "Anordnung/Reihenfolge/Aufbau …" + Zwischenstück/Ausleger + Länge."""
-    text = f"{question} {context}"
-    if not _ARRANGE_Q_RE.search(question):
-        return None
-    if not re.search(r"zwischenst|segment|ausleger|zusammenstell", text, re.I):
-        return None
-    lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", text)]
-    if not lens:
-        return None
-    length = lens[0]
-    boom = "nadelausleger" if re.search(r"nadelausleger", text, re.I) else "hauptausleger"
-    res = composition_arrangement(boom, length)
-    if "error" in res:
-        if res.get("error") == "length_not_found":
-            avail = ", ".join(f"{n} m" for n in res["available_lengths"])
-            return {"type": "answer",
-                    "answer": (f"Für {length} m gibt es in „{res['title']}“ keine Zeile. "
-                               f"Verfügbare Auslegerlängen: {avail}."),
-                    "sources": [{"filename": res["filename"], "title": res["title"]}],
-                    "rounds": 0, "confidence": conf}
-        return None
-    seq = " → ".join(f"{x} m" for x in res["segments"])
-    grp = ", ".join(f"{c}× {L} m" for L, c in sorted(Counter(res["zwischenstuecke"]).items()))
-    logger.info("AgentLocal: Anordnungs-Fast-Path %d m (%d Segmente)", length, len(res["segments"]))
-    answer = (f"Zusammenstellung {length} m {boom.capitalize()} (von unten nach oben): "
-              f"Anlenkstück {res['anlenkstueck']} m → {' → '.join(f'{x} m' for x in res['zwischenstuecke'])} "
-              f"→ Kopf {res['kopf']} m. Zwischenstücke: {grp}.")
-    return {"type": "answer", "answer": answer,
-            "sources": [{"filename": res["filename"], "title": res["title"]}],
-            "rounds": 0, "confidence": conf}
-
-
-_SEIL_Q_RE = re.compile(r"seilf[üu]hrung", re.I)
-
-
-def _seilfuehrung_fastpath(question: str, context: str, conf: float) -> dict | None:
-    """Deterministische Seilführungs-Position aus den S/N-Markern der
-    Zusammenstellung. Trigger: "Seilführung" + "wo/Stelle/Position" + Auslegerlänge."""
-    text = f"{question} {context}"
-    if not _SEIL_Q_RE.search(text):
-        return None
-    if not re.search(r"\bwo\b|stelle|position|einbau|einbauen|welche", text, re.I):
-        return None
-    lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", text)]
-    if not lens:
-        return None
-    length = lens[0]
-    boom = "nadelausleger" if re.search(r"nadelausleger", text, re.I) else "hauptausleger"
-    res = composition_seilfuehrung(boom, length)
-    if "error" in res:
-        if res.get("error") == "length_not_found":
-            avail = ", ".join(f"{n} m" for n in res["available_lengths"])
-            return {"type": "answer",
-                    "answer": (f"Für {length} m gibt es in „{res['title']}“ keine Zeile. "
-                               f"Verfügbare Auslegerlängen: {avail}."),
-                    "sources": [{"filename": res["filename"], "title": res["title"]}],
-                    "rounds": 0, "confidence": conf}
-        return None
-    parts = []
-    for p in res["positions"]:
-        cfg = "Auslegerkonfiguration 1/3" if p["marker"] == "S" else "Auslegerkonfiguration 4"
-        parts.append(f"{cfg}: am {p['segment_index']}. Segment von {res['n_segments']} "
-                     f"(ein {p['segment_m']}-m-Zwischenstück, Markierung „{p['marker']}“)")
-    logger.info("AgentLocal: Seilführung-Fast-Path %d m → %d Position(en)", length, len(parts))
-    answer = (f"Einbauposition der Seilführung bei {length} m Hauptausleger — "
-              + "; ".join(parts) + ". Genaue Lage siehe Grafik auf der Quellseite.")
-    return {"type": "answer", "answer": answer,
-            "sources": [{"filename": res["filename"], "title": res["title"]}],
-            "rounds": 0, "confidence": conf}
+# Die deterministischen Fast-Paths (Composition-Zählung/-Anordnung, Seilführung,
+# Tabellenwert) liegen jetzt in backend/fastpaths.py und werden über
+# run_fastpaths() aufgerufen — dieselbe Logik nutzt auch der Claude-Agent.
 
 
 _SOURCES_LEAD = "Wahrscheinlich relevante Manual-Seiten — bitte dort nachschlagen:"
@@ -781,32 +529,16 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
     # ── Deterministische Fast-Paths (score-unabhängig, keine Halluzination) ───
     # Laufen VOR dem Confidence-Gate: sie hängen an der Frage/den Daten, nicht am
     # Retrieval-Score. "Wie viele 12 m Zwischenstücke bei 74 m?" → compositions.json.
-    comp = _composition_fastpath(question, context, conf)
-    if comp is not None:
-        return comp
-
-    arr = _arrangement_fastpath(question, context, conf)
-    if arr is not None:
-        return arr
-
-    seil = _seilfuehrung_fastpath(question, context, conf)
-    if seil is not None:
-        return seil
-
-    # Tabellenwert wörtlich aus der Tabelle + Quelle. Reine Sach-Frage (bei
-    # Rückfrage die ursprüngliche) für die gezielte Tabellensuche.
+    # Dieselbe Logik nutzt der Claude-Agent (backend/fastpaths.py). Der Tabellen-
+    # Fast-Path erkennt Zeile/Spalte auf raw_query (inkl. Rückfrage-Antwort), die
+    # gezielte Tabellensuche nutzt die reine Sach-Frage (bei Rückfrage die ursprüngliche).
     content_q = next((m["content"] for m in (conversation or [])
                       if m.get("role") == "user"), question)
-    pre, page = _prelookup_table(raw_query, context, candidates, search_query=content_q)
-    if pre and page:
-        logger.info("AgentLocal: Tabellen-Fast-Path '%s' (%s)", page["title"][:50], pre["treffer"])
-        answer = _clean_answer_text(_answer_from_table(pre))
-        srcs = [{"filename": page["filename"], "title": page["title"]}]
-        for r in filtered[:2]:
-            if r["filename"] != page["filename"]:
-                srcs.append({"filename": r["filename"], "title": r["title"]})
-        return {"type": "answer", "answer": answer, "sources": srcs[:3],
-                "rounds": 1, "confidence": conf}
+    fp = run_fastpaths(question, context, candidates=candidates,
+                       search_query=content_q, filtered=filtered,
+                       conf=conf, table_intent=raw_query)
+    if fp is not None:
+        return fp
 
     # ── Confidence-Gate für den retrieval-basierten Pfad ──────────────────────
     # Greift erst hier: die deterministischen Fast-Paths oben sind score-unabhängig.
