@@ -31,8 +31,8 @@ Aufruf (lokal, benötigt Tesseract):
 """
 
 import json
+import os
 import re
-from collections import Counter
 from pathlib import Path
 
 _ROOT = Path(__file__).parent.parent
@@ -45,6 +45,42 @@ _PAGE_TITLE_MARKER = "zusammenstellung"
 # Gültiges Symbol-Label (Filter 4): eine Länge in m (ft optional), + Marker
 _LEN_RE = re.compile(r"(\d+)\s*m\b", re.I)
 _MARKER_RE = re.compile(r"\b([SNX]\d?)\b")
+
+
+def _ensure_tesseract() -> None:
+    """Findet die Tesseract-Engine (nicht nur den pytesseract-Wrapper) und bricht
+    sonst mit klarer Anleitung ab — statt für jedes Bild einzeln zu scheitern."""
+    import pytesseract
+
+    # 1. Expliziter Pfad per Env (empfohlen auf Windows/ohne PATH-Eintrag)
+    cmd = os.environ.get("TESSERACT_CMD")
+    # 2. Übliche Windows-Installationspfade (UB-Mannheim-Build)
+    candidates = [cmd] if cmd else [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        os.path.expandvars(r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"),
+    ]
+    for c in candidates:
+        if c and Path(c).exists():
+            pytesseract.pytesseract.tesseract_cmd = c
+            break
+    try:
+        ver = pytesseract.get_tesseract_version()
+        print(f"Tesseract {ver} gefunden.")
+    except Exception:
+        raise SystemExit(
+            "\nFEHLER: Tesseract-Engine nicht gefunden.\n"
+            "pytesseract ist nur der Wrapper — die OCR-Engine muss separat installiert sein.\n\n"
+            "Windows:\n"
+            "  1. Installer laden: https://github.com/UB-Mannheim/tesseract/wiki\n"
+            "     (deutsches Sprachpaket 'deu' mitinstallieren)\n"
+            "  2. Danach ENTWEDER Tesseract zum PATH hinzufügen, ODER vor dem Lauf setzen:\n"
+            '     set TESSERACT_CMD=C:\\Program Files\\Tesseract-OCR\\tesseract.exe\n\n'
+            "macOS:  brew install tesseract tesseract-lang\n"
+            "Linux:  sudo apt install tesseract-ocr tesseract-ocr-deu\n\n"
+            "HINWEIS: Für die Hauptausleger-2320-Seite ist keine OCR nötig — die Daten "
+            "liegen bereits in data/compositions.json vor.\n"
+        )
 
 
 def _title_of(html: str) -> str:
@@ -109,6 +145,7 @@ def _row_symbols(row_html: str) -> tuple[int | None, list[str]]:
 
 
 def build() -> dict:
+    _ensure_tesseract()
     cache: dict[str, dict | None] = {}
     pages: dict[str, dict] = {}
 

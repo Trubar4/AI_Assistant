@@ -406,14 +406,25 @@ def _load_compositions() -> dict:
     return _COMPOSITIONS
 
 
+def _unique_boom_page(boom: str) -> dict:
+    """Genau eine Zusammenstellungsseite für den Auslegertyp — sonst Fehler.
+    Mehrere Nadelausleger-Varianten dürfen nicht deterministisch geraten werden."""
+    data = _load_compositions()
+    matches = [{**p, "filename": fn}
+               for fn, p in data.get("pages", {}).items() if p.get("boom") == boom]
+    if not matches:
+        return {"error": f"Keine Zusammenstellungsdaten für '{boom}'."}
+    if len(matches) > 1:
+        return {"error": "ambiguous_boom", "count": len(matches)}
+    return matches[0]
+
+
 def composition_count(boom: str, length_m: int, segment_m: int) -> dict:
     """Zählt Zwischenstücke der Länge segment_m in der Auslegerzusammenstellung
     für Auslegerlänge length_m (Anlenkstück/Kopf ausgenommen)."""
-    data = _load_compositions()
-    hit = next((({**p, "filename": fn})
-                for fn, p in data.get("pages", {}).items() if p.get("boom") == boom), None)
-    if hit is None:
-        return {"error": f"Keine Zusammenstellungsdaten für '{boom}'."}
+    hit = _unique_boom_page(boom)
+    if "error" in hit:
+        return hit
     rows = hit.get("rows", {})
     row = rows.get(str(length_m))
     if row is None:
@@ -431,11 +442,9 @@ def composition_count(boom: str, length_m: int, segment_m: int) -> dict:
 def composition_seilfuehrung(boom: str, length_m: int) -> dict:
     """Einbauposition(en) der Seilführung für eine Auslegerlänge — aus den
     S/N-Markern der Zusammenstellung (S = Auslegerkonfig. 1/3, N = Konfig. 4)."""
-    data = _load_compositions()
-    hit = next((({**p, "filename": fn})
-                for fn, p in data.get("pages", {}).items() if p.get("boom") == boom), None)
-    if hit is None:
-        return {"error": f"Keine Zusammenstellungsdaten für '{boom}'."}
+    hit = _unique_boom_page(boom)
+    if "error" in hit:
+        return hit
     seil = hit.get("seilfuehrung", {})
     row = seil.get(str(length_m))
     if row is None:
