@@ -279,12 +279,89 @@ def _vocab_rules_text() -> str:
         return ""
 
 
-def parse_context(raw: str) -> list[dict]:
-    """LLM-based context parser: free text → structured fields with canonical vocabulary.
+# ── Regelbasierter Parser (LOKAL / offline — KEIN LLM) ──────────────────────
+# Bei LLM_PROVIDER=local wird die Konfig-Analyse rein regelbasiert erledigt:
+# kein Anthropic UND kein lokales LLM (qwen3:4b ist für strukturiertes Parsen zu
+# unzuverlässig). Normalisiert nach den Konventionen aus data/vocab_rules.json.
+_BOOM_WORDS    = ("hauptausleger", "nadelausleger", "derrickausleger")
+_BALLAST_WORDS = ("ballast", "gegengewicht", "superlift")
+_HOOK_WORDS    = ("lasthaken", "unterflasche")
+_STAY_WORDS    = ("haltestange",)
 
-    Returns list of {"schluessel": ..., "wert": ...} dicts.
-    Falls back to splitting by / on any error.
+
+def _normalize_config_value(text: str) -> str:
+    """Vereinheitlicht Einheiten nach Manual-Konvention (Leerzeichen zwischen Zahl
+    und Einheit; Einscherung als 'Nx')."""
+    # Länge: "74m", "74 m", "74M", "74meter" → "74 m"
+    text = re.sub(r"(\d+)\s*(?:m|meter)\b", r"\1 m", text, flags=re.I)
+    # Gewicht: "124t"/"124 t" → "124 t"; "500kg" → "500 kg"
+    text = re.sub(r"(\d+)\s*t\b", r"\1 t", text, flags=re.I)
+    text = re.sub(r"(\d+)\s*kg\b", r"\1 kg", text, flags=re.I)
+    # Einscherung: "6-fach", "6 fach", "6fach", "6-fache" → "6x"; "6X" → "6x"
+    text = re.sub(r"(\d+)\s*-?\s*fach\w*", r"\1x", text, flags=re.I)
+    text = re.sub(r"(\d+)\s*[xX]\b", r"\1x", text)
+    return re.sub(r"\s{2,}", " ", text).strip(" ,;")
+
+
+def _rule_parse_context(raw: str) -> list[dict]:
+    """Regelbasierter Parser ohne jedes LLM. Zerlegt an /, ;, Komma und Zeilen-
+    umbruch, normalisiert Einheiten und klassifiziert jeden Teil. Benannte
+    Baugruppen (Ausleger/Ballast/Lasthaken/Haltestangen) behalten ihren vollen
+    Teiltext (inkl. Länge/Gewicht); ein sonst unbenannter Teil wird in seine
+    atomaren Signale zerlegt (Einscherung 'Nx', Länge 'N m', Gewicht 'N t/kg'),
+    damit auch trennerlose Eingaben wie '74m 6fach' nichts verlieren."""
+    fields: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+
+    def emit(key: str, value: str) -> None:
+        value = value.strip()
+        if not value:
+            return
+        dedup = (key, value.lower())
+        if dedup in seen:
+            return
+        seen.add(dedup)
+        fields.append({"schluessel": key, "wert": value})
+
+    for part in re.split(r"[/;,\n]+", raw):
+        norm = _normalize_config_value(part)
+        if not norm:
+            continue
+        low = norm.lower()
+        if any(w in low for w in _BOOM_WORDS):
+            emit("Ausleger", norm)
+        elif any(w in low for w in _BALLAST_WORDS):
+            emit("Ballast", norm)
+        elif any(w in low for w in _HOOK_WORDS):
+            emit("Lasthaken", norm)
+        elif any(w in low for w in _STAY_WORDS):
+            emit("Haltestangen", norm)
+        else:
+            emitted = False
+            m = re.search(r"\d+x\b", low)
+            if m or "einscher" in low:
+                emit("Einscherung", m.group(0) if m else norm)
+                emitted = True
+            for wm in re.finditer(r"\d+\s*(?:t|kg)\b", norm):
+                emit("Gewicht", wm.group(0)); emitted = True
+            for lm in re.finditer(r"\d+\s*m\b", norm):
+                emit("Länge", lm.group(0)); emitted = True
+            if not emitted:
+                emit("Konfiguration", norm)
+    return fields
+
+
+def parse_context(raw: str) -> list[dict]:
+    """Context parser: free text → structured fields with canonical vocabulary.
+
+    LLM_PROVIDER=local → rein regelbasiert (kein Anthropic, kein lokales LLM).
+    Sonst Anthropic; Fallback bei Fehlern: Split nach / , ;.
     """
+    if LLM_PROVIDER == "local":
+        logger.info("parse_context: regelbasiert (LLM_PROVIDER=local, kein LLM)")
+        parsed = _rule_parse_context(raw)
+        return parsed if parsed else _split_fallback(raw)
+
     vocab = _vocab_rules_text()
     system = PARSE_CONTEXT_SYSTEM
     if vocab:
@@ -310,7 +387,11 @@ def parse_context(raw: str) -> list[dict]:
     except Exception as exc:
         logger.warning("parse_context fehlgeschlagen: %s", exc)
 
-    # Fallback: split by /
+    return _split_fallback(raw)
+
+
+def _split_fallback(raw: str) -> list[dict]:
+    """Letzter Fallback: naiver Split nach / , ; ohne Normalisierung."""
     fields = []
     for part in re.split(r"[/,;]+", raw):
         part = part.strip()
