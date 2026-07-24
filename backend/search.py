@@ -53,6 +53,25 @@ _STOPWORDS_DE = {
 
 _UNIT_RE = re.compile(r"^(\d+)(m|ft|t|kg|h|hz|kw|kn|bar|mm|cm|rpm)$")
 
+# Sehr leichte deutsche Morphologie (generisch, kein Themen-Hardcoding).
+# Additiv: der Stamm wird ZUSÄTZLICH zum Originaltoken emittiert (wie bei
+# Einheiten/Bindestrich), nie als Ersatz — exakte Treffer bleiben also stark
+# (Titel×3), der Stamm liefert nur die Flexions-/Plural-Brücke.
+_UMLAUT_MAP = str.maketrans({"ä": "a", "ö": "o", "ü": "u", "ß": "ss"})
+# Bewusst konservativ: nur -en/-er/-e (kein -n/-s), damit Einzahl↔Mehrzahl
+# konvergiert (einscherplan ↔ einscherpläne, traglast ↔ traglasten) OHNE
+# Singularformen auf -n/-s zu zerlegen. Immer nur EINE Endung, Stamm ≥ 4 Zeichen.
+_DE_STEM_SUFFIXES = ("en", "er", "e")
+
+
+def _stem_de(token: str) -> str:
+    """Faltet Umlaute und streift höchstens eine häufige Endung (-en/-er/-e) ab."""
+    s = token.translate(_UMLAUT_MAP)
+    for suf in _DE_STEM_SUFFIXES:
+        if s.endswith(suf) and len(s) - len(suf) >= 4:
+            return s[: -len(suf)]
+    return s
+
 
 def _tokenize(text: str) -> list[str]:
     """Tokenisiert Text für BM25-Index und Queries.
@@ -62,20 +81,32 @@ def _tokenize(text: str) -> list[str]:
       damit "74m" (Query) und "74 m" (Manual-Text) einander matchen.
     - Bindestriche innerhalb alphanumerischer Cluster bleiben erhalten
       ("6-fach", "Hauptausleger-Zwischenstück").
+    - Für rein alphabetische Tokens wird zusätzlich eine leichte deutsche
+      Stammform emittiert (Umlaut-Faltung + -en/-er/-e), damit Einzahl/Mehrzahl
+      und Umlaut-Varianten matchen ("Einscherplan" ↔ "Einscherpläne").
     """
     raw = re.findall(r"[a-zäöüß0-9]+(?:[-][a-zäöüß0-9]+)*", text.lower())
     result = []
+
+    def _add(tok: str) -> None:
+        result.append(tok)
+        # Stammform nur für alphabetische Tokens (keine Zahlen/Einheiten), additiv.
+        if tok.isalpha():
+            stem = _stem_de(tok)
+            if stem != tok:
+                result.append(stem)
+
     for t in raw:
         if len(t) <= 1 or t in _STOPWORDS_DE:
             continue
-        result.append(t)
+        _add(t)
         m = _UNIT_RE.match(t)
         if m:
             result.append(m.group(1))   # "74m" → auch "74" emittieren
         if "-" in t:
             # "hauptausleger-kopf" → auch "hauptauslegerkopf" emittieren,
             # damit Queries ohne Bindestrich auf bindestrich-indizierte Begriffe treffen.
-            result.append(t.replace("-", ""))
+            _add(t.replace("-", ""))
     return result
 
 

@@ -198,6 +198,17 @@ Das Skript prüft die Engine **vorab** und bricht sonst mit klarer Anleitung ab.
   („Zwischenstück", Segmentlängen, „Seilführung") werden in den **BM25-Korpus**
   gespeist (nicht in den Anzeigetext) → grafische Seiten werden per Freitext
   auffindbar.
+- **Leichte deutsche Morphologie** (`_stem_de` in `_tokenize`, additiv): Umlaut-
+  Faltung + Abstreifen einer Endung `-en/-er/-e` (bewusst kein `-n/-s`). Der Stamm
+  wird ZUSÄTZLICH zum Originaltoken indexiert → Einzahl/Mehrzahl konvergieren
+  („Einscherplan" ↔ „Einscherpläne", „Traglast" ↔ „Traglasten"). Rein generisch.
+  *Grenze:* Titel, die beide Suchbegriffe wörtlich führen (z. B. „Einscherplan …
+  über Hauptausleger-Kopf" der Nadelausleger-Seiten), bleiben lexikalisch echte
+  Treffer — diese Intent-Unterscheidung löst erst die semantische Suche.
+- **TF-IDF-Fallback jetzt auf Render aktiv**: `scikit-learn` ist in
+  `requirements.txt` aufgenommen (~30 MB). Ohne semantische Suche (Render Free,
+  kein sentence-transformers) greift damit der Char-N-Gram-Fallback statt reinem
+  BM25 — überbrückt Komposita/Flexion zusätzlich zur Tokenizer-Morphologie.
 
 ---
 
