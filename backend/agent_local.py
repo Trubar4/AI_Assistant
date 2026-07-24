@@ -36,8 +36,10 @@ from backend.rule_agent import (
 from backend.search import search, _load_index
 from backend.agent_tools import (
     read_page, grep_manual, bal_search, lookup_table, composition_count,
-    composition_seilfuehrung, TOOL_SCHEMAS, TOOL_FN, LOOKUP_TABLE_SCHEMA,
+    composition_arrangement, composition_seilfuehrung,
+    TOOL_SCHEMAS, TOOL_FN, LOOKUP_TABLE_SCHEMA,
 )
+from collections import Counter
 from backend.claude_client import (
     local_complete,
     _get_local_client,
@@ -622,6 +624,44 @@ def _composition_fastpath(question: str, context: str, conf: float) -> dict | No
     }
 
 
+_ARRANGE_Q_RE = re.compile(r"anordnung|reihenfolge|aufbau|zusammenges|zusammenstell|"
+                           r"aus welchen|welche zwischenst|zusammensetz", re.I)
+
+
+def _arrangement_fastpath(question: str, context: str, conf: float) -> dict | None:
+    """Deterministische Segment-Reihenfolge aus der Zusammenstellung.
+    Trigger: "Anordnung/Reihenfolge/Aufbau …" + Zwischenstück/Ausleger + Länge."""
+    text = f"{question} {context}"
+    if not _ARRANGE_Q_RE.search(question):
+        return None
+    if not re.search(r"zwischenst|segment|ausleger|zusammenstell", text, re.I):
+        return None
+    lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", text)]
+    if not lens:
+        return None
+    length = lens[0]
+    boom = "nadelausleger" if re.search(r"nadelausleger", text, re.I) else "hauptausleger"
+    res = composition_arrangement(boom, length)
+    if "error" in res:
+        if res.get("error") == "length_not_found":
+            avail = ", ".join(f"{n} m" for n in res["available_lengths"])
+            return {"type": "answer",
+                    "answer": (f"Für {length} m gibt es in „{res['title']}“ keine Zeile. "
+                               f"Verfügbare Auslegerlängen: {avail}."),
+                    "sources": [{"filename": res["filename"], "title": res["title"]}],
+                    "rounds": 0, "confidence": conf}
+        return None
+    seq = " → ".join(f"{x} m" for x in res["segments"])
+    grp = ", ".join(f"{c}× {L} m" for L, c in sorted(Counter(res["zwischenstuecke"]).items()))
+    logger.info("AgentLocal: Anordnungs-Fast-Path %d m (%d Segmente)", length, len(res["segments"]))
+    answer = (f"Zusammenstellung {length} m {boom.capitalize()} (von unten nach oben): "
+              f"Anlenkstück {res['anlenkstueck']} m → {' → '.join(f'{x} m' for x in res['zwischenstuecke'])} "
+              f"→ Kopf {res['kopf']} m. Zwischenstücke: {grp}.")
+    return {"type": "answer", "answer": answer,
+            "sources": [{"filename": res["filename"], "title": res["title"]}],
+            "rounds": 0, "confidence": conf}
+
+
 _SEIL_Q_RE = re.compile(r"seilf[üu]hrung", re.I)
 
 
@@ -744,6 +784,10 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
     comp = _composition_fastpath(question, context, conf)
     if comp is not None:
         return comp
+
+    arr = _arrangement_fastpath(question, context, conf)
+    if arr is not None:
+        return arr
 
     seil = _seilfuehrung_fastpath(question, context, conf)
     if seil is not None:

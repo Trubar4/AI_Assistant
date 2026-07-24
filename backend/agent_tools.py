@@ -439,6 +439,23 @@ def composition_count(boom: str, length_m: int, segment_m: int) -> dict:
     }
 
 
+def composition_arrangement(boom: str, length_m: int) -> dict:
+    """Vollständige Segment-Reihenfolge einer Auslegerlänge (Anlenkstück → …→ Kopf)."""
+    hit = _unique_boom_page(boom)
+    if "error" in hit:
+        return hit
+    rows = hit.get("rows", {})
+    row = rows.get(str(length_m))
+    if row is None:
+        return {"error": "length_not_found", "title": hit["title"], "filename": hit["filename"],
+                "available_lengths": sorted(int(k) for k in rows)}
+    return {
+        "boom": boom, "length_m": length_m, "segments": row,
+        "anlenkstueck": row[0], "kopf": row[-1], "zwischenstuecke": row[1:-1],
+        "title": hit["title"], "filename": hit["filename"],
+    }
+
+
 def composition_seilfuehrung(boom: str, length_m: int) -> dict:
     """Einbauposition(en) der Seilführung für eine Auslegerlänge — aus den
     S/N-Markern der Zusammenstellung (S = Auslegerkonfig. 1/3, N = Konfig. 4)."""
