@@ -1,6 +1,6 @@
 # Lokales LLM & deterministischer Modus-3-Agent — Stand & Erkenntnisse
 
-Arbeitsstand des Feature-Branches `claude/local-llm-mode-2-switch-g6kw3n`.
+Arbeitsstand des Feature-Branches `claude/local-llm-mode-2-switch-g6kw3n`. -> gemergt mit MAIN
 Dieses Dokument fasst **alle** Anpassungen und Erkenntnisse zusammen, damit sie
 in einer neuen Konversation sofort verfügbar sind.
 
@@ -244,7 +244,7 @@ Das Skript prüft die Engine **vorab** und bricht sonst mit klarer Anleitung ab.
 
 ---
 
-## 11. Bekannte Grenzen & nächste Schritte
+## 11. Bekannte Grenzen
 
 - **Nadelausleger-Zählung/-Anordnung**: mehrere Varianten (0806/0906/1008/1713/
   1916/…) → müsste über die Konfiguration disambiguiert werden; 2 Seiten haben
