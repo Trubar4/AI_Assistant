@@ -42,7 +42,7 @@ load_dotenv()
 from backend.search import search, reset_index, extract_facets, count_hits
 from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer, log_mode2_provider, LLM_PROVIDER
 from backend.agent import run_agent
-from backend.rule_agent import run_rule_agent, _normalize_query
+from backend.rule_agent import _normalize_query
 
 # ---------------------------------------------------------------------------
 # Error code database (optional — loaded once at startup)
@@ -385,10 +385,18 @@ async def ask_agent(req: AgentRequest) -> AgentResponse:
     use_rule = (req.mode == "rule") or (_rule_mode and req.mode != "agent")
 
     if use_rule:
-        result = run_rule_agent(
+        # Merge: der frühere Modus 1 ("Regelbasiert") ist jetzt „Modus 3 lokal ohne
+        # Modell" — derselbe deterministische Pfad wie agent_local, aber mit
+        # mode="sources" hart modellfrei erzwungen (kein Anthropic, kein lokales
+        # LLM), inkl. der Composition-/Tabellen-Fast-Paths. run_rule_agent bleibt
+        # als geteilte Helfer-Bibliothek (rule_agent) erhalten, wird aber nicht
+        # mehr direkt aufgerufen.
+        from backend.agent_local import run_agent_local
+        result = run_agent_local(
             question=q,
             context=req.context.strip(),
             conversation=req.conversation or [],
+            mode="sources",
         )
     else:
         # Umschaltbar: welcher Agent bedient "Assistent"? Reihenfolge:

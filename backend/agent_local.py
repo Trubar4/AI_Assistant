@@ -474,16 +474,23 @@ def _sources_answer(filtered: list[dict], question: str, conf: float) -> dict:
     }
 
 
-def run_agent_local(question: str, context: str = "", conversation: list[dict] | None = None) -> dict:
+def run_agent_local(question: str, context: str = "", conversation: list[dict] | None = None,
+                    mode: str | None = None) -> dict:
     """Lokaler Modus-3-Agent.
 
     Modellfreie Vorstufe (Clarification, Fusion-Retrieval, Confidence-Gate),
     dann deterministischer Tabellen-Fast-Path (wörtlicher Wert + Quelle). Ist
-    das keine Tabellenfrage, entscheidet AGENT_LOCAL_MODE:
+    das keine Tabellenfrage, entscheidet der Modus (Parameter `mode`, sonst
+    AGENT_LOCAL_MODE):
       - "sources" (Default): Quellen + wörtlicher Snippet, KEIN LLM-Fließtext.
       - "tools"            : Seeded Tool-Loop (Modell formuliert, Risiko).
       - "pipeline"         : eine Modell-Synthese aus der Top-Seite.
+
+    `mode="sources"` erzwingt den vollständig modellfreien Betrieb — so wird der
+    frühere Modus 1 ("Regelbasiert") als „Modus 3 lokal ohne Modell" bedient
+    (deterministische Fast-Paths inklusive), unabhängig von AGENT_LOCAL_MODE.
     """
+    effective_mode = (mode or AGENT_LOCAL_MODE).strip().lower()
     is_followup = bool(conversation)
 
     # Phase 1: Clarification (kein Modell)
@@ -553,7 +560,7 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
         }
 
     # ── Nicht-Tabellenfrage ───────────────────────────────────────────────────
-    if AGENT_LOCAL_MODE == "tools":
+    if effective_mode == "tools":
         # Experimentell: Modell darf mit Tools nachfassen (Halluzinationsrisiko).
         _row, _col = _extract_row_col(raw_query, context)
         has_cell = bool(_row and _col)
@@ -566,7 +573,7 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
         return {"type": "answer", "answer": answer, "sources": srcs[:3],
                 "rounds": rounds, "confidence": conf}
 
-    if AGENT_LOCAL_MODE == "pipeline":
+    if effective_mode == "pipeline":
         # Experimentell: eine Modell-Synthese aus der Top-Seite (+ Eskalation).
         top = filtered[0]
         answer = _synthesize(top, context, question)

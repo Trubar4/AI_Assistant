@@ -10,9 +10,16 @@ in einer neuen Konversation sofort verfügbar sind.
 
 | Modus | Endpoint | Implementierung | LLM? |
 |------|----------|-----------------|------|
-| 1 · Regelbasiert | `/ask_agent` (mode=rule) | `rule_agent.py` | nein |
+| 1 · Lokal (ohne Modell) | `/ask_agent` (mode=rule) | `agent_local.py` mit `mode="sources"` (erzwungen modellfrei) | **nein** |
 | 2 · Klassisch | `/ask` | `claude_client.py` (`expand_query`, `rerank`) | ja (HyDE + Reranking) |
 | 3 · Assistent | `/ask_agent` | `agent.py` (Anthropic) **oder** `agent_local.py` (lokal) | konfigurierbar |
+
+> **Merge Modus 1 → „Modus 3 lokal ohne Modell":** Der frühere regelbasierte Agent
+> (`run_rule_agent`) wird nicht mehr direkt aufgerufen; `mode=rule` läuft jetzt über
+> `run_agent_local(mode="sources")` — derselbe deterministische Pfad wie Modus 3
+> lokal, hart modellfrei (kein Anthropic, kein lokales LLM), **inkl. der Composition-/
+> Tabellen-Fast-Paths** (die dem alten Modus 1 fehlten). `rule_agent.py` bleibt als
+> geteilte Helfer-Bibliothek (Clarification, Query-Normalisierung, Snippet, Score-Gap).
 
 **Provider-Schalter** `LLM_PROVIDER=anthropic|local` (Default `anthropic`):
 - `anthropic`: alles wie bisher, Render unverändert.
@@ -318,11 +325,13 @@ Nicht-Fast-Path-Fragen fallen sauber in den Loop.
   vollständige Feld-Satz inkl. abgehakter Elemente wird in `localStorage`
   (`ma_context_fields`) gehalten → An-/Abhaken **ohne** Re-Analyse, übersteht Reload.
 
+**Erledigt (Forts.):**
+- ✅ **Modus 1 verschmolzen**: `mode=rule` läuft über `run_agent_local(mode="sources")`
+  (siehe §1). Der frühere separate `run_rule_agent`-Pfad entfällt; Modus 1 gewinnt die
+  deterministischen Fast-Paths, bleibt 100 % modellfrei. UI-Label „Regelbasiert" →
+  „Lokal" (Tooltip: offline, ohne KI-Modell, deterministisch).
+
 **Geplant / offen:**
-- **Modus 1 verschmelzen**: der regelbasierte Agent (`rule_agent`) ist als eigener
-  UI-Modus weitgehend redundant zu „Modus 3 lokal / sources" (dieser importiert
-  ohnehin `_needs_clarification`, `_normalize_query`, `_filter_by_score_gap`,
-  `_extract_snippet`). Perspektivisch zu „Modus 3 lokal ohne Modell" zusammenführen.
 - **Semantik auf Render**: siehe §11 — 768-dim-Modell passt nicht in 512 MB Free;
   Optionen: größere Instanz, ONNX-Query-Encoder oder kleines MiniLM (384-dim,
   Embeddings neu erzeugen).
