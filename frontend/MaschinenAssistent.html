@@ -760,6 +760,15 @@
     <button class="mode-toggle__btn" id="mode-btn-agent"
       onclick="setMode('agent')" title="Höhere Kosten · Langsamer · Mehrschrittiger KI-Assistent">Assistent</button>
   </div>
+  <!-- Backend für "Assistent" (nur in diesem Modus sichtbar) -->
+  <div class="mode-toggle" id="backend-toggle" style="display:none">
+    <button class="mode-toggle__btn mode-toggle__btn--active" id="be-auto"
+      onclick="setBackend('')" title="Folgt der Server-Einstellung (LLM_PROVIDER)">Auto</button>
+    <button class="mode-toggle__btn" id="be-local"
+      onclick="setBackend('local')" title="Lokales Modell – offline, deterministisch">Lokal</button>
+    <button class="mode-toggle__btn" id="be-anthropic"
+      onclick="setBackend('anthropic')" title="Claude – beste Qualität, benötigt Internet + API-Key">Claude</button>
+  </div>
 </header>
 
 <!-- ═══ LAYOUT ════════════════════════════════════════════════════════════ -->
@@ -1259,7 +1268,21 @@ function setMode(m) {
   document.getElementById('mode-btn-classic').classList.toggle('mode-toggle__btn--active', m === 'classic');
   document.getElementById('mode-btn-agent').classList.toggle('mode-toggle__btn--active', m === 'agent');
   document.getElementById('mode-btn-rule').classList.toggle('mode-toggle__btn--active', m === 'rule');
+  // Backend-Umschalter nur im Assistent-Modus zeigen
+  document.getElementById('backend-toggle').style.display = (m === 'agent') ? '' : 'none';
 }
+
+// Backend für den Assistenten (Lokal / Claude / Auto) — an /ask_agent mitgesendet
+const BACKEND_KEY = 'ki-agent-backend';
+let _agentBackend = localStorage.getItem(BACKEND_KEY) || '';
+function setBackend(b) {
+  _agentBackend = b;
+  localStorage.setItem(BACKEND_KEY, b);
+  document.getElementById('be-auto').classList.toggle('mode-toggle__btn--active', b === '');
+  document.getElementById('be-local').classList.toggle('mode-toggle__btn--active', b === 'local');
+  document.getElementById('be-anthropic').classList.toggle('mode-toggle__btn--active', b === 'anthropic');
+}
+setBackend(_agentBackend);
 setMode(_mode);
 
 function escalateQuery(question, targetMode) {
@@ -1335,7 +1358,7 @@ async function _sendAgent(q, loadDiv, history, conversation, mode) {
     const resp = await fetch(API + '/ask_agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q, context: _getContext(), conversation, mode: mode || '' }),
+      body: JSON.stringify({ question: q, context: _getContext(), conversation, mode: mode || '', agent_backend: _agentBackend }),
     });
     const data = await resp.json();
 

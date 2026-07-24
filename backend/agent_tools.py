@@ -428,6 +428,28 @@ def composition_count(boom: str, length_m: int, segment_m: int) -> dict:
     }
 
 
+def composition_seilfuehrung(boom: str, length_m: int) -> dict:
+    """Einbauposition(en) der Seilführung für eine Auslegerlänge — aus den
+    S/N-Markern der Zusammenstellung (S = Auslegerkonfig. 1/3, N = Konfig. 4)."""
+    data = _load_compositions()
+    hit = next((({**p, "filename": fn})
+                for fn, p in data.get("pages", {}).items() if p.get("boom") == boom), None)
+    if hit is None:
+        return {"error": f"Keine Zusammenstellungsdaten für '{boom}'."}
+    seil = hit.get("seilfuehrung", {})
+    row = seil.get(str(length_m))
+    if row is None:
+        rows = hit.get("rows", {})
+        return {"error": "length_not_found", "title": hit["title"], "filename": hit["filename"],
+                "available_lengths": sorted(int(k) for k in rows)}
+    n_segments = len(hit.get("rows", {}).get(str(length_m), []))
+    return {
+        "boom": boom, "length_m": length_m, "n_segments": n_segments,
+        "positions": row,          # [{marker, segment_index, segment_m}, ...]
+        "title": hit["title"], "filename": hit["filename"],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Tool-Schemas für Claude tool_use API
 # ---------------------------------------------------------------------------

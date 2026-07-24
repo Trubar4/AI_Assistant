@@ -36,7 +36,7 @@ from backend.rule_agent import (
 from backend.search import search, _load_index
 from backend.agent_tools import (
     read_page, grep_manual, bal_search, lookup_table, composition_count,
-    TOOL_SCHEMAS, TOOL_FN, LOOKUP_TABLE_SCHEMA,
+    composition_seilfuehrung, TOOL_SCHEMAS, TOOL_FN, LOOKUP_TABLE_SCHEMA,
 )
 from backend.claude_client import (
     local_complete,
@@ -622,6 +622,45 @@ def _composition_fastpath(question: str, context: str, conf: float) -> dict | No
     }
 
 
+_SEIL_Q_RE = re.compile(r"seilf[üu]hrung", re.I)
+
+
+def _seilfuehrung_fastpath(question: str, context: str, conf: float) -> dict | None:
+    """Deterministische Seilführungs-Position aus den S/N-Markern der
+    Zusammenstellung. Trigger: "Seilführung" + "wo/Stelle/Position" + Auslegerlänge."""
+    text = f"{question} {context}"
+    if not _SEIL_Q_RE.search(text):
+        return None
+    if not re.search(r"\bwo\b|stelle|position|einbau|einbauen|welche", text, re.I):
+        return None
+    lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", text)]
+    if not lens:
+        return None
+    length = lens[0]
+    boom = "nadelausleger" if re.search(r"nadelausleger", text, re.I) else "hauptausleger"
+    res = composition_seilfuehrung(boom, length)
+    if "error" in res:
+        if res.get("error") == "length_not_found":
+            avail = ", ".join(f"{n} m" for n in res["available_lengths"])
+            return {"type": "answer",
+                    "answer": (f"Für {length} m gibt es in „{res['title']}“ keine Zeile. "
+                               f"Verfügbare Auslegerlängen: {avail}."),
+                    "sources": [{"filename": res["filename"], "title": res["title"]}],
+                    "rounds": 0, "confidence": conf}
+        return None
+    parts = []
+    for p in res["positions"]:
+        cfg = "Auslegerkonfiguration 1/3" if p["marker"] == "S" else "Auslegerkonfiguration 4"
+        parts.append(f"{cfg}: am {p['segment_index']}. Segment von {res['n_segments']} "
+                     f"(ein {p['segment_m']}-m-Zwischenstück, Markierung „{p['marker']}“)")
+    logger.info("AgentLocal: Seilführung-Fast-Path %d m → %d Position(en)", length, len(parts))
+    answer = (f"Einbauposition der Seilführung bei {length} m Hauptausleger — "
+              + "; ".join(parts) + ". Genaue Lage siehe Grafik auf der Quellseite.")
+    return {"type": "answer", "answer": answer,
+            "sources": [{"filename": res["filename"], "title": res["title"]}],
+            "rounds": 0, "confidence": conf}
+
+
 _SOURCES_LEAD = "Wahrscheinlich relevante Manual-Seiten — bitte dort nachschlagen:"
 
 
@@ -705,6 +744,10 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
     comp = _composition_fastpath(question, context, conf)
     if comp is not None:
         return comp
+
+    seil = _seilfuehrung_fastpath(question, context, conf)
+    if seil is not None:
+        return seil
 
     # Tabellenwert wörtlich aus der Tabelle + Quelle. Reine Sach-Frage (bei
     # Rückfrage die ursprüngliche) für die gezielte Tabellensuche.

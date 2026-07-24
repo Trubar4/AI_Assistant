@@ -32,6 +32,7 @@ _ROOT = Path(__file__).parent.parent
 METADATA_INDEX = _ROOT / "data" / "metadata_index.json"
 CONTENT_INDEX  = _ROOT / "data" / "content_index.json"
 TOC_INDEX      = _ROOT / "data" / "toc_index.json"
+COMPOSITIONS   = _ROOT / "data" / "compositions.json"
 
 _EMB_NPY = _ROOT / "data" / "embeddings.npy"
 _EMB_IDS = _ROOT / "data" / "embedding_ids.json"
@@ -87,6 +88,25 @@ _bm25_title: BM25Okapi | None = None     # title-only BM25
 _bm25_filenames: list[str] | None = None
 
 
+def _composition_index_terms() -> dict[str, str]:
+    """{filename: Zusatz-Suchbegriffe} aus data/compositions.json (OCR-Bauteile).
+    Macht grafische Zusammenstellungsseiten per Freitext auffindbar."""
+    try:
+        data = json.loads(COMPOSITIONS.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    out: dict[str, str] = {}
+    for fname, p in data.get("pages", {}).items():
+        lengths = sorted({x for row in p.get("rows", {}).values() for x in row})
+        terms = ["Zwischenstück", "Zwischenstücke", "Ausleger-Zwischenstück", "Segmente",
+                 "Anlenkstück", "Auslegerkopf", "Zusammenstellung", p.get("boom", "")]
+        terms += [f"{n} m" for n in lengths]
+        if p.get("seilfuehrung"):
+            terms += ["Seilführung", "Einbauposition"]
+        out[fname] = " ".join(terms)
+    return out
+
+
 def _load_index(
     metadata_path: Path = METADATA_INDEX,
     content_path: Path = CONTENT_INDEX,
@@ -125,6 +145,13 @@ def _load_index(
 
     _index = merged
 
+    # Composition-Keywords: grafische Zusammenstellungsseiten tragen ihre
+    # Bauteil-Begriffe ("Zwischenstück", Segmentlängen, "Seilführung") nur im
+    # Bild. Aus data/compositions.json (OCR) speisen wir sie in den Suchtext ein,
+    # damit die Seiten per Freitext auffindbar werden — NUR in den BM25-Korpus,
+    # nicht in den angezeigten Seitentext (keine künstlichen Snippets).
+    comp_terms = _composition_index_terms()
+
     corpus_full  = []
     corpus_title = []
     _bm25_filenames = []
@@ -133,7 +160,8 @@ def _load_index(
         warn_tokens  = _tokenize(" ".join(entry["warnings"]))
         step_tokens  = _tokenize(" ".join(entry["steps"][:15]))
         body_tokens  = _tokenize(entry["text"])
-        corpus_full.append(title_tokens * 3 + warn_tokens + step_tokens + body_tokens)
+        aug_tokens   = _tokenize(comp_terms.get(entry["filename"], ""))
+        corpus_full.append(title_tokens * 3 + warn_tokens + step_tokens + body_tokens + aug_tokens)
         corpus_title.append(title_tokens)
         _bm25_filenames.append(entry["filename"])
 

@@ -122,27 +122,28 @@ def build() -> dict:
             continue
 
         rows_out: dict[str, list[int]] = {}
-        markers_out: dict[str, dict[str, int]] = {}
+        seil_out: dict[str, list[dict]] = {}
         for row in re.findall(r"<tr[^>]*>(.*?)</tr>", table_m.group(0), re.S):
             length, symbols = _row_symbols(row)
             if length is None or not symbols:
                 continue
             seg_lens: list[int] = []
-            seg_markers: dict[str, int] = {}
+            seil: list[dict] = []
             ok = True
-            for fname in symbols:
+            for idx, fname in enumerate(symbols, 1):
                 sym = _ocr_symbol(_MANUALS / "images" / "content" / fname, cache)
                 if sym is None:
                     ok = False
                     break
                 seg_lens.append(sym["len"])
-                for mk in sym["markers"]:
-                    seg_markers.setdefault(mk, sym["len"])
+                for mk in sym["markers"]:               # S = Konfig 1/3, N = Konfig 4
+                    if mk in ("S", "N"):
+                        seil.append({"marker": mk, "segment_index": idx, "segment_m": sym["len"]})
             # Filter 5: Segmentlängen müssen auf die Auslegerlänge summieren.
             if ok and sum(seg_lens) == length:
                 rows_out[str(length)] = seg_lens
-                if seg_markers:
-                    markers_out[str(length)] = seg_markers
+                if seil:
+                    seil_out[str(length)] = seil
             else:
                 print(f"  {html_file.name} {length} m: Plausibilität verfehlt "
                       f"(Summe {sum(seg_lens)} ≠ {length}) — Zeile übersprungen")
@@ -152,7 +153,7 @@ def build() -> dict:
                 "title": title,
                 "boom": _boom_of(title),
                 "rows": rows_out,
-                "seilfuehrung_marker": markers_out,   # S/N → Segmentlänge mit Marker
+                "seilfuehrung": seil_out,   # S/N → Position + Segmentlänge
             }
             print(f"✓ {title}: {len(rows_out)} Auslegerlängen")
 
