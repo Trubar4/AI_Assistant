@@ -1,0 +1,937 @@
+{
+  "_note": "Zusammenstellungs-Symbole → Segmentlängen (Vision, nur Seiten mit 100% plausibilisierten Zeilen: Segmentsumme==Auslegerlänge). S=Konfig 1/3, N=Konfig 4.",
+  "pages": {
+    "ID_68472e7f95dd4d42ab4041f28104eec2-e6f2705eddea47bc8dbb7dd7087c6c0d-de-DE.html": {
+      "title": "Zusammenstellung des Nadelauslegers",
+      "boom": "nadelausleger",
+      "rows": {
+        "11": [
+          5.5,
+          5.5
+        ],
+        "14": [
+          5.5,
+          3,
+          5.5
+        ],
+        "17": [
+          5.5,
+          6,
+          5.5
+        ],
+        "20": [
+          5.5,
+          3,
+          6,
+          5.5
+        ],
+        "23": [
+          5.5,
+          6,
+          6,
+          5.5
+        ],
+        "26": [
+          5.5,
+          3,
+          6,
+          6,
+          5.5
+        ]
+      },
+      "seilfuehrung": {}
+    },
+    "ID_7b945af778624d8aa1a048b8033b0b7d-8f0b9b820faa4e37b6feb3dce4c7f1a6-de-DE.html": {
+      "title": "Zusammenstellung des Nadelauslegers",
+      "boom": "nadelausleger",
+      "rows": {
+        "7": [
+          7
+        ]
+      },
+      "seilfuehrung": {}
+    },
+    "ID_87859235907d440bb8d445d3bc517207-d10cf8fc70314f35a313c6e5c7939931-de-DE.html": {
+      "title": "Zusammenstellung des Nadelauslegers",
+      "boom": "nadelausleger",
+      "rows": {
+        "20": [
+          7,
+          6,
+          7
+        ],
+        "23": [
+          7,
+          3,
+          6,
+          7
+        ],
+        "26": [
+          7,
+          12,
+          7
+        ],
+        "29": [
+          7,
+          3,
+          12,
+          7
+        ],
+        "32": [
+          7,
+          6,
+          12,
+          7
+        ],
+        "35": [
+          7,
+          3,
+          6,
+          12,
+          7
+        ],
+        "38": [
+          7,
+          12,
+          12,
+          7
+        ],
+        "41": [
+          7,
+          3,
+          12,
+          12,
+          7
+        ],
+        "44": [
+          7,
+          6,
+          12,
+          12,
+          7
+        ],
+        "47": [
+          7,
+          3,
+          6,
+          12,
+          12,
+          7
+        ],
+        "50": [
+          7,
+          12,
+          12,
+          12,
+          7
+        ],
+        "53": [
+          7,
+          3,
+          12,
+          12,
+          12,
+          7
+        ],
+        "56": [
+          7,
+          6,
+          12,
+          12,
+          12,
+          7
+        ],
+        "59": [
+          7,
+          3,
+          6,
+          12,
+          12,
+          12,
+          7
+        ],
+        "62": [
+          7,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "65": [
+          7,
+          3,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "68": [
+          7,
+          6,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "71": [
+          7,
+          3,
+          6,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "74": [
+          7,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "77": [
+          7,
+          3,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "80": [
+          7,
+          6,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "83": [
+          7,
+          3,
+          6,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "86": [
+          7,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "89": [
+          7,
+          3,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "92": [
+          7,
+          6,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "95": [
+          7,
+          3,
+          6,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      "seilfuehrung": {}
+    },
+    "ID_b5716b5ce6e944e38c482963a52291e4-a422b6dbc30f469e887cd80036c20b00-de-DE.html": {
+      "title": "Zusammenstellung des Hauptauslegers 2320",
+      "boom": "hauptausleger",
+      "rows": {
+        "20": [
+          10,
+          3,
+          7
+        ],
+        "23": [
+          10,
+          6,
+          7
+        ],
+        "26": [
+          10,
+          3,
+          6,
+          7
+        ],
+        "29": [
+          10,
+          12,
+          7
+        ],
+        "32": [
+          10,
+          3,
+          12,
+          7
+        ],
+        "35": [
+          10,
+          6,
+          12,
+          7
+        ],
+        "38": [
+          10,
+          3,
+          6,
+          12,
+          7
+        ],
+        "41": [
+          10,
+          12,
+          12,
+          7
+        ],
+        "44": [
+          10,
+          3,
+          12,
+          12,
+          7
+        ],
+        "47": [
+          10,
+          6,
+          12,
+          12,
+          7
+        ],
+        "50": [
+          10,
+          3,
+          6,
+          12,
+          12,
+          7
+        ],
+        "53": [
+          10,
+          12,
+          12,
+          12,
+          7
+        ],
+        "56": [
+          10,
+          3,
+          12,
+          12,
+          12,
+          7
+        ],
+        "59": [
+          10,
+          6,
+          12,
+          12,
+          12,
+          7
+        ],
+        "62": [
+          10,
+          3,
+          6,
+          12,
+          12,
+          12,
+          7
+        ],
+        "65": [
+          10,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "68": [
+          10,
+          3,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "71": [
+          10,
+          6,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "74": [
+          10,
+          3,
+          6,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "77": [
+          10,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "80": [
+          10,
+          3,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "83": [
+          10,
+          6,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "86": [
+          10,
+          3,
+          6,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "89": [
+          10,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      "seilfuehrung": {
+        "20": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 3
+          },
+          {
+            "marker": "S",
+            "segment_index": 3,
+            "segment_m": 7
+          }
+        ],
+        "23": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 6
+          },
+          {
+            "marker": "S",
+            "segment_index": 3,
+            "segment_m": 7
+          }
+        ],
+        "26": [
+          {
+            "marker": "N",
+            "segment_index": 3,
+            "segment_m": 6
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 7
+          }
+        ],
+        "29": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 3,
+            "segment_m": 7
+          }
+        ],
+        "32": [
+          {
+            "marker": "N",
+            "segment_index": 3,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 7
+          }
+        ],
+        "35": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 6
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 7
+          }
+        ],
+        "38": [
+          {
+            "marker": "N",
+            "segment_index": 3,
+            "segment_m": 6
+          },
+          {
+            "marker": "S",
+            "segment_index": 5,
+            "segment_m": 7
+          }
+        ],
+        "41": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 3,
+            "segment_m": 12
+          }
+        ],
+        "44": [
+          {
+            "marker": "N",
+            "segment_index": 3,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 12
+          }
+        ],
+        "47": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 6
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 12
+          }
+        ],
+        "50": [
+          {
+            "marker": "N",
+            "segment_index": 3,
+            "segment_m": 6
+          },
+          {
+            "marker": "S",
+            "segment_index": 5,
+            "segment_m": 12
+          }
+        ],
+        "53": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 3,
+            "segment_m": 12
+          }
+        ],
+        "56": [
+          {
+            "marker": "N",
+            "segment_index": 3,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 12
+          }
+        ],
+        "59": [
+          {
+            "marker": "N",
+            "segment_index": 3,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 12
+          }
+        ],
+        "62": [
+          {
+            "marker": "N",
+            "segment_index": 3,
+            "segment_m": 6
+          },
+          {
+            "marker": "S",
+            "segment_index": 5,
+            "segment_m": 12
+          }
+        ],
+        "65": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 3,
+            "segment_m": 12
+          }
+        ],
+        "68": [
+          {
+            "marker": "N",
+            "segment_index": 3,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 12
+          }
+        ],
+        "71": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 6
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 12
+          }
+        ],
+        "74": [
+          {
+            "marker": "N",
+            "segment_index": 4,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 5,
+            "segment_m": 12
+          }
+        ],
+        "77": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 3,
+            "segment_m": 12
+          }
+        ],
+        "80": [
+          {
+            "marker": "N",
+            "segment_index": 3,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 12
+          }
+        ],
+        "83": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 6
+          },
+          {
+            "marker": "S",
+            "segment_index": 4,
+            "segment_m": 12
+          }
+        ],
+        "86": [
+          {
+            "marker": "N",
+            "segment_index": 4,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 5,
+            "segment_m": 12
+          }
+        ],
+        "89": [
+          {
+            "marker": "N",
+            "segment_index": 2,
+            "segment_m": 12
+          },
+          {
+            "marker": "S",
+            "segment_index": 3,
+            "segment_m": 12
+          }
+        ]
+      }
+    },
+    "ID_cc614935c8e84afd9900d42bfa41e3ef-394c0977c6c34d009157871728fa228f-de-DE.html": {
+      "title": "Zusammenstellung des Nadelauslegers",
+      "boom": "nadelausleger",
+      "rows": {
+        "20": [
+          7,
+          6,
+          7
+        ],
+        "23": [
+          7,
+          3,
+          6,
+          7
+        ],
+        "26": [
+          7,
+          12,
+          7
+        ],
+        "29": [
+          7,
+          3,
+          12,
+          7
+        ],
+        "32": [
+          7,
+          6,
+          12,
+          7
+        ],
+        "35": [
+          7,
+          3,
+          6,
+          12,
+          7
+        ],
+        "38": [
+          7,
+          12,
+          12,
+          7
+        ],
+        "41": [
+          7,
+          3,
+          12,
+          12,
+          7
+        ],
+        "44": [
+          7,
+          6,
+          12,
+          12,
+          7
+        ],
+        "47": [
+          7,
+          3,
+          6,
+          12,
+          12,
+          7
+        ],
+        "50": [
+          7,
+          12,
+          12,
+          12,
+          7
+        ],
+        "53": [
+          7,
+          3,
+          12,
+          12,
+          12,
+          7
+        ],
+        "56": [
+          7,
+          6,
+          12,
+          12,
+          12,
+          7
+        ],
+        "59": [
+          7,
+          3,
+          6,
+          12,
+          12,
+          12,
+          7
+        ],
+        "62": [
+          7,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "65": [
+          7,
+          3,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "68": [
+          7,
+          6,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "71": [
+          7,
+          3,
+          6,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "74": [
+          7,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "77": [
+          7,
+          3,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "80": [
+          7,
+          6,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ],
+        "83": [
+          7,
+          3,
+          6,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      "seilfuehrung": {}
+    }
+  }
+}

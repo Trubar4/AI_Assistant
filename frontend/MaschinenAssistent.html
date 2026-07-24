@@ -2,7 +2,7 @@
 <html lang="de" data-theme="co-light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>KI Assistent · LR 1104.03.08</title>
   <link rel="manifest" href="/frontend/manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -15,12 +15,14 @@
     body {
       display: grid;
       grid-template-rows: 64px 1fr;
-      height: 100vh;
+      height: 100vh;        /* Fallback für ältere Browser */
+      height: 100dvh;       /* iOS Safari: folgt der dynamischen Adressleiste */
     }
     .app-layout {
       display: grid;
       grid-template-columns: 216px 1fr;
       overflow: hidden;
+      min-height: 0;        /* Grid-Item darf schrumpfen, statt zu überlaufen */
     }
 
     /* ── Sidebar ────────────────────────────────────────────── */
@@ -46,10 +48,13 @@
       flex-direction: column;
       overflow: hidden;
       background: var(--r-bg-default);
+      min-height: 0;        /* erlaubt dem inneren Scroll-Bereich zu schrumpfen */
     }
     .app-scroll {
       flex: 1;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;   /* weiches Scrollen auf iOS */
+      min-height: 0;        /* ohne dies wächst der Bereich über die Höhe hinaus */
       padding: var(--s-6) var(--s-6) var(--s-4);
     }
     .view { display: none; }
@@ -674,6 +679,27 @@
       .app-sidebar {
         display: none;
       }
+      /* Header: passt sonst nicht in 390px Portrait → Mode-Umschalter in
+         eigene Zeile umbrechen, Sekundär-Infos ausblenden, Abstände straffen. */
+      body { grid-template-rows: auto 1fr; }
+      .lds-appbar {
+        gap: var(--s-3);
+        padding: var(--s-2) var(--s-4);
+        height: auto;
+        flex-wrap: wrap;
+        row-gap: var(--s-2);
+        overflow-x: hidden;
+      }
+      .appbar-doc-id { display: none; }
+      .mode-toggle {
+        order: 5;
+        flex: 1 1 100%;      /* Regelbasiert/Klassisch/Assistent in eine volle Zeile */
+      }
+      .mode-toggle__btn { flex: 1; }   /* Buttons gleichmäßig über die Breite */
+      /* Meldungen-Tab: Eingabe + 3 Buttons passen nicht in eine 390px-Zeile →
+         Eingabefeld in die erste Zeile, Buttons (inkl. Nachschlagen) darunter. */
+      .errorcode-row { flex-wrap: wrap; }
+      .errorcode-row .lds-input { flex: 1 1 100%; min-width: 0; }
       .app-scroll {
         padding-bottom: calc(var(--s-6) + 64px + env(safe-area-inset-bottom));
       }
@@ -723,7 +749,7 @@
   </svg>
   <div class="lds-appbar__product"><strong>KI</strong> Assistent</div>
   <div style="flex:1"></div>
-  <span style="font:400 13px/18px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3);border-left:1px solid var(--r-chrome-border)">LR 1104.03.08</span>
+  <span class="appbar-doc-id" style="font:400 13px/18px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3);border-left:1px solid var(--r-chrome-border)">LR 1104.03.08</span>
   <span id="online-status" style="font:400 12px/16px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3)">Offline</span>
   <!-- Mode Toggle -->
   <div class="mode-toggle" id="mode-toggle">
@@ -733,6 +759,15 @@
       onclick="setMode('classic')" title="Geringe Kosten · Schnell · KI-Antwort">Klassisch</button>
     <button class="mode-toggle__btn" id="mode-btn-agent"
       onclick="setMode('agent')" title="Höhere Kosten · Langsamer · Mehrschrittiger KI-Assistent">Assistent</button>
+  </div>
+  <!-- Backend für "Assistent" (nur in diesem Modus sichtbar) -->
+  <div class="mode-toggle" id="backend-toggle" style="display:none">
+    <button class="mode-toggle__btn mode-toggle__btn--active" id="be-auto"
+      onclick="setBackend('')" title="Folgt der Server-Einstellung (LLM_PROVIDER)">Auto</button>
+    <button class="mode-toggle__btn" id="be-local"
+      onclick="setBackend('local')" title="Lokales Modell – offline, deterministisch">Lokal</button>
+    <button class="mode-toggle__btn" id="be-anthropic"
+      onclick="setBackend('anthropic')" title="Claude – beste Qualität, benötigt Internet + API-Key">Claude</button>
   </div>
 </header>
 
@@ -1233,7 +1268,21 @@ function setMode(m) {
   document.getElementById('mode-btn-classic').classList.toggle('mode-toggle__btn--active', m === 'classic');
   document.getElementById('mode-btn-agent').classList.toggle('mode-toggle__btn--active', m === 'agent');
   document.getElementById('mode-btn-rule').classList.toggle('mode-toggle__btn--active', m === 'rule');
+  // Backend-Umschalter nur im Assistent-Modus zeigen
+  document.getElementById('backend-toggle').style.display = (m === 'agent') ? '' : 'none';
 }
+
+// Backend für den Assistenten (Lokal / Claude / Auto) — an /ask_agent mitgesendet
+const BACKEND_KEY = 'ki-agent-backend';
+let _agentBackend = localStorage.getItem(BACKEND_KEY) || '';
+function setBackend(b) {
+  _agentBackend = b;
+  localStorage.setItem(BACKEND_KEY, b);
+  document.getElementById('be-auto').classList.toggle('mode-toggle__btn--active', b === '');
+  document.getElementById('be-local').classList.toggle('mode-toggle__btn--active', b === 'local');
+  document.getElementById('be-anthropic').classList.toggle('mode-toggle__btn--active', b === 'anthropic');
+}
+setBackend(_agentBackend);
 setMode(_mode);
 
 function escalateQuery(question, targetMode) {
@@ -1309,7 +1358,7 @@ async function _sendAgent(q, loadDiv, history, conversation, mode) {
     const resp = await fetch(API + '/ask_agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q, context: _getContext(), conversation, mode: mode || '' }),
+      body: JSON.stringify({ question: q, context: _getContext(), conversation, mode: mode || '', agent_backend: _agentBackend }),
     });
     const data = await resp.json();
 
