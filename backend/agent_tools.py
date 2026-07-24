@@ -387,6 +387,48 @@ def lookup_table(filename: str, row_value: str, col_value: str = "") -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Zusammenstellung: deterministische Bauteil-Zählung aus data/compositions.json
+# (die Symbol-Grafiken wurden per OCR in Segmentlängen aufgelöst — siehe
+#  preprocessing/ocr_compositions.py). Erstes Segment = Anlenkstück, letztes =
+#  Kopf; die mittleren sind die Zwischenstücke.
+# ---------------------------------------------------------------------------
+_COMPOSITIONS: dict | None = None
+_COMPOSITIONS_PATH = _ROOT / "data" / "compositions.json"
+
+
+def _load_compositions() -> dict:
+    global _COMPOSITIONS
+    if _COMPOSITIONS is None:
+        try:
+            _COMPOSITIONS = json.loads(_COMPOSITIONS_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            _COMPOSITIONS = {"pages": {}}
+    return _COMPOSITIONS
+
+
+def composition_count(boom: str, length_m: int, segment_m: int) -> dict:
+    """Zählt Zwischenstücke der Länge segment_m in der Auslegerzusammenstellung
+    für Auslegerlänge length_m (Anlenkstück/Kopf ausgenommen)."""
+    data = _load_compositions()
+    hit = next((({**p, "filename": fn})
+                for fn, p in data.get("pages", {}).items() if p.get("boom") == boom), None)
+    if hit is None:
+        return {"error": f"Keine Zusammenstellungsdaten für '{boom}'."}
+    rows = hit.get("rows", {})
+    row = rows.get(str(length_m))
+    if row is None:
+        return {"error": "length_not_found", "title": hit["title"], "filename": hit["filename"],
+                "available_lengths": sorted(int(k) for k in rows)}
+    middle = row[1:-1]                       # ohne Anlenkstück (erstes) und Kopf (letztes)
+    return {
+        "boom": boom, "length_m": length_m, "segment_m": segment_m,
+        "count": sum(1 for x in middle if x == segment_m),
+        "zwischenstuecke": middle,
+        "title": hit["title"], "filename": hit["filename"],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Tool-Schemas für Claude tool_use API
 # ---------------------------------------------------------------------------
 

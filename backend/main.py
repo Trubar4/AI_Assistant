@@ -189,6 +189,7 @@ class AgentRequest(BaseModel):
     context: str = ""
     conversation: list[dict] = []   # History für Clarification-Runden
     mode: str = ""                  # "rule" → regelbasierter Agent; leer → globaler Default
+    agent_backend: str = ""         # "anthropic" | "local" | leer → AGENT_BACKEND-Env/auto
 
 
 class AgentSource(BaseModel):
@@ -376,21 +377,29 @@ async def ask_agent(req: AgentRequest) -> AgentResponse:
             context=req.context.strip(),
             conversation=req.conversation or [],
         )
-    elif LLM_PROVIDER == "local":
-        # Modus 3 lokal: deterministische Pipeline + max. 2 Modell-Calls
-        # (Hybrid mit Eskalation) statt fragilem Tool-Loop auf qwen3:4b.
-        from backend.agent_local import run_agent_local
-        result = run_agent_local(
-            question=q,
-            context=req.context.strip(),
-            conversation=req.conversation or [],
-        )
     else:
-        result = run_agent(
-            question=q,
-            context=req.context.strip(),
-            conversation=req.conversation or [],
-        )
+        # Umschaltbar: welcher Agent bedient "Assistent"? Reihenfolge:
+        #   1. Request-Feld agent_backend (Laufzeit-Umschalter aus der UI)
+        #   2. Env AGENT_BACKEND
+        #   3. "auto" → folgt LLM_PROVIDER (local → agent_local, sonst Anthropic)
+        # So kann Modus 2 lokal laufen und Modus 3 trotzdem über Claude (bessere
+        # Qualität), wenn online + ANTHROPIC_API_KEY vorhanden.
+        backend = (req.agent_backend or os.environ.get("AGENT_BACKEND", "auto")).strip().lower()
+        if backend == "auto" or backend not in ("local", "anthropic"):
+            backend = "local" if LLM_PROVIDER == "local" else "anthropic"
+        if backend == "local":
+            from backend.agent_local import run_agent_local
+            result = run_agent_local(
+                question=q,
+                context=req.context.strip(),
+                conversation=req.conversation or [],
+            )
+        else:
+            result = run_agent(
+                question=q,
+                context=req.context.strip(),
+                conversation=req.conversation or [],
+            )
 
     return AgentResponse(
         type=result["type"],

@@ -35,7 +35,7 @@ from backend.rule_agent import (
 )
 from backend.search import search, _load_index
 from backend.agent_tools import (
-    read_page, grep_manual, bal_search, lookup_table,
+    read_page, grep_manual, bal_search, lookup_table, composition_count,
     TOOL_SCHEMAS, TOOL_FN, LOOKUP_TABLE_SCHEMA,
 )
 from backend.claude_client import (
@@ -578,6 +578,50 @@ def _run_tool_loop(question: str, context: str, candidates: list[dict],
             "oder in den Quellen nachschlagen."), srcs, rounds
 
 
+_COUNT_Q_RE = re.compile(r"\bwie\s*viele?\b|\banzahl\b|\bwieviele?\b", re.I)
+
+
+def _composition_fastpath(question: str, context: str, conf: float) -> dict | None:
+    """Deterministische Zählung aus der Auslegerzusammenstellung (OCR-Daten).
+    Trigger: "wie viele … Zwischenstücke/Segmente" + Segmentlänge + Auslegerlänge.
+    Kein Modell — Zählung aus data/compositions.json."""
+    text = f"{question} {context}"
+    if not _COUNT_Q_RE.search(question):
+        return None
+    if not re.search(r"zwischenstück|segment|bauteil", text, re.I):
+        return None
+    q_lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", question)]
+    ctx_lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", context)]
+    length = ctx_lens[0] if ctx_lens else (max(q_lens) if q_lens else None)
+    segment = next((n for n in q_lens if n != length), None)
+    if length is None or segment is None:
+        return None
+    boom = "nadelausleger" if re.search(r"nadelausleger", text, re.I) else "hauptausleger"
+    res = composition_count(boom, length, segment)
+    if "error" in res:
+        if res.get("error") == "length_not_found":
+            avail = ", ".join(f"{n} m" for n in res["available_lengths"])
+            logger.info("AgentLocal: Composition — Länge %d m nicht gelistet", length)
+            return {
+                "type": "answer",
+                "answer": (f"Für {length} m gibt es in „{res['title']}“ keine Zeile. "
+                           f"Verfügbare Auslegerlängen: {avail}."),
+                "sources": [{"filename": res["filename"], "title": res["title"]}],
+                "rounds": 0, "confidence": conf,
+            }
+        return None
+    logger.info("AgentLocal: Composition-Fast-Path %d×%d m bei %d m", res["count"], segment, length)
+    answer = (f"{res['count']} Zwischenstück(e) à {segment} m in der {length}-m-"
+              f"Zusammenstellung ({boom.capitalize()}). "
+              f"Segmente (ohne Anlenkstück/Kopf): "
+              f"{', '.join(str(x) + ' m' for x in res['zwischenstuecke'])}.")
+    return {
+        "type": "answer", "answer": answer,
+        "sources": [{"filename": res["filename"], "title": res["title"]}],
+        "rounds": 0, "confidence": conf,
+    }
+
+
 _SOURCES_LEAD = "Wahrscheinlich relevante Manual-Seiten — bitte dort nachschlagen:"
 
 
@@ -653,25 +697,17 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
 
     top_score = candidates[0].get("score", 0)
     filtered = _filter_by_score_gap(candidates)
-
-    # Phase 3: Confidence-Gate — zu schwach → kein Modell-Call
-    if top_score < LOW_SCORE_NOMODEL:
-        logger.info("AgentLocal: Score %.1f zu schwach — ohne Modell 'nicht gefunden'", top_score)
-        return {
-            "type": "answer",
-            "answer": "Dazu konnte ich im Manual keine eindeutige Seite finden. "
-                      "Bitte präzisieren Sie die Frage oder schlagen Sie in den Quellen nach.",
-            "sources": [{"filename": r["filename"], "title": r["title"]} for r in filtered[:3]],
-            "rounds": 0,
-            "confidence": round(min(top_score / 40.0, 1.0), 2),
-        }
-
     conf = round(min(top_score / 40.0, 1.0), 2)
 
-    # ── Deterministischer Tabellen-Fast-Path (immer, modusunabhängig) ─────────
-    # Der EINZIGE sichere "formulierte" Wert: wörtlich aus der Tabelle, mit Quelle
-    # — keine Halluzination. Reine Sach-Frage (bei Rückfrage die ursprüngliche)
-    # für die gezielte Tabellensuche, damit Konfig-Ballast das Ranking nicht stört.
+    # ── Deterministische Fast-Paths (score-unabhängig, keine Halluzination) ───
+    # Laufen VOR dem Confidence-Gate: sie hängen an der Frage/den Daten, nicht am
+    # Retrieval-Score. "Wie viele 12 m Zwischenstücke bei 74 m?" → compositions.json.
+    comp = _composition_fastpath(question, context, conf)
+    if comp is not None:
+        return comp
+
+    # Tabellenwert wörtlich aus der Tabelle + Quelle. Reine Sach-Frage (bei
+    # Rückfrage die ursprüngliche) für die gezielte Tabellensuche.
     content_q = next((m["content"] for m in (conversation or [])
                       if m.get("role") == "user"), question)
     pre, page = _prelookup_table(raw_query, context, candidates, search_query=content_q)
@@ -684,6 +720,18 @@ def run_agent_local(question: str, context: str = "", conversation: list[dict] |
                 srcs.append({"filename": r["filename"], "title": r["title"]})
         return {"type": "answer", "answer": answer, "sources": srcs[:3],
                 "rounds": 1, "confidence": conf}
+
+    # ── Confidence-Gate für den retrieval-basierten Pfad ──────────────────────
+    # Greift erst hier: die deterministischen Fast-Paths oben sind score-unabhängig.
+    if top_score < LOW_SCORE_NOMODEL:
+        logger.info("AgentLocal: Score %.1f zu schwach — 'nicht gefunden'", top_score)
+        return {
+            "type": "answer",
+            "answer": "Dazu konnte ich im Manual keine eindeutige Seite finden. "
+                      "Bitte präzisieren Sie die Frage oder schlagen Sie in den Quellen nach.",
+            "sources": [{"filename": r["filename"], "title": r["title"]} for r in filtered[:3]],
+            "rounds": 0, "confidence": conf,
+        }
 
     # ── Nicht-Tabellenfrage ───────────────────────────────────────────────────
     if AGENT_LOCAL_MODE == "tools":
