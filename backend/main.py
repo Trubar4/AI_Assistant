@@ -33,7 +33,7 @@ except ImportError:
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -143,6 +143,23 @@ if _manuals.exists():
 @app.get("/", include_in_schema=False)
 async def root():
     return RedirectResponse(url=f"/frontend/MaschinenAssistent.html?mode={_DEFAULT_MODE}")
+
+
+# Wartungsdaten (Maintenance-Assistent) — die beiden JSON-Dateien liegen im
+# Repo-Root und werden vom Wartungen-Tab per fetch geladen. Explizite Routen statt
+# Static-Mount, damit nur genau diese Dateien (nicht das ganze Root) erreichbar sind.
+_MAINTENANCE_FILES = {
+    "tasks": _ROOT / "maintenance_tasks.json",
+    "instructions": _ROOT / "maintenance_instructions.json",
+}
+
+
+@app.get("/maintenance/{name}.json", include_in_schema=False)
+async def maintenance_data(name: str):
+    path = _MAINTENANCE_FILES.get(name)
+    if path is None or not path.exists():
+        raise HTTPException(status_code=404, detail="Wartungsdaten nicht gefunden")
+    return FileResponse(str(path), media_type="application/json")
 
 
 @app.get("/config", include_in_schema=False)
