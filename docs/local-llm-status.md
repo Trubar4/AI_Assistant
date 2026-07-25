@@ -1,12 +1,13 @@
 # Lokales LLM & deterministischer Modus-3-Agent — Stand & Erkenntnisse
 
-Arbeitsstand des Feature-Branches `claude/local-llm-mode-2-switch-g6kw3n`. -> gemergt mit MAIN
+Aktueller Feature-Branch: `claude/ai-assistant-local-llm-v2-a70z7g`
+(Vorgänger `claude/local-llm-mode-2-switch-g6kw3n` ist mit MAIN gemergt).
 Dieses Dokument fasst **alle** Anpassungen und Erkenntnisse zusammen, damit sie
 in einer neuen Konversation sofort verfügbar sind.
 
 ---
 
-## 1. Überblick: die drei Modi
+## 1. Überblick: Modi & Backends
 
 Die UI hat **zwei** Modi mit jeweils Backend-Umschaltern:
 
@@ -49,18 +50,25 @@ Die UI hat **zwei** Modi mit jeweils Backend-Umschaltern:
 ## 2. Alle Umgebungsvariablen
 
 ```bash
-# Provider
+# Provider (globaler Default; die UI überschreibt pro Request, s. u.)
 LLM_PROVIDER=anthropic|local          # Default anthropic
 LOCAL_BASE_URL=http://localhost:11434/v1
 LOCAL_MODEL_EXPAND=qwen3:4b           # lokales Modell (Ollama-Tag)
 LOCAL_API_KEY=ollama                  # Dummy, Ollama ignoriert ihn
 
-# Modus 3: welcher Agent bedient "Assistent"
-AGENT_BACKEND=auto|anthropic|local    # Default auto (folgt LLM_PROVIDER)
-                                      # auch per Request-Feld agent_backend (UI-Umschalter)
+# Lokales Backend (QWEN + Regelbasiert-Server) freischalten. Default: nur wenn
+# LLM_PROVIDER=local. Bei false (z. B. Render): UI graut QWEN aus, /ask_agent und
+# /ask stufen QWEN-Anfragen sicher herunter (kein 503 gegen localhost).
+ENABLE_LOCAL_BACKEND=true|false       # Default: true, wenn LLM_PROVIDER=local, sonst false
 
-# Modus 3 lokal: Verhalten bei NICHT-deterministischen Fragen
-AGENT_LOCAL_MODE=sources|tools|pipeline   # Default sources
+# Assistent-Backend (Default, wenn die UI nichts mitschickt). Werte:
+#   rule (Regelbasiert, kein LLM) | qwen (Retrieval-Assist) | anthropic (Claude)
+# Pro Request via Feld agent_backend (UI-Umschalter). Leer/"auto"/"local" → rule.
+AGENT_BACKEND=rule|qwen|anthropic
+# Klassisch-Backend kommt pro Request via /ask-Feld "backend" (qwen|anthropic).
+
+# Modus-3-lokal Verhalten bei NICHT-deterministischen Fragen (experimentell):
+AGENT_LOCAL_MODE=sources|tools|pipeline   # Default sources (0 Modell-Calls)
 AGENT_LOCAL_MIN_SCORE=8.0             # darunter: "nicht gefunden" ohne Modell
 AGENT_LOCAL_ESCALATE_SCORE=25.0       # (nur pipeline)
 AGENT_LOCAL_MAX_CONTEXT=3500          # (nur pipeline)
@@ -69,7 +77,9 @@ AGENT_LOCAL_MAX_TOOL_ROUNDS=4         # (nur tools)
 AGENT_LOCAL_READ_CHARS=3000           # (nur tools) read_page-Obergrenze
 
 # Retrieval
-SEARCH_DOCTYPE_BOOST=1.25             # Referenz-/Konfig-Seiten anheben (1.0 = aus)
+SEARCH_DOCTYPE_BOOST=1.25             # Referenz-/Konfig-Seiten anheben (1.0 = aus);
+                                      # wirkt FRAGESENSITIV (nur bei Wort-Überlappung)
+SEMANTIC_SEARCH=off                   # semantische Suche hart abschalten (nur BM25+TF-IDF)
 
 # OCR-Preprocessing (nur wenn Composition-Daten neu erzeugt werden)
 TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
@@ -102,9 +112,13 @@ nicht Prosa erfinden. Das kleine Modell (qwen3:4b) formuliert unzuverlässig
   `sources`).
 
 ### Ablauf `run_agent_local()`
-1. **Clarification** (Regeln aus Modus 1) — z. B. „Welche Auslegerlänge?"
-2. **Retrieval** — Fusion aus roher + normalisierter (+ Kontext-)Query.
-3. **Deterministische Fast-Paths** (score-unabhängig, kein Modell):
+1. **Clarification** (`rule_agent._needs_clarification`) — **dimensionsgenau**:
+   Wert-/Tabellenfragen brauchen Länge UND Einscherung; fehlt eine (auch bei aktivem
+   Kontext), wird gezielt danach gefragt („Bitte noch angeben: Einscherung …").
+2. **Retrieval** — Fusion aus roher + normalisierter (+ **fragerelevanter** Kontext-)Query;
+   bei `assist="qwen"` zusätzlich qwen-HyDE + qwen-Rerank (nur Retrieval).
+3. **Deterministische Fast-Paths** (`fastpaths.run_fastpaths`, geteilt mit Claude;
+   score-unabhängig, kein Modell):
    - Composition-**Zählung** („wie viele 12 m Zwischenstücke bei 74 m")
    - Composition-**Anordnung** („Reihenfolge/Aufbau der Zwischenstücke")
    - **Seilführungs-Position** (S/N-Marker)
@@ -215,10 +229,16 @@ Das Skript prüft die Engine **vorab** und bricht sonst mit klarer Anleitung ab.
   HyDE-Passage **und** normalisierte Originalfrage, Ergebnisse gemergt (Union
   nach filename, höherer Score gewinnt). Verhindert, dass driftende HyDE-Passagen
   die richtige Seite ganz verdrängen.
-- **Dokumenttyp-Prior** (`SEARCH_DOCTYPE_BOOST`, Default 1.25): Referenz-/Konfig-
-  Seiten (Titel enthält zusammenstellung/übersicht/wahl/traglasttabelle/
-  einscherplan/längen/gewichte/auslegerkonfiguration) werden moderat angehoben —
-  generisch über den Seitentyp, nur auf bereits gefundene Kandidaten.
+- **Dokumenttyp-Prior FRAGESENSITIV** (`SEARCH_DOCTYPE_BOOST`, Default 1.25;
+  `_page_matches_query_doctype`): Referenz-/Konfig-Seiten (Titel enthält
+  zusammenstellung/übersicht/wahl/traglasttabelle/einscherplan/längen/gewichte/
+  auslegerkonfiguration) werden nur angehoben, wenn die Frage ein **nicht-generisches**
+  Sachwort mit dem Titel teilt (generische wie „bildschirmseite"/„…ausleger" zählen
+  nicht). So dominiert „Auslegerkonfiguration" nicht mehr fremde Fragen (Lastort-Fall).
+- **Per-Frage-Relevanz der Konfig** (`fastpaths.relevant_context`): nur die zur Frage
+  passenden Konfig-Felder gehen ins Retrieval (Suche/HyDE/Rerank); die Fast-Paths
+  lesen weiter den vollen Kontext. Verhindert, dass irrelevanter Kontext die richtige
+  Seite verdrängt.
 - **Composition-Index-Augmentation**: Bauteilbegriffe der Zusammenstellungsseiten
   („Zwischenstück", Segmentlängen, „Seilführung") werden in den **BM25-Korpus**
   gespeist (nicht in den Anzeigetext) → grafische Seiten werden per Freitext
@@ -244,8 +264,17 @@ Das Skript prüft die Engine **vorab** und bricht sonst mit klarer Anleitung ab.
   (Mode-Umschalter in eigene Zeile), damit nichts rechts abgeschnitten wird.
 - **Meldungen-Tab**: `errorcode-row` bricht auf Mobile um (Nachschlagen-Button
   war abgeschnitten).
-- **Backend-Umschalter**: im Assistent-Modus erscheint Auto/Lokal/Claude; die
-  Wahl geht als `agent_backend` an `/ask_agent` (persistent in localStorage).
+- **Backend-Umschalter** (persistent in localStorage):
+  - Assistent-Modus: **Regelbasiert · QWEN · Claude** → als `agent_backend` an `/ask_agent`.
+  - Klassisch-Modus: **QWEN · Claude** → als `backend` an `/ask`.
+  - `/config` meldet `local_backend_enabled`; ist es false (Render), werden die
+    QWEN-Buttons ausgegraut und die Auswahl umgelenkt (Assistent→Regelbasiert,
+    Klassisch→Claude). Alte gespeicherte Werte migrieren (`rule←local/auto`).
+- **Konfig-Checkboxen**: die von `/context/parse` gelieferten Felder sind an-/abhakbare
+  Chips; nur angehakte fließen in den Kontext. Der volle Feld-Satz inkl. abgehakter
+  Elemente liegt in `localStorage` (`ma_context_fields`) → An-/Abhaken ohne Re-Analyse.
+- **Quellen mit Breadcrumb + Kurz-Snippet** (deterministisch aus `main._enrich_sources`):
+  gleichnamige Seiten sind an ihrem Pfad unterscheidbar.
 
 ---
 
@@ -333,67 +362,43 @@ Nicht-Fast-Path-Fragen fallen sauber in den Loop.
 
 ## 14. Erledigt / geplant
 
-**Erledigt:**
-- ✅ **Regelbasierter Konfig-Parser für LOKAL** (`claude_client._rule_parse_context`):
-  bei `LLM_PROVIDER=local` läuft `parse_context` rein regelbasiert — kein Anthropic
-  UND kein lokales LLM. Normalisierung nach `vocab_rules.json` (74m→„74 m",
-  6-fach→„6x", …), generische Klassifikation, atomare Zerlegung trennerloser Eingaben.
-- ✅ **Konfig-Checkboxen** (Frontend): geparste Felder sind an-/abhakbare Chips; nur
-  angehakte fließen in den Kontext (`acceptContext` filtert nach `enabled`). Der
-  vollständige Feld-Satz inkl. abgehakter Elemente wird in `localStorage`
-  (`ma_context_fields`) gehalten → An-/Abhaken **ohne** Re-Analyse, übersteht Reload.
-
-**Erledigt (Forts.):**
-- ✅ **Modus 1 verschmolzen**: eigener UI-Modus entfernt; „Assistent" hat jetzt nur
-  noch die Backends **Lokal / Claude** (kein „Auto"), Standard Lokal (siehe §1).
-- ✅ **Quellen mit Breadcrumb + Kurz-Snippet** (`main._enrich_sources`, deterministisch,
-  KEIN LLM): gleichnamige Seiten (z. B. zwei „Montagefunktionen ausschalten") sind an
-  ihrem Pfad unterscheidbar. Frontend zeigt Breadcrumb über dem Titel.
-- ✅ **Bis zu 5 Quellen** im lokalen Quellen-Modus (statt 3, oberhalb des Score-Gaps),
-  damit die passende Seite nicht knapp aus den Top-3 fällt (z. B. Lastort →
-  „Bildschirmseite Windenkonfiguration" ist jetzt enthalten).
-- ✅ **Clarification-Präzision**: Trigger „last" entfernt (matchte als Substring
-  „Lastort"/„Ballast" → falsche Rückfragen).
-- ✅ **3-Backend-Struktur** (siehe §1): Assistent = Regelbasiert / QWEN / Claude,
-  Klassisch = QWEN / Claude. QWEN hilft nur beim Retrieval (HyDE+Rerank), formuliert
-  nie. Provider-Override in `expand_query`/`rerank`; `/ask` bekam `backend`-Feld;
-  `run_agent_local(assist="qwen")`. Render graut QWEN aus (Gating).
-
-**Erledigt (Forts.):**
-- ✅ **Per-Frage-Relevanz der Konfig** (`fastpaths.relevant_context`, deterministisch):
-  nur die zur Frage passenden Konfig-Felder gehen ins **Retrieval** (Suche/HyDE/Rerank
-  in `/ask` und `agent_local`); die **Fast-Paths lesen weiter den vollen Kontext**.
-  Regel: Feld bleibt bei topischer Wort-Überlappung ODER wenn die Frage nach Wert/Menge
-  fragt und das Feld numerisch ist. Beispiel: „Auf welcher Bildschirmseite konfiguriere
-  ich den Lastort?" — „Hauptausleger 74 m" wird nicht mehr injiziert → „Bildschirmseite
-  Windenkonfiguration" ist wieder unter den Treffern (vorher durch den Kontext verdrängt).
-
-**Erledigt (Forts.):**
-- ✅ **Dokumenttyp-Boost fragesensitiv** (`search._page_matches_query_doctype`): eine
-  Referenzseite wird nur noch angehoben, wenn die Frage ein **nicht-generisches**
-  Sachwort mit dem Titel teilt (generische wie „bildschirmseite"/„…ausleger" zählen
-  nicht). Effekt: „…Lastort konfigurieren?" → „Bildschirmseite Windenkonfiguration"
-  ist jetzt **#1** (statt #5); „Wahl des richtigen Lasthakens" wird bei einer
-  Lasthaken-Frage weiterhin angehoben (Tabellen-Fast-Path 1900 kg bleibt).
-- ✅ **Clarification-Robustheit**: konkrete Konfig-Werte werden vor dem Satisfier-Check
-  als kanonische Tokens angehängt, damit „74 m?" (Satzende), „6x", „124 t" die
-  Satisfier („ m "/„fach"/…) erfüllen — keine überflüssige Rückfrage mehr, wenn die
-  Angabe schon da ist. Echte Rückfrage (ohne Länge) bleibt.
+**Erledigt (chronologisch, neueste zuerst):**
 - ✅ **Dimensionsgenaue Rückfrage** (`rule_agent`): Wert-/Tabellenfragen
-  (Traglast/Mindestgewicht/Seillänge) brauchen **Länge UND Einscherung**. Fehlt eine —
+  (Traglast/Mindestgewicht/Seillänge/…) brauchen **Länge UND Einscherung**. Fehlt eine —
   auch wenn die andere per Kontext da ist — wird **gezielt** danach gefragt
-  („Bitte noch angeben: Einscherung …"). Vorher erfüllte die ODER-Logik die Regel
-  schon mit der Länge → nie eine Rückfrage bei aktivem (unvollständigem) Kontext.
-  Nur eindeutig wertbezogene Trigger (keine bloßen Substantive wie „Lasthaken" →
-  keine Fehl-Rückfrage bei Montagefragen).
+  („Bitte noch angeben: Einscherung …"). Behebt „nie eine Gegenfrage bei aktivem
+  Kontext" (die ODER-Logik war schon mit der Länge erfüllt). Nur eindeutig wertbezogene
+  Trigger → keine Fehl-Rückfrage bei Montagefragen. Zusätzlich Satisfier-Robustheit
+  (konkrete Konfig-Werte als kanonische Tokens: „74 m?"/„6x"/„124 t").
 - ✅ **Tabellen-Fast-Path aus dem Kontext**: `_VALUE_QUESTION_RE` ohne führende
-  Wortgrenze, damit „gewicht" in Komposita (Mindestgewicht/…) matcht. Dadurch zieht
-  „Welches Lasthaken-Mindestgewicht?" mit Kontext „75 m / 5x" den exakten Wert
-  (**1900 kg**) — vorher nur, wenn die Werte in der Frage standen.
+  Wortgrenze → „gewicht" matcht in Komposita (Mindestgewicht/…). „Welches Lasthaken-
+  Mindestgewicht?" mit Kontext „75 m / 5x" → **1900 kg** (vorher nur mit Werten in der Frage).
+- ✅ **Dokumenttyp-Boost fragesensitiv** (`search._page_matches_query_doctype`): Referenz-
+  seite wird nur angehoben, wenn die Frage ein nicht-generisches Sachwort mit dem Titel
+  teilt. „…Lastort konfigurieren?" → „Bildschirmseite Windenkonfiguration" ist **#1**;
+  „Wahl des richtigen Lasthakens" bleibt bei Lasthaken-Fragen geboostet.
+- ✅ **Per-Frage-Relevanz der Konfig** (`fastpaths.relevant_context`): nur passende
+  Konfig-Felder ins Retrieval (Suche/HyDE/Rerank); Fast-Paths lesen den vollen Kontext.
+- ✅ **3-Backend-Struktur** (siehe §1): Assistent = Regelbasiert/QWEN/Claude, Klassisch =
+  QWEN/Claude. QWEN nur fürs Retrieval (HyDE+Rerank), nie fürs Formulieren. Provider-
+  Override in `expand_query`/`rerank`; `/ask`-Feld `backend`; `run_agent_local(assist="qwen")`.
+  Render graut QWEN aus (`ENABLE_LOCAL_BACKEND`).
+- ✅ **Quellen mit Breadcrumb + Kurz-Snippet** (`main._enrich_sources`, kein LLM) und
+  **bis zu 5 Quellen** im lokalen Quellen-Modus (oberhalb des Score-Gaps).
+- ✅ **Clarification-Präzision**: Trigger „last" entfernt (matchte „Lastort"/„Ballast").
+- ✅ **Leichte deutsche Morphologie** im Tokenizer + **scikit-learn** (TF-IDF-Fallback
+  auf Render) — Einzahl/Mehrzahl konvergieren (siehe §7).
+- ✅ **Modus 1 verschmolzen** in „Assistent → Regelbasiert" (eigener UI-Modus entfernt).
+- ✅ **Regelbasierter Konfig-Parser für LOKAL** (`_rule_parse_context`): bei
+  `LLM_PROVIDER=local` parst `parse_context` rein regelbasiert (kein Anthropic, kein LLM).
+- ✅ **Konfig-Checkboxen** (Frontend, ohne Re-Analyse, siehe §8).
+- ✅ **Render-Fix**: Dockerfile-Build repariert (Modell-Vorladung nur wenn ST installiert);
+  lokales Backend sicher deaktivierbar (`ENABLE_LOCAL_BACKEND`).
+- ✅ **Geteilte Fast-Paths** für lokal UND Claude (siehe §13).
 
 **Geplant / offen:**
 - **Semantik auf Render**: siehe §11 — 768-dim-Modell passt nicht in 512 MB Free;
   Optionen: größere Instanz, ONNX-Query-Encoder oder kleines MiniLM (384-dim,
   Embeddings neu erzeugen).
-- **Per-Frage-Relevanz der Konfig**: nur die zur Frage passenden Konfig-Werte in
-  Suche/HyDE injizieren (statt immer den ganzen Kontext).
+- **Nadelausleger-Composition**: mehrere Varianten + 2 abweichende Tabellenstrukturen
+  (siehe §11) — Disambiguierung über die Konfiguration + Parser-Erweiterung.
