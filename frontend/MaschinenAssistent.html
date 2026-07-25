@@ -1457,6 +1457,7 @@ function switchView(id) {
   });
   const composer = document.getElementById('composer-wrap');
   composer.style.display = id === 'chat' ? '' : 'none';
+  updateToolbarVisibility();
   if (id === 'maintenance') maintEnsureLoaded();
 }
 
@@ -1474,6 +1475,7 @@ function openManual(url, title) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('is-active'));
   document.getElementById('view-manual').classList.add('is-active');
   document.getElementById('composer-wrap').style.display = 'none';
+  updateToolbarVisibility();
 }
 
 function closeManual() {
@@ -1724,9 +1726,18 @@ function setMode(m) {
   localStorage.setItem(MODE_KEY, m);
   document.getElementById('mode-btn-classic').classList.toggle('mode-toggle__btn--active', m === 'classic');
   document.getElementById('mode-btn-agent').classList.toggle('mode-toggle__btn--active', m === 'agent');
-  // Backend-Umschalter je nach Modus zeigen
-  document.getElementById('backend-toggle').style.display = (m === 'agent') ? '' : 'none';
-  document.getElementById('classic-backend-toggle').style.display = (m === 'classic') ? '' : 'none';
+  updateToolbarVisibility();
+}
+
+// Modus- und Backend-Umschalter gehören logisch in den Assistent-Tab (chat) und
+// werden nur dort gezeigt. Der jeweils passende Backend-Umschalter richtet sich
+// zusätzlich nach dem aktiven Modus (Klassisch → QWEN/Claude, Assistent → Regelbasiert/QWEN/Claude).
+function updateToolbarVisibility() {
+  const active = document.querySelector('.view.is-active');
+  const isChat = active ? active.id === 'view-chat' : true;
+  document.getElementById('mode-toggle').style.display = isChat ? '' : 'none';
+  document.getElementById('backend-toggle').style.display = (isChat && _mode === 'agent') ? '' : 'none';
+  document.getElementById('classic-backend-toggle').style.display = (isChat && _mode === 'classic') ? '' : 'none';
 }
 
 // Assistent-Backend: "rule" (Regelbasiert, kein LLM), "qwen" (lokales Modell nur
