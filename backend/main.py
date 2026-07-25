@@ -42,7 +42,8 @@ load_dotenv()
 from backend.search import search, reset_index, extract_facets, count_hits
 from backend.claude_client import ask, expand_query, rerank, parse_context, VerifiedAnswer, log_mode2_provider, LLM_PROVIDER
 from backend.agent import run_agent
-from backend.rule_agent import run_rule_agent, _normalize_query
+from backend.rule_agent import _normalize_query
+from backend.fastpaths import relevant_context
 
 # ---------------------------------------------------------------------------
 # Error code database (optional — loaded once at startup)
@@ -103,6 +104,16 @@ _agent_mode_env = os.environ.get("AGENT_MODE", "").lower()
 _rule_mode = _agent_mode_env == "rule" or os.environ.get("RULE_AGENT", "").lower() in ("1", "true")
 _DEFAULT_MODE = "rule" if _rule_mode else ("agent" if _agent_mode_env in ("1", "true") else "classic")
 
+# Lokales Modus-3-Backend (der "Lokal"-Umschalter der UI) ist nur aktiv, wenn
+# ausdrücklich gewünscht. Default: nur wenn der Provider ohnehin lokal läuft.
+# Auf einer Anthropic-Deployment-Instanz (z. B. Render) ist damit ALLES Lokale
+# sicher aus — ein versehentlicher "Lokal"-Klick landet nicht auf localhost:11434,
+# und die UI blendet den Button aus (siehe /config → local_backend_enabled).
+_local_backend_enabled = os.environ.get(
+    "ENABLE_LOCAL_BACKEND",
+    "true" if LLM_PROVIDER == "local" else "false",
+).strip().lower() in ("1", "true", "yes", "on")
+
 app = FastAPI(
     title="Maschinen-Assistent API",
     version="0.1.0",
@@ -136,7 +147,10 @@ async def root():
 
 @app.get("/config", include_in_schema=False)
 async def config() -> dict:
-    return {"default_mode": _DEFAULT_MODE}
+    return {
+        "default_mode": _DEFAULT_MODE,
+        "local_backend_enabled": _local_backend_enabled,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +160,7 @@ class AskRequest(BaseModel):
     question: str
     top_n: int = 5
     context: str = ""   # persistenter Maschinen-/Konfigurations-Kontext
+    backend: str = ""   # "qwen" | "anthropic" | "" → HyDE/Rerank-Anbieter (Klassisch)
 
 
 class SourceLink(BaseModel):
@@ -195,6 +210,8 @@ class AgentRequest(BaseModel):
 class AgentSource(BaseModel):
     filename: str
     title: str
+    breadcrumb: list[str] = []   # deterministisch aus dem Index (unterscheidet gleichnamige Seiten)
+    snippet: str = ""            # kurzer Kontext-Auszug (kein LLM)
 
 
 class AgentResponse(BaseModel):
@@ -280,6 +297,38 @@ def _merge_candidates(*lists: list[dict], top_n: int = 50) -> list[dict]:
     return merged[:top_n]
 
 
+def _enrich_sources(sources: list[dict]) -> list[dict]:
+    """Reichert Agent-Quellen deterministisch (KEIN LLM) mit Breadcrumb + kurzem
+    Snippet aus dem Suchindex an. So sind gleichnamige Seiten (z. B. zwei
+    verschiedene „Montagefunktionen ausschalten") an ihrem Pfad unterscheidbar."""
+    if not sources:
+        return sources
+    try:
+        from backend.search import _load_index
+        idx = {e["filename"]: e for e in (_load_index() or [])}
+    except Exception:
+        return sources
+    out = []
+    for s in sources:
+        e = idx.get(s.get("filename", ""))
+        enriched = dict(s)
+        if e:
+            if not enriched.get("breadcrumb"):
+                # letzte bis zu 3 Ebenen (ohne den Blatt-Titel selbst, wenn identisch)
+                bc = list(e.get("breadcrumb") or [])
+                if bc and bc[-1] == e.get("title"):
+                    bc = bc[:-1]
+                enriched["breadcrumb"] = bc[-3:]
+            if not enriched.get("snippet"):
+                text = (e.get("text") or "").strip()
+                if not text and e.get("steps"):
+                    text = e["steps"][0]
+                if text:
+                    enriched["snippet"] = text[:140].rsplit(" ", 1)[0] + ("…" if len(text) > 140 else "")
+        out.append(enriched)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -291,10 +340,24 @@ async def ask_question(req: AskRequest) -> AskResponse:
 
     ctx = req.context.strip()
 
+    # Anbieter für HyDE/Rerank (Klassisch): "qwen"→lokal, "anthropic"→Claude,
+    # leer→globaler LLM_PROVIDER. Ohne lokales Backend (Render) wird QWEN sicher
+    # auf Anthropic heruntergestuft (kein Ollama erreichbar).
+    _backend = (req.backend or "").strip().lower()
+    provider = "local" if _backend == "qwen" else ("anthropic" if _backend == "anthropic" else None)
+    if provider == "local" and not _local_backend_enabled:
+        logger.info("Klassisch: QWEN angefragt, lokales Backend aus → Anthropic")
+        provider = "anthropic"
+
+    # Per-Frage-Relevanz: nur die zur Frage passenden Konfig-Felder ins Retrieval
+    # (HyDE/Rerank) geben. Verhindert, dass irrelevanter Kontext (z. B. „Hauptausleger
+    # 74 m" bei einer Bildschirm-Navigationsfrage) die richtige Seite verdrängt.
+    rel_ctx = relevant_context(q, ctx)
+
     # HyDE: BM25-Titelscan nur gegen die echte Frage — Kontext-Tokens würden
-    # die Titeltreffer verzerren. Kontext fließt aber in den HyDE-Prompt ein,
-    # damit die hypothetische Passage konfigurationsrelevant ist.
-    expanded_q = expand_query(q, context=ctx)
+    # die Titeltreffer verzerren. Der (relevante) Kontext fließt aber in den
+    # HyDE-Prompt ein, damit die hypothetische Passage konfigurationsrelevant ist.
+    expanded_q = expand_query(q, context=rel_ctx, provider=provider)
 
     # Multi-Query-Fusion (Trick aus Modus 1): Die Suche darf sich nicht allein
     # auf die HyDE-Passage verlassen — driftet die Hypothese thematisch ab, fällt
@@ -329,8 +392,8 @@ async def ask_question(req: AskRequest) -> AskResponse:
     facets = extract_facets(candidates, top_k=10)
     # Reranker bekommt Kontext + Frage explizit, damit konfigurationsrelevante
     # Seiten (z. B. "74m Hauptausleger") höher bewertet werden.
-    rerank_q = f"{ctx}\n\n{q}" if ctx else q
-    results = rerank(rerank_q, candidates, top_n=req.top_n)
+    rerank_q = f"{rel_ctx}\n\n{q}" if rel_ctx else q
+    results = rerank(rerank_q, candidates, top_n=req.top_n, provider=provider)
     va: VerifiedAnswer = ask(q, results)                         # original query für Anzeige
     return AskResponse(
         answer=va.answer,
@@ -369,43 +432,46 @@ async def ask_agent(req: AgentRequest) -> AgentResponse:
     if not q:
         raise HTTPException(status_code=422, detail="question must not be empty")
 
-    use_rule = (req.mode == "rule") or (_rule_mode and req.mode != "agent")
+    # Assistent-Backend bestimmen. Drei Optionen:
+    #   rule      — deterministisch, KEIN LLM (Fast-Paths + Quellen)
+    #   qwen      — deterministische Antwort, aber qwen-Assist im Retrieval
+    #               (HyDE + Rerank); braucht ein lokales Backend (Ollama)
+    #   anthropic — agentischer Claude-Loop (formuliert)
+    # Reihenfolge: Request-Feld agent_backend, sonst Env AGENT_BACKEND. Legacy:
+    # mode=rule / "local" / "auto" / leer → rule (deterministischer Default,
+    # läuft überall, auch auf Render ohne API-Key).
+    backend = (req.agent_backend or os.environ.get("AGENT_BACKEND", "")).strip().lower()
+    if req.mode == "rule" or backend in ("", "auto", "local"):
+        backend = "rule"
+    if backend not in ("rule", "qwen", "anthropic"):
+        backend = "rule"
+    # QWEN braucht ein lokales Backend (Ollama). Fehlt es (z. B. Render), sicher
+    # auf Regelbasiert herunterstufen — kein 503 gegen localhost.
+    if backend == "qwen" and not _local_backend_enabled:
+        logger.info("Assistent: QWEN angefragt, lokales Backend aus → Regelbasiert")
+        backend = "rule"
 
-    if use_rule:
-        result = run_rule_agent(
+    if backend == "anthropic":
+        result = run_agent(
             question=q,
             context=req.context.strip(),
             conversation=req.conversation or [],
         )
     else:
-        # Umschaltbar: welcher Agent bedient "Assistent"? Reihenfolge:
-        #   1. Request-Feld agent_backend (Laufzeit-Umschalter aus der UI)
-        #   2. Env AGENT_BACKEND
-        #   3. "auto" → folgt LLM_PROVIDER (local → agent_local, sonst Anthropic)
-        # So kann Modus 2 lokal laufen und Modus 3 trotzdem über Claude (bessere
-        # Qualität), wenn online + ANTHROPIC_API_KEY vorhanden.
-        backend = (req.agent_backend or os.environ.get("AGENT_BACKEND", "auto")).strip().lower()
-        if backend == "auto" or backend not in ("local", "anthropic"):
-            backend = "local" if LLM_PROVIDER == "local" else "anthropic"
-        if backend == "local":
-            from backend.agent_local import run_agent_local
-            result = run_agent_local(
-                question=q,
-                context=req.context.strip(),
-                conversation=req.conversation or [],
-            )
-        else:
-            result = run_agent(
-                question=q,
-                context=req.context.strip(),
-                conversation=req.conversation or [],
-            )
+        from backend.agent_local import run_agent_local
+        result = run_agent_local(
+            question=q,
+            context=req.context.strip(),
+            conversation=req.conversation or [],
+            mode="sources",
+            assist=("qwen" if backend == "qwen" else None),
+        )
 
     return AgentResponse(
         type=result["type"],
         answer=result.get("answer", ""),
         question=result.get("question", ""),
-        sources=[AgentSource(**s) for s in result.get("sources", [])],
+        sources=[AgentSource(**s) for s in _enrich_sources(result.get("sources", []))],
         rounds=result.get("rounds", 0),
         conversation=result.get("messages", []),
         confidence=result.get("confidence", 1.0),

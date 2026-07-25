@@ -53,6 +53,25 @@ _STOPWORDS_DE = {
 
 _UNIT_RE = re.compile(r"^(\d+)(m|ft|t|kg|h|hz|kw|kn|bar|mm|cm|rpm)$")
 
+# Sehr leichte deutsche Morphologie (generisch, kein Themen-Hardcoding).
+# Additiv: der Stamm wird ZUSÄTZLICH zum Originaltoken emittiert (wie bei
+# Einheiten/Bindestrich), nie als Ersatz — exakte Treffer bleiben also stark
+# (Titel×3), der Stamm liefert nur die Flexions-/Plural-Brücke.
+_UMLAUT_MAP = str.maketrans({"ä": "a", "ö": "o", "ü": "u", "ß": "ss"})
+# Bewusst konservativ: nur -en/-er/-e (kein -n/-s), damit Einzahl↔Mehrzahl
+# konvergiert (einscherplan ↔ einscherpläne, traglast ↔ traglasten) OHNE
+# Singularformen auf -n/-s zu zerlegen. Immer nur EINE Endung, Stamm ≥ 4 Zeichen.
+_DE_STEM_SUFFIXES = ("en", "er", "e")
+
+
+def _stem_de(token: str) -> str:
+    """Faltet Umlaute und streift höchstens eine häufige Endung (-en/-er/-e) ab."""
+    s = token.translate(_UMLAUT_MAP)
+    for suf in _DE_STEM_SUFFIXES:
+        if s.endswith(suf) and len(s) - len(suf) >= 4:
+            return s[: -len(suf)]
+    return s
+
 
 def _tokenize(text: str) -> list[str]:
     """Tokenisiert Text für BM25-Index und Queries.
@@ -62,20 +81,32 @@ def _tokenize(text: str) -> list[str]:
       damit "74m" (Query) und "74 m" (Manual-Text) einander matchen.
     - Bindestriche innerhalb alphanumerischer Cluster bleiben erhalten
       ("6-fach", "Hauptausleger-Zwischenstück").
+    - Für rein alphabetische Tokens wird zusätzlich eine leichte deutsche
+      Stammform emittiert (Umlaut-Faltung + -en/-er/-e), damit Einzahl/Mehrzahl
+      und Umlaut-Varianten matchen ("Einscherplan" ↔ "Einscherpläne").
     """
     raw = re.findall(r"[a-zäöüß0-9]+(?:[-][a-zäöüß0-9]+)*", text.lower())
     result = []
+
+    def _add(tok: str) -> None:
+        result.append(tok)
+        # Stammform nur für alphabetische Tokens (keine Zahlen/Einheiten), additiv.
+        if tok.isalpha():
+            stem = _stem_de(tok)
+            if stem != tok:
+                result.append(stem)
+
     for t in raw:
         if len(t) <= 1 or t in _STOPWORDS_DE:
             continue
-        result.append(t)
+        _add(t)
         m = _UNIT_RE.match(t)
         if m:
             result.append(m.group(1))   # "74m" → auch "74" emittieren
         if "-" in t:
             # "hauptausleger-kopf" → auch "hauptauslegerkopf" emittieren,
             # damit Queries ohne Bindestrich auf bindestrich-indizierte Begriffe treffen.
-            result.append(t.replace("-", ""))
+            _add(t.replace("-", ""))
     return result
 
 
@@ -371,6 +402,41 @@ def _is_reference_page(title: str) -> bool:
     return any(w in t for w in _DOCTYPE_WORDS)
 
 
+# Zu generische Titel-/Fragewörter: taugen NICHT als Topik-Beleg für den Boost
+# (stehen in vielen Titeln, z. B. jede „Bildschirmseite …" / jeder „…ausleger").
+_DOCTYPE_GENERIC = {
+    "bildschirmseite", "hauptausleger", "nadelausleger", "ausleger",
+    "maschine", "seite", "tabelle", "übersicht", "konfiguration",
+}
+
+
+def _doctype_query_terms(query: str) -> set[str]:
+    """Sachwörter der Frage (≥4 Zeichen, keine Stopp-/Generikwörter)."""
+    return {w for w in re.findall(r"[a-zäöüß]{4,}", query.lower())
+            if w not in _STOPWORDS_DE and w not in _DOCTYPE_GENERIC}
+
+
+def _page_matches_query_doctype(title: str, q_terms: set[str]) -> bool:
+    """True, wenn (1) der Titel eine Referenz-/Tabellenseite kennzeichnet
+    (Dokumenttyp-Wort) UND (2) die Frage ein aussagekräftiges (nicht-generisches)
+    Sachwort mit dem Titel teilt. Der Boost wirkt so fragesensitiv:
+    - „Wahl des richtigen Lasthakens" wird bei einer Lasthaken-Frage angehoben
+      (gemeinsames „lasthaken"), obwohl das Dokumenttyp-Wort „wahl" nicht in der
+      Frage steht.
+    - „Bildschirmseite Auslegerkonfiguration" wird bei einer Lastort-Frage NICHT
+      angehoben (nur das generische „bildschirmseite" wäre gemeinsam)."""
+    t = title.lower()
+    if not any(w in t for w in _DOCTYPE_WORDS):
+        return False
+    title_terms = {w for w in re.findall(r"[a-zäöüß]{4,}", t)
+                   if w not in _STOPWORDS_DE and w not in _DOCTYPE_GENERIC}
+    for qt in q_terms:
+        for tt in title_terms:
+            if qt == tt or (len(qt) >= 5 and qt in tt) or (len(tt) >= 5 and tt in qt):
+                return True
+    return False
+
+
 def _rrf(rankings: list[list[tuple[str, float]]]) -> dict[str, float]:
     """Combine ranked lists via RRF. Each list is [(filename, score), ...]."""
     scores: dict[str, float] = {}
@@ -417,17 +483,20 @@ def search(
     if not rrf_scores:
         return []
 
-    # Dokumenttyp-Prior: Referenz-/Konfigurationsseiten (Zusammenstellung,
-    # Übersicht, Wahl, Traglast-/Einscherung-Tabellen …) tragen die Werte, die
-    # Nutzer suchen, stehen aber oft unter vielen gleichnamigen Verfahrensseiten.
-    # Ein moderater Boost hebt sie — GENERISCH über den Seitentyp im Titel, nicht
-    # über einzelne Themen. Wirkt nur auf bereits gefundene Kandidaten (fname ist
-    # in rrf_scores), promotet also keine völlig irrelevanten Seiten.
+    # Dokumenttyp-Prior (FRAGESENSITIV): Referenz-/Konfigurationsseiten
+    # (Zusammenstellung, Übersicht, Wahl, Traglast-/Einscherung-Tabellen …) tragen
+    # die Werte, die Nutzer suchen. Der Boost greift aber NUR, wenn die Frage auch
+    # von diesem Dokumenttyp handelt (gemeinsames Sachwort) — sonst würden z. B.
+    # „Auslegerkonfiguration"-Seiten jede Frage dominieren (Lastort-Fall). Generisch
+    # über den Seitentyp, kein Themen-Hardcoding; wirkt nur auf bereits gefundene
+    # Kandidaten.
     if _DOCTYPE_BOOST != 1.0:
-        for fname in rrf_scores:
-            entry = index_by_filename.get(fname)
-            if entry and _is_reference_page(entry.get("title", "")):
-                rrf_scores[fname] *= _DOCTYPE_BOOST
+        q_terms = _doctype_query_terms(query)
+        if q_terms:
+            for fname in rrf_scores:
+                entry = index_by_filename.get(fname)
+                if entry and _page_matches_query_doctype(entry.get("title", ""), q_terms):
+                    rrf_scores[fname] *= _DOCTYPE_BOOST
 
     sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 

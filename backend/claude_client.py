@@ -126,12 +126,16 @@ def local_complete(system: str, user_msg: str, max_tokens: int) -> str:
     return _strip_think(text)
 
 
-def _mode2_complete(system: str, user_msg: str, max_tokens: int) -> str:
+def _mode2_complete(system: str, user_msg: str, max_tokens: int,
+                    provider: str | None = None) -> str:
     """Ein einzelner, zustandsloser, tool-freier Completion-Call für Modus 2.
 
-    Routet je nach LLM_PROVIDER an Anthropic oder den lokalen Endpunkt.
+    Routet an Anthropic oder den lokalen Endpunkt. `provider` überschreibt den
+    globalen LLM_PROVIDER pro Request ("local" = qwen, "anthropic" = Claude) —
+    so kann die UI HyDE/Rerank je Anfrage auf QWEN oder Claude legen.
     """
-    if LLM_PROVIDER == "local":
+    prov = (provider or LLM_PROVIDER).strip().lower()
+    if prov == "local":
         return local_complete(system, user_msg, max_tokens)
 
     # Default: Anthropic
@@ -159,7 +163,7 @@ Maximal 60 Wörter.\
 """
 
 
-def expand_query(query: str, context: str = "") -> str:
+def expand_query(query: str, context: str = "", provider: str | None = None) -> str:
     """Generate a TOC-guided hypothetical document (HyDE) for BM25+semantic retrieval.
 
     1. BM25 title-scan gives the LLM vocabulary hints — uses only the actual question
@@ -181,7 +185,7 @@ def expand_query(query: str, context: str = "") -> str:
             f"{context_block}\n"
             f"Frage: {query}"
         )
-        hypothesis = _mode2_complete(HYDE_SYSTEM, user_msg, max_tokens=120)
+        hypothesis = _mode2_complete(HYDE_SYSTEM, user_msg, max_tokens=120, provider=provider)
         logger.info("HYDE '%s' → '%s'", query[:60], hypothesis[:120])
         return hypothesis
     except HTTPException:
@@ -204,9 +208,11 @@ Relevanz. Beispiel: 3,7,1,12,5\
 """
 
 
-def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
+def rerank(query: str, candidates: list[dict], top_n: int = 5,
+           provider: str | None = None) -> list[dict]:
     """LLM-based reranker: selects top_n from candidates by reading title+snippet.
 
+    `provider` überschreibt LLM_PROVIDER pro Request (QWEN vs. Claude).
     Falls back to returning candidates[:top_n] on any error.
     """
     if len(candidates) <= top_n:
@@ -219,7 +225,7 @@ def rerank(query: str, candidates: list[dict], top_n: int = 5) -> list[dict]:
         candidates_block = "\n".join(lines)
 
         user_msg = f"Frage: {query}\n\nSeiten:\n{candidates_block}"
-        raw = _mode2_complete(RERANKER_SYSTEM, user_msg, max_tokens=30)
+        raw = _mode2_complete(RERANKER_SYSTEM, user_msg, max_tokens=30, provider=provider)
         indices = [int(x.strip()) - 1 for x in raw.split(",") if x.strip().isdigit()]
         # Keep only valid indices, deduplicate, limit to top_n
         seen: set[int] = set()
@@ -279,12 +285,89 @@ def _vocab_rules_text() -> str:
         return ""
 
 
-def parse_context(raw: str) -> list[dict]:
-    """LLM-based context parser: free text → structured fields with canonical vocabulary.
+# ── Regelbasierter Parser (LOKAL / offline — KEIN LLM) ──────────────────────
+# Bei LLM_PROVIDER=local wird die Konfig-Analyse rein regelbasiert erledigt:
+# kein Anthropic UND kein lokales LLM (qwen3:4b ist für strukturiertes Parsen zu
+# unzuverlässig). Normalisiert nach den Konventionen aus data/vocab_rules.json.
+_BOOM_WORDS    = ("hauptausleger", "nadelausleger", "derrickausleger")
+_BALLAST_WORDS = ("ballast", "gegengewicht", "superlift")
+_HOOK_WORDS    = ("lasthaken", "unterflasche")
+_STAY_WORDS    = ("haltestange",)
 
-    Returns list of {"schluessel": ..., "wert": ...} dicts.
-    Falls back to splitting by / on any error.
+
+def _normalize_config_value(text: str) -> str:
+    """Vereinheitlicht Einheiten nach Manual-Konvention (Leerzeichen zwischen Zahl
+    und Einheit; Einscherung als 'Nx')."""
+    # Länge: "74m", "74 m", "74M", "74meter" → "74 m"
+    text = re.sub(r"(\d+)\s*(?:m|meter)\b", r"\1 m", text, flags=re.I)
+    # Gewicht: "124t"/"124 t" → "124 t"; "500kg" → "500 kg"
+    text = re.sub(r"(\d+)\s*t\b", r"\1 t", text, flags=re.I)
+    text = re.sub(r"(\d+)\s*kg\b", r"\1 kg", text, flags=re.I)
+    # Einscherung: "6-fach", "6 fach", "6fach", "6-fache" → "6x"; "6X" → "6x"
+    text = re.sub(r"(\d+)\s*-?\s*fach\w*", r"\1x", text, flags=re.I)
+    text = re.sub(r"(\d+)\s*[xX]\b", r"\1x", text)
+    return re.sub(r"\s{2,}", " ", text).strip(" ,;")
+
+
+def _rule_parse_context(raw: str) -> list[dict]:
+    """Regelbasierter Parser ohne jedes LLM. Zerlegt an /, ;, Komma und Zeilen-
+    umbruch, normalisiert Einheiten und klassifiziert jeden Teil. Benannte
+    Baugruppen (Ausleger/Ballast/Lasthaken/Haltestangen) behalten ihren vollen
+    Teiltext (inkl. Länge/Gewicht); ein sonst unbenannter Teil wird in seine
+    atomaren Signale zerlegt (Einscherung 'Nx', Länge 'N m', Gewicht 'N t/kg'),
+    damit auch trennerlose Eingaben wie '74m 6fach' nichts verlieren."""
+    fields: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+
+    def emit(key: str, value: str) -> None:
+        value = value.strip()
+        if not value:
+            return
+        dedup = (key, value.lower())
+        if dedup in seen:
+            return
+        seen.add(dedup)
+        fields.append({"schluessel": key, "wert": value})
+
+    for part in re.split(r"[/;,\n]+", raw):
+        norm = _normalize_config_value(part)
+        if not norm:
+            continue
+        low = norm.lower()
+        if any(w in low for w in _BOOM_WORDS):
+            emit("Ausleger", norm)
+        elif any(w in low for w in _BALLAST_WORDS):
+            emit("Ballast", norm)
+        elif any(w in low for w in _HOOK_WORDS):
+            emit("Lasthaken", norm)
+        elif any(w in low for w in _STAY_WORDS):
+            emit("Haltestangen", norm)
+        else:
+            emitted = False
+            m = re.search(r"\d+x\b", low)
+            if m or "einscher" in low:
+                emit("Einscherung", m.group(0) if m else norm)
+                emitted = True
+            for wm in re.finditer(r"\d+\s*(?:t|kg)\b", norm):
+                emit("Gewicht", wm.group(0)); emitted = True
+            for lm in re.finditer(r"\d+\s*m\b", norm):
+                emit("Länge", lm.group(0)); emitted = True
+            if not emitted:
+                emit("Konfiguration", norm)
+    return fields
+
+
+def parse_context(raw: str) -> list[dict]:
+    """Context parser: free text → structured fields with canonical vocabulary.
+
+    LLM_PROVIDER=local → rein regelbasiert (kein Anthropic, kein lokales LLM).
+    Sonst Anthropic; Fallback bei Fehlern: Split nach / , ;.
     """
+    if LLM_PROVIDER == "local":
+        logger.info("parse_context: regelbasiert (LLM_PROVIDER=local, kein LLM)")
+        parsed = _rule_parse_context(raw)
+        return parsed if parsed else _split_fallback(raw)
+
     vocab = _vocab_rules_text()
     system = PARSE_CONTEXT_SYSTEM
     if vocab:
@@ -310,7 +393,11 @@ def parse_context(raw: str) -> list[dict]:
     except Exception as exc:
         logger.warning("parse_context fehlgeschlagen: %s", exc)
 
-    # Fallback: split by /
+    return _split_fallback(raw)
+
+
+def _split_fallback(raw: str) -> list[dict]:
+    """Letzter Fallback: naiver Split nach / , ; ohne Normalisierung."""
     fields = []
     for part in re.split(r"[/,;]+", raw):
         part = part.strip()

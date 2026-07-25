@@ -19,6 +19,7 @@ import os
 import anthropic
 
 from backend.agent_tools import TOOL_SCHEMAS, TOOL_FN
+from backend.fastpaths import run_fastpaths, retrieve_fusion
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,28 @@ def _fallback_sources(messages: list[dict]) -> list[dict]:
         return [{"filename": fn, "title": fn} for fn in seen]
 
 
+def _fastpath_answer(question: str, context: str, conversation: list[dict] | None) -> dict | None:
+    """Deterministische Fast-Paths vor dem LLM-Loop — identisch zum lokalen Agenten.
+
+    So beantwortet auch "Claude" Zusammenstellung/Tabellen exakt & halluzinationsfrei
+    (statt sie aus dem OCR-losen Seitentext zu raten, siehe Test 2). Schlägt kein
+    Fast-Path an, läuft der normale Tool-Loop wie bisher. Fehler hier sind nie fatal.
+    """
+    raw_query = question
+    if conversation:
+        last_user = next(
+            (m["content"] for m in reversed(conversation)
+             if m.get("role") == "user" and isinstance(m.get("content"), str)),
+            "",
+        )
+        if last_user and last_user != question:
+            raw_query = f"{question} {last_user}".strip()
+    candidates = retrieve_fusion(raw_query, context)
+    return run_fastpaths(question, context, candidates=candidates,
+                         search_query=question, filtered=candidates,
+                         table_intent=raw_query)
+
+
 def run_agent(
     question: str,
     context: str = "",
@@ -160,6 +183,16 @@ def run_agent(
       {"type": "clarification", "question": "..."}
       {"type": "answer", "answer": "...", "sources": [...], "rounds": N}
     """
+    # Deterministische Fast-Paths zuerst (kein LLM, keine Halluzination). Nur wenn
+    # keiner greift, folgt der eigentliche Claude-Tool-Loop.
+    try:
+        fp = _fastpath_answer(question, context, conversation)
+        if fp is not None:
+            logger.info("Agent: Fast-Path-Antwort (kein LLM-Loop)")
+            return fp
+    except Exception as exc:
+        logger.warning("Fast-Path übersprungen (%s) → normaler Loop", exc)
+
     client = _get_client()
 
     # Aufbau der initialen Nachricht

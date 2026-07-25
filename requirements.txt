@@ -9,6 +9,10 @@ rapidfuzz>=3.10.0
 rank-bm25>=0.2.2
 python-dotenv>=1.0.0
 numpy>=1.26.0
+# TF-IDF Char-N-Gram-Fallback (search.py): überbrückt Komposita/Flexion, wenn
+# die semantische Suche fehlt (z. B. Render Free ohne sentence-transformers).
+# Leichtgewichtig (~30 MB), anders als PyTorch — daher hier statt requirements-ml.txt.
+scikit-learn>=1.3.0
 # Semantische Suche (sentence-transformers/PyTorch, ~2 GB, >512 MB RAM):
 # nur lokal bzw. auf großen Instanzen — siehe requirements-ml.txt.
 # Ohne das Paket fällt die Suche automatisch auf BM25 + TF-IDF zurück.
