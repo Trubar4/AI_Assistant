@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MaintenanceAssistant</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--y:#FFD800;--yd:#FFD80022;--bk:#1A1A1A;--w:#fff;--g:#F2F2F2;--g2:#E0E0E0;--g3:#888;--gn:#2E7D32;--gnb:#E8F5E9;--rd:#C62828;--bl:#1565C0;--blb:#E3F2FD;--or:#E65100;--orb:#FFF3E0;--r:12px;--sh:0 2px 8px rgba(0,0,0,.08)}
+body{font-family:Arial,Helvetica,sans-serif;background:#F0F0F0;color:var(--bk);min-height:100vh;padding-bottom:80px}
+.hdr{background:var(--bk);color:var(--w);padding:16px 20px;position:sticky;top:0;z-index:100}
+.hdr-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.logo{font-size:18px;font-weight:700;letter-spacing:1px}.logo span{color:var(--y)}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.bh-wrap{display:flex;align-items:center;gap:6px;background:#333;border:1.5px solid #555;border-radius:6px;padding:4px 10px}
+.bh-wrap:focus-within{border-color:var(--y)}
+.bh-input{background:none;border:none;color:var(--y);font-size:16px;font-weight:700;width:80px;text-align:right;font-family:inherit;outline:none}
+.bh-label{color:var(--g3);font-size:12px}
+.demo{background:var(--y);color:var(--bk);padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700}
+.machine-info{margin-top:8px;font-size:13px;color:#ccc}
+.machine-info strong{color:var(--y)}
+
+.chips{padding:10px 20px;background:var(--w);border-bottom:1px solid var(--g2);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chips-label{font-size:12px;color:var(--g3);font-weight:700;margin-right:4px}
+.chip{padding:6px 14px;border-radius:20px;border:2px solid var(--g2);background:var(--w);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;user-select:none}
+.chip.active{border-color:var(--bl);background:var(--blb);color:var(--bl)}
+.chip.due{border-color:var(--gn);background:var(--gnb);color:var(--gn)}
+.chip .cnt{font-size:11px;font-weight:400;color:var(--g3);margin-left:3px}
+.chip-all{font-size:12px;color:var(--bl);cursor:pointer;margin-left:8px;text-decoration:underline}
+
+.progress{background:var(--w);padding:14px 20px;border-bottom:1px solid var(--g2)}
+.prog-top{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
+.prog-bar{height:8px;background:var(--g);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--y),var(--gn));border-radius:4px;transition:width .3s}
+
+.tasks{padding:8px 16px}
+.fbg{margin-bottom:16px;border:1.5px solid var(--bl);border-radius:var(--r);overflow:hidden}
+.fbg-hdr{background:var(--blb);padding:10px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.fbg-hdr:hover{background:#d0e8fc}
+.fbg-arrow{font-size:13px;color:var(--g3);transition:transform .2s}.fbg-arrow.open{transform:rotate(90deg)}
+.fbg-name{font-size:14px;font-weight:700;color:var(--bl);flex:1}
+.fbg-cnt{font-size:12px;color:var(--g3)}
+.fbg-bar{width:50px;height:5px;background:var(--g);border-radius:3px;overflow:hidden;margin-left:6px}
+.fbg-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.fbg-body{padding:6px}.fbg-body.hide{display:none}
+
+.tc{background:var(--w);border-radius:var(--r);margin-bottom:6px;box-shadow:var(--sh);border-left:4px solid var(--g2);transition:border-color .2s;overflow:hidden}
+.tc.done{border-left-color:var(--gn);opacity:.7}
+.tc.done .tc-text{text-decoration:line-through;color:var(--g3)}
+.tc-main{display:flex;align-items:flex-start;padding:12px 14px;gap:12px;cursor:pointer}
+.tc-chk{width:26px;height:26px;min-width:26px;border:2px solid var(--g2);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .15s;margin-top:1px}
+.tc-chk:hover{border-color:var(--y)}
+.tc-chk.chkd{background:var(--gn);border-color:var(--gn);color:var(--w)}
+.tc-body{flex:1}
+.tc-text{font-size:14px;line-height:1.5}
+.tc-meta{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600}
+.tag-c{background:var(--yd);color:#8D6E00;font-weight:700}
+.tag-r{background:var(--g);color:var(--bk)}
+.tag-ik{background:var(--blb);color:var(--bl)}
+.tc-expand{color:var(--g3);font-size:18px;padding:2px;min-width:24px;text-align:center}
+
+.tc-det{display:none;padding:0 14px 14px 52px;border-top:1px solid var(--g)}.tc-det.open{display:block}
+.det-acts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;margin-top:8px}
+.btn{padding:8px 14px;border-radius:7px;border:none;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit}
+.btn-bl{background:var(--blb);color:var(--bl);border:1.5px solid #90CAF9}.btn-bl:hover{background:#BBDEFB}
+.btn-ol{background:var(--w);border:1.5px solid var(--g2);color:var(--bk)}.btn-ol:hover{border-color:var(--y);background:var(--yd)}
+.btn-pr{background:var(--y);color:var(--bk)}.btn-pr:hover{background:#e6c200}
+.cmt-area{margin-top:10px}
+.cmt-area label{display:block;font-size:11px;font-weight:700;color:var(--g3);text-transform:uppercase;margin-bottom:4px}
+.cmt-inp{width:100%;padding:8px 12px;border:1.5px solid var(--g2);border-radius:7px;font-size:13px;font-family:inherit;resize:vertical;min-height:50px}
+.cmt-inp:focus{outline:none;border-color:var(--y)}
+.photo-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border:2px dashed var(--g2);border-radius:7px;cursor:pointer;font-size:12px;color:var(--g3);margin-top:8px}
+.photo-btn:hover{border-color:var(--y);background:var(--yd)}
+.photo-prev{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.photo-th{width:64px;height:64px;border-radius:7px;object-fit:cover;border:2px solid var(--g2)}
+.photo-wr{position:relative;display:inline-block}
+.photo-rm{position:absolute;top:-5px;right:-5px;width:20px;height:20px;border-radius:50%;background:var(--rd);color:#fff;border:none;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.saved-cmt{background:var(--g);border-radius:7px;padding:8px 12px;margin-top:5px;font-size:12px}
+.saved-cmt .time{font-size:10px;color:var(--g3)}
+
+.subs{margin-top:8px;padding:8px 10px;background:var(--g);border-radius:7px;font-size:12px}
+.subs-title{font-weight:700;color:var(--g3);font-size:11px;text-transform:uppercase;margin-bottom:4px}
+.sub-item{padding:3px 0;border-bottom:1px solid var(--g2)}
+.sub-item:last-child{border:none}
+.sub-link{color:var(--bl);text-decoration:underline;cursor:pointer;font-size:12px;margin-left:4px}
+
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:16px}
+.modal-ov.open{display:flex}
+.modal{background:var(--w);border-radius:var(--r);max-width:700px;width:100%;max-height:85vh;overflow-y:auto;padding:24px}
+.modal h2{font-size:18px;margin-bottom:4px}
+.modal .sub{color:var(--g3);font-size:12px;margin-bottom:12px}
+.modal-close{padding:10px 20px;border-radius:7px;background:var(--bk);color:var(--y);border:none;font-size:13px;font-weight:700;cursor:pointer;margin-top:12px}
+
+.instr-prereqs{background:var(--blb);border-left:4px solid var(--bl);padding:10px 14px;border-radius:0 7px 7px 0;margin-bottom:12px;font-size:13px}
+.instr-prereqs strong{display:block;margin-bottom:4px;font-size:12px;color:var(--bl)}
+.instr-warn{background:var(--orb);border-left:4px solid var(--or);padding:10px 14px;border-radius:0 7px 7px 0;margin-bottom:8px;font-size:13px}
+.instr-warn .sw{font-weight:700;color:var(--or)}
+.instr-step{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--g)}
+.instr-step:last-child{border:none}
+.instr-num{width:28px;height:28px;min-width:28px;background:var(--y);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.instr-result{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--g);color:var(--gn);font-weight:600;font-size:13px}
+.instr-result::before{content:'✓';width:28px;height:28px;min-width:28px;background:var(--gnb);border:2px solid var(--gn);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700}
+.instr-text{font-size:13px;line-height:1.5;flex:1}
+.manual-link{display:inline-flex;align-items:center;gap:5px;padding:8px 14px;background:var(--yd);border-radius:7px;color:#8D6E00;font-size:12px;font-weight:600;text-decoration:none;margin-top:10px;margin-bottom:6px}
+.manual-link:hover{background:var(--y)}
+
+.empty{text-align:center;padding:40px 20px;color:var(--g3)}
+.empty-icon{font-size:40px;margin-bottom:8px}
+
+.report-btn{position:fixed;bottom:16px;right:16px;padding:12px 20px;border-radius:var(--r);background:var(--bk);color:var(--y);font-size:14px;font-weight:700;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:50;font-family:inherit}
+@media(max-width:600px){.tc-main{padding:10px 12px;gap:8px}.tc-det{padding:0 12px 12px 46px}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="logo"><span>LIEBHERR</span> MaintenanceAssistant</div>
+    <div class="hdr-right">
+      <div class="bh-wrap">
+        <span class="bh-label">Bh</span>
+        <input class="bh-input" id="bhInput" type="number" placeholder="0" oninput="onBhChange()">
+      </div>
+      <div class="demo">DEMO</div>
+    </div>
+  </div>
+  <div class="machine-info">Maschine: <strong id="machineName">—</strong></div>
+</div>
+
+<div class="chips" id="chips"></div>
+<div id="loadInfo" style="text-align:center;padding:20px;color:var(--g3);font-size:14px">Lade Daten...</div>
+<div class="progress" id="progress"></div>
+<div class="tasks" id="taskList"></div>
+
+<div class="modal-ov" id="instrModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="instrContent"></div>
+</div>
+
+<button class="report-btn" onclick="showReport()">Bericht</button>
+<div class="modal-ov" id="reportModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" id="reportContent"></div>
+</div>
+
+<script>
+// ---- DATA (hardcoded from JSONs) ----
+let TASKS=[];
+let INSTR={};
+let MACHINE_NAME='—';
+
+async function loadData(){
+  try {
+    const [tResp, iResp] = await Promise.all([
+      fetch('./maintenance_tasks.json'),
+      fetch('./maintenance_instructions.json')
+    ]);
+    if(!tResp.ok||!iResp.ok) throw new Error('JSON nicht ladbar');
+    const tData = await tResp.json();
+    const iData = await iResp.json();
+    // Slim tasks for app
+    TASKS=(tData.tasks||[]).map(t=>({
+      id:t.id,seq:t.seq,bg:t.baugruppe,text:t.text,sym:t.symbol,
+      resp:t.responsible,kind:t.task_kind,
+      intH:t.interval&&t.interval.hours||0,
+      intLabel:t.interval&&t.interval.label||t.interval&&t.interval.type||'',
+      link:t.instruction_link,
+      subs:(t.sub_items||[]).map(s=>{
+        const sub={text:s.text,link:s.instruction_link||null};
+        if(s.embedded_interval){sub.eiH=s.embedded_interval.hours;sub.eiCal=s.embedded_interval.calendar||'';sub.fullText=s.full_text||'';}
+        return sub;
+      })
+    }));
+    // Slim instructions
+    INSTR={};
+    for(const[pid,inst] of Object.entries(iData.instructions||{})){
+      INSTR[pid]={title:inst.title,bc:inst.breadcrumb,prereqs:inst.prerequisites,warnings:inst.warnings,steps:inst.steps};
+    }
+    MACHINE_NAME=(tData.machine&&tData.machine.variant)||'Unbekannt';
+    document.getElementById('machineName').textContent=MACHINE_NAME;
+    document.title='MaintenanceAssistant – '+MACHINE_NAME;
+    document.getElementById('loadInfo').style.display='none';
+    render();
+  } catch(e){
+    document.getElementById('loadInfo').innerHTML='<span style="color:var(--rd)">JSON-Dateien nicht geladen. Dateien per Webserver öffnen (z.B. <code>python -m http.server</code>).</span>';
+    document.getElementById('loadInfo').style.display='block';
+    console.error(e);
+  }
+}
+loadData();
+
+// ---- STATE ----
+const INTERVALS=[8,40,500,1000,2000,4000,6000];
+const INT_LABELS={8:'8h',40:'40h',500:'500h',1000:'1000h',2000:'2000h',4000:'4000h',6000:'6000h'};
+let activeIntervals=new Set();
+let bh=0;
+const taskState={};
+const collapsedFbg=new Set();
+
+function gs(id){
+  if(!taskState[id]) taskState[id]={done:false,comments:[],photos:[]};
+  return taskState[id];
+}
+
+// ---- BH + CHIPS ----
+function onBhChange(){
+  bh=parseInt(document.getElementById('bhInput').value)||0;
+  // Auto-activate intervals that are due
+  activeIntervals.clear();
+  INTERVALS.forEach(h=>{if(bh>=h) activeIntervals.add(h)});
+  render();
+}
+
+function toggleChip(h){
+  if(activeIntervals.has(h)) activeIntervals.delete(h);
+  else activeIntervals.add(h);
+  render();
+}
+
+function selectAllChips(){
+  INTERVALS.forEach(h=>activeIntervals.add(h));
+  render();
+}
+
+function renderChips(){
+  const el=document.getElementById('chips');
+  el.innerHTML='<span class="chips-label">Intervalle:</span>'+
+    INTERVALS.map(h=>{
+      const cnt=TASKS.filter(t=>t.intH===h).length;
+      const due=bh>=h;
+      const active=activeIntervals.has(h);
+      return `<div class="chip ${active?'active':''} ${due&&!active?'':''}${!active&&due?'due':''}" onclick="toggleChip(${h})">${INT_LABELS[h]}<span class="cnt">${cnt}</span></div>`;
+    }).join('')+
+    `<span class="chip-all" onclick="selectAllChips()">Alle</span>`;
+}
+
+// ---- FILTERED TASKS ----
+function visibleTasks(){
+  return TASKS.filter(t=>t.intH && activeIntervals.has(t.intH));
+}
+
+// ---- PROGRESS ----
+function renderProgress(){
+  const vis=visibleTasks();
+  const done=vis.filter(t=>gs(t.id).done).length;
+  const pct=vis.length?Math.round(done/vis.length*100):0;
+  document.getElementById('progress').innerHTML=`
+    <div class="prog-top"><span style="font-weight:700">Tagesfortschritt</span><span>${done} / ${vis.length} erledigt (${pct}%)</span></div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>`;
+}
+
+// ---- RENDER ----
+function render(){renderChips();renderProgress();renderTasks()}
+
+function renderTasks(){
+  const c=document.getElementById('taskList');
+  const vis=visibleTasks();
+  if(!vis.length){
+    c.innerHTML=bh?'<div class="empty"><div class="empty-icon">&#9881;</div>Keine Tasks für aktive Intervalle</div>':'<div class="empty"><div class="empty-icon">&#128679;</div>Betriebsstunden eingeben</div>';
+    return;
+  }
+  // Group by baugruppe
+  const map=new Map();
+  vis.forEach(t=>{if(!map.has(t.bg))map.set(t.bg,[]);map.get(t.bg).push(t)});
+  const groups=[...map.entries()].sort((a,b)=>a[0].localeCompare(b[0],'de'));
+
+  c.innerHTML=groups.map(([bg,tasks])=>{
+    tasks.sort((a,b)=>a.intH-b.intH||a.text.localeCompare(b.text,'de'));
+    const d=tasks.filter(t=>gs(t.id).done).length;
+    const pct=Math.round(d/tasks.length*100);
+    const col=collapsedFbg.has(bg);
+    return `<div class="fbg">
+      <div class="fbg-hdr" onclick="togFbg('${esc(bg)}')">
+        <span class="fbg-arrow ${col?'':'open'}">&#9656;</span>
+        <span class="fbg-name">${esc(bg)}</span>
+        <span class="fbg-cnt">${d}/${tasks.length}</span>
+        <div class="fbg-bar"><div class="fbg-bar-fill" style="width:${pct}%;background:${d===tasks.length?'var(--gn)':'var(--y)'}"></div></div>
+      </div>
+      <div class="fbg-body ${col?'hide':''}">${tasks.map(t=>renderTC(t)).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function togFbg(bg){
+  if(collapsedFbg.has(bg))collapsedFbg.delete(bg);else collapsedFbg.add(bg);
+  const el=event.currentTarget.parentElement;
+  el.querySelector('.fbg-body').classList.toggle('hide');
+  el.querySelector('.fbg-arrow').classList.toggle('open');
+}
+
+function renderTC(t){
+  const s=gs(t.id);
+  const uid=t.id;
+  const hasInstr=!!(t.link && INSTR[t.link]);
+  return `<div class="tc ${s.done?'done':''}">
+    <div class="tc-main" onclick="togDet('${uid}')">
+      <div class="tc-chk ${s.done?'chkd':''}" onclick="event.stopPropagation();togDone('${uid}')">${s.done?'&#10003;':''}</div>
+      <div class="tc-body">
+        <div class="tc-text">${esc(t.text)}</div>
+        <div class="tc-meta">
+          <span class="tag tag-c">${INT_LABELS[t.intH]||t.intH+'h'}</span>
+          <span class="tag tag-r">${t.resp==='customer'?'Kunde':'Service'}</span>
+          ${s.comments.length?'<span class="tag tag-ik">&#128172; '+s.comments.length+'</span>':''}
+          ${s.photos.length?'<span class="tag tag-ik">&#128247; '+s.photos.length+'</span>':''}
+        </div>
+      </div>
+      <div class="tc-expand" id="arrow-${uid}">&#9656;</div>
+    </div>
+    <div class="tc-det" id="det-${uid}">
+      <div class="det-acts">
+        ${hasInstr?`<button class="btn btn-bl" onclick="showInstr('${t.id}')">&#128203; Anleitung</button>`:''}
+        ${t.link?`<a class="btn btn-ol" href="${t.link}" target="_blank">&#128214; Handbuch</a>`:''}
+        <button class="btn btn-ol" onclick="togDone('${uid}')">${s.done?'&#8617; Öffnen':'&#10003; Erledigt'}</button>
+      </div>
+      ${t.subs.length?renderSubs(t):''}
+      <div class="cmt-area"><label>Kommentar</label><textarea class="cmt-inp" id="c-${uid}" placeholder="Abweichung..." rows="2"></textarea></div>
+      <div>
+        <label class="photo-btn">&#128247; Foto<input type="file" accept="image/*" capture="environment" style="display:none" onchange="addPhoto('${uid}',this)"></label>
+        <div class="photo-prev" id="p-${uid}">${s.photos.map((p,i)=>`<div class="photo-wr"><img class="photo-th" src="${p}"><button class="photo-rm" onclick="rmPhoto('${uid}',${i})">x</button></div>`).join('')}</div>
+      </div>
+      <button class="btn btn-pr" style="margin-top:8px" onclick="saveCmt('${uid}')">Speichern</button>
+      <div id="sc-${uid}">${s.comments.map(c=>`<div class="saved-cmt"><span class="time">${c.time}</span> — ${esc(c.text)}</div>`).join('')}</div>
+    </div>
+  </div>`;
+}
+
+function renderSubs(t){
+  return `<div class="subs"><div class="subs-title">Zusätzliche Hinweise / Unterintervalle</div>${t.subs.map(s=>{
+    let txt=s.fullText||s.text;
+    let link=s.link?`<a class="sub-link" href="${s.link}" target="_blank">&#128214;</a>`:'';
+    let instrLink=s.link&&INSTR[s.link]?`<span class="sub-link" onclick="showInstr(null,'${s.link}')">&#128203;</span>`:'';
+    return `<div class="sub-item">${esc(txt)}${instrLink}${link}</div>`;
+  }).join('')}</div>`;
+}
+
+// ---- INTERACTIONS ----
+function togDone(id){gs(id).done=!gs(id).done;render()}
+function togDet(id){
+  const d=document.getElementById('det-'+id);
+  const a=document.getElementById('arrow-'+id);
+  if(d){d.classList.toggle('open');if(a)a.innerHTML=d.classList.contains('open')?'&#9662;':'&#9656;'}
+}
+function saveCmt(id){
+  const inp=document.getElementById('c-'+id);
+  if(!inp||!inp.value.trim())return;
+  gs(id).comments.push({text:inp.value.trim(),time:new Date().toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'})});
+  inp.value='';render();
+}
+function addPhoto(id,inp){
+  if(!inp.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{gs(id).photos.push(e.target.result);render()};
+  r.readAsDataURL(inp.files[0]);
+}
+function rmPhoto(id,i){gs(id).photos.splice(i,1);render()}
+
+// ---- INSTRUCTIONS MODAL ----
+function showInstr(taskId,directLink){
+  let link,t;
+  if(directLink){
+    link=directLink;
+  } else {
+    t=TASKS.find(x=>x.id===taskId);
+    if(!t||!t.link)return;
+    link=t.link;
+  }
+  const inst=INSTR[link];
+  if(!inst)return;
+
+  let html=`<h2>${esc(inst.title)}</h2>`;
+  html+=`<div class="sub">${inst.bc.join(' &gt; ')}</div>`;
+
+  // Link to manual
+  html+=`<a class="manual-link" href="${link}" target="_blank">&#128214; Im Handbuch öffnen (${link.substring(0,30)}...)</a>`;
+
+  // Prerequisites
+  if(inst.prereqs&&inst.prereqs.length){
+    html+=`<div class="instr-prereqs"><strong>Voraussetzungen</strong>${inst.prereqs.map(p=>`<div>&#10003; ${esc(p)}</div>`).join('')}</div>`;
+  }
+
+  // Warnings
+  if(inst.warnings){
+    inst.warnings.forEach(w=>{
+      html+=`<div class="instr-warn"><span class="sw">${esc(w.signal_word)}</span>`;
+      if(w.cause) html+=` ${esc(w.cause)}`;
+      if(w.consequences) html+=`<br><em>${esc(w.consequences)}</em>`;
+      if(w.actions&&w.actions.length) html+='<br>'+w.actions.map(a=>`&#9654; ${esc(a)}`).join('<br>');
+      html+=`</div>`;
+    });
+  }
+
+  // Steps
+  if(inst.steps&&inst.steps.length){
+    html+=`<div style="margin-top:12px">`;
+    inst.steps.forEach(s=>{
+      if(s.type==='result'){
+        html+=`<div class="instr-result"><div class="instr-text">${esc(s.text)}</div></div>`;
+      } else {
+        html+=`<div class="instr-step"><div class="instr-num">${s.step_number}</div><div class="instr-text">${esc(s.text)}</div></div>`;
+      }
+    });
+    html+=`</div>`;
+  }
+
+  html+=`<button class="modal-close" onclick="closeModal()">Schließen</button>`;
+  document.getElementById('instrContent').innerHTML=html;
+  document.getElementById('instrModal').classList.add('open');
+}
+
+function closeModal(){document.getElementById('instrModal').classList.remove('open')}
+
+// ---- REPORT ----
+function showReport(){
+  const vis=visibleTasks();
+  const done=vis.filter(t=>gs(t.id).done);
+  const open=vis.filter(t=>!gs(t.id).done);
+  const withCmt=vis.filter(t=>gs(t.id).comments.length>0);
+  let h=`<h2>Schichtbericht</h2><div class="sub">${new Date().toLocaleDateString('de-AT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} — ${esc(MACHINE_NAME)} (${bh} Bh)</div>`;
+  h+=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">`+
+    [{l:'Erledigt',v:done.length},{l:'Offen',v:open.length},{l:'Kommentare',v:withCmt.length}].map(x=>`<div style="background:var(--g);border-radius:7px;padding:10px 16px;flex:1;min-width:80px;text-align:center"><div style="font-size:22px;font-weight:700">${x.v}</div><div style="font-size:10px;color:var(--g3)">${x.l}</div></div>`).join('')+`</div>`;
+  if(done.length) h+=`<div style="margin-bottom:12px"><strong style="font-size:13px">Erledigt:</strong>`+done.map(t=>`<div style="font-size:12px;padding:3px 0;color:var(--gn)">&#10003; ${esc(t.text)} <span style="color:var(--g3)">(${esc(t.bg)})</span></div>`).join('')+`</div>`;
+  if(open.length) h+=`<div style="margin-bottom:12px"><strong style="font-size:13px">Offen:</strong>`+open.map(t=>`<div style="font-size:12px;padding:3px 0;color:var(--rd)">&#9675; ${esc(t.text)} <span style="color:var(--g3)">(${esc(t.bg)})</span></div>`).join('')+`</div>`;
+  h+=`<button class="modal-close" onclick="document.getElementById('reportModal').classList.remove('open')">Schließen</button>`;
+  document.getElementById('reportContent').innerHTML=h;
+  document.getElementById('reportModal').classList.add('open');
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+</script>
+</body>
+</html>
