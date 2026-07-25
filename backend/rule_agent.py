@@ -75,21 +75,21 @@ def _normalize_query(question: str) -> str:
 #   context_satisfiers — wenn mind. eines davon im Kontext steht → KEINE Rückfrage
 #   question           — generische Rückfrage an den Bediener
 # ---------------------------------------------------------------------------
+# Wert-/Tabellenfragen brauchen Zeile (Auslegerlänge) UND Spalte (Einscherung)
+# für einen exakten Tabellenwert. Fehlt eine Dimension, wird gezielt danach gefragt
+# — auch wenn die andere (z. B. per Kontext) bereits vorhanden ist. Bewusst nur
+# eindeutig wertbezogene Begriffe (keine bloßen Substantive wie "Lasthaken", die
+# auch in Montage-/Prozedurfragen vorkommen → sonst falsche Rückfragen).
+_VALUE_TABLE_TRIGGERS = [
+    "traglast", "tragfähigkeit", "tragfaehigkeit", "kapazität",
+    "mindestgewicht", "hakengewicht", "eigengewicht",
+    "seillänge", "seillaenge",
+]
+
+# Übrige Clarification-Regeln (Trigger, Satisfier, Rückfrage) — mit ODER-Satisfier.
 _CLARIFICATION_RULES: list[tuple[list[str], list[str], str]] = [
     (
-        # "last" bewusst NICHT als Trigger: matcht als Substring "Lastort",
-        # "Ballast", "Belastung" → falsche Rückfragen. Traglast-Begriffe genügen.
-        ["traglast", "tragfähigkeit", "tragen", "heben", "kapazität"],
-        ["ausleger", "einscherung", "meter", " m ", "länge", "50m", "60m", "70m", "74m", "75m", "80m"],
-        "Welche Auslegerlänge und Einscherung (z. B. 74 m, 6-fach) verwenden Sie?",
-    ),
-    (
-        ["lasthaken", "unterflasche", "eigengewicht", "mindestgewicht", "hakengewicht"],
-        ["einscherung", "meter", " m ", "länge", "ausleger"],
-        "Welche Auslegerlänge und Einscherung verwenden Sie?",
-    ),
-    (
-        ["zwischenstück", "zwischenstueck", "zwischenstücke", "bauteile", "konfiguration"],
+        ["zwischenstück", "zwischenstueck", "zwischenstücke", "bauteile"],
         ["meter", " m ", "länge", "ausleger", "hauptausleger", "nadelausleger"],
         "Welche Gesamt-Auslegerlänge und welche Auslegervariante (Hauptausleger / Nadelausleger) benötigen Sie?",
     ),
@@ -97,11 +97,6 @@ _CLARIFICATION_RULES: list[tuple[list[str], list[str], str]] = [
         ["einscherplan", "einscherpläne", "einscheren", "einscherung wählen"],
         ["einscherung", "fach", "winde", "lastort"],
         "Wie viele Einscherungen (z. B. 4-fach) und welcher Lastort (Hauptausleger-Kopf / Nadelausleger-Kopf)?",
-    ),
-    (
-        ["seillänge", "seillänge berechnen", "benötigte seillänge"],
-        ["einscherung", "fach", "meter", " m ", "länge", "ausleger"],
-        "Welche Auslegerlänge und Einscherung verwenden Sie?",
     ),
 ]
 
@@ -112,21 +107,34 @@ def _keywords_in_text(keywords: list[str], text: str) -> bool:
 
 
 def _needs_clarification(question: str, context: str) -> str | None:
-    """Rückfrage wenn eine essentielle Info fehlt und weder Kontext noch Frage sie enthält."""
-    # Satisfier-Check über Kontext UND Frage — Frage kann die Info schon enthalten
+    """Rückfrage, wenn eine essentielle Info fehlt und weder Kontext noch Frage sie
+    enthält. Wert-/Tabellenfragen (Traglast/Gewicht/Seillänge) werden dimensions-
+    genau geprüft: fehlt Länge ODER Einscherung, wird gezielt danach gefragt."""
     combined = (context + " " + question).lower()
-    # Robustheit: konkrete Konfig-Werte als kanonische Tokens anhängen, damit
-    # Satisfier wie " m " / "fach" auch bei "74 m?" (Satzende) oder "6x"/"124t"
-    # greifen — sonst kommt trotz vorhandener Angabe eine überflüssige Rückfrage.
-    extra = []
-    if re.search(r"\d+\s*m\b", combined):
-        extra.append("meter länge m ")
-    if re.search(r"\d+\s*-?\s*fach|\b\d+\s*x\b", combined):
-        extra.append("fach einscherung ")
+    q_low = question.lower()
+    has_length = bool(re.search(r"\d+\s*m\b", combined))
+    has_einsch = bool(re.search(r"\d+\s*-?\s*fach|\b\d+\s*x\b", combined))
+
+    # Wert-/Tabellenfrage → Auslegerlänge UND Einscherung nötig (Zeile × Spalte).
+    if any(t in q_low for t in _VALUE_TABLE_TRIGGERS):
+        missing = []
+        if not has_length:
+            missing.append("Auslegerlänge (z. B. 74 m)")
+        if not has_einsch:
+            missing.append("Einscherung (z. B. 6-fach)")
+        if missing:
+            return "Bitte noch angeben: " + " und ".join(missing) + "."
+
+    # Robustheit für die übrigen Regeln: konkrete Konfig-Werte als kanonische
+    # Tokens anhängen, damit Satisfier wie " m " / "fach" auch bei "74 m?"
+    # (Satzende) oder "6x"/"124t" greifen (keine überflüssige Rückfrage).
+    if has_length:
+        combined += " meter länge m "
+    if has_einsch:
+        combined += " fach einscherung "
     if re.search(r"\d+\s*(?:t|kg)\b", combined):
-        extra.append("gewicht ")
-    if extra:
-        combined = combined + " " + " ".join(extra)
+        combined += " gewicht "
+
     for trigger_kws, satisfier_kws, question_text in _CLARIFICATION_RULES:
         if _keywords_in_text(trigger_kws, question):
             if not _keywords_in_text(satisfier_kws, combined):

@@ -379,6 +379,17 @@ Nicht-Fast-Path-Fragen fallen sauber in den Loop.
   als kanonische Tokens angehängt, damit „74 m?" (Satzende), „6x", „124 t" die
   Satisfier („ m "/„fach"/…) erfüllen — keine überflüssige Rückfrage mehr, wenn die
   Angabe schon da ist. Echte Rückfrage (ohne Länge) bleibt.
+- ✅ **Dimensionsgenaue Rückfrage** (`rule_agent`): Wert-/Tabellenfragen
+  (Traglast/Mindestgewicht/Seillänge) brauchen **Länge UND Einscherung**. Fehlt eine —
+  auch wenn die andere per Kontext da ist — wird **gezielt** danach gefragt
+  („Bitte noch angeben: Einscherung …"). Vorher erfüllte die ODER-Logik die Regel
+  schon mit der Länge → nie eine Rückfrage bei aktivem (unvollständigem) Kontext.
+  Nur eindeutig wertbezogene Trigger (keine bloßen Substantive wie „Lasthaken" →
+  keine Fehl-Rückfrage bei Montagefragen).
+- ✅ **Tabellen-Fast-Path aus dem Kontext**: `_VALUE_QUESTION_RE` ohne führende
+  Wortgrenze, damit „gewicht" in Komposita (Mindestgewicht/…) matcht. Dadurch zieht
+  „Welches Lasthaken-Mindestgewicht?" mit Kontext „75 m / 5x" den exakten Wert
+  (**1900 kg**) — vorher nur, wenn die Werte in der Frage standen.
 
 **Geplant / offen:**
 - **Semantik auf Render**: siehe §11 — 768-dim-Modell passt nicht in 512 MB Free;

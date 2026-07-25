@@ -36,10 +36,13 @@ logger = logging.getLogger(__name__)
 
 # ── Muster (verbatim aus agent_local.py) ────────────────────────────────────
 
-# Frage zielt auf einen exakten Wert (Zahl/Einheit) ab
+# Frage zielt auf einen exakten Wert (Zahl/Einheit) ab. Bewusst OHNE führende
+# Wortgrenze, damit "gewicht" auch in Komposita greift (Mindestgewicht,
+# Hakengewicht, Eigengewicht) — sonst schlägt der Tabellen-Fast-Path fehl, wenn
+# die Frage nur "Welches Lasthaken-Mindestgewicht?" lautet (Werte im Kontext).
 _VALUE_QUESTION_RE = re.compile(
-    r"\b(traglast|tragf|gewicht|länge|laenge|meter|\bm\b|tonnen|\bt\b|wert|"
-    r"teilenummer|nummer|winkel|druck|bar|einscherung|wieviel|wie viel|wie lang|wie schwer)",
+    r"(traglast|tragf|gewicht|länge|laenge|meter|\bm\b|tonnen|\bt\b|wert|"
+    r"teilenummer|nummer|winkel|druck|\bbar\b|einscherung|wieviel|wie viel|wie lang|wie schwer)",
     re.I,
 )
 
