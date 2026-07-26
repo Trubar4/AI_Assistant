@@ -115,19 +115,30 @@ Ablauf (`/ask`):
 
 Gemeinsam: **deterministische Fast-Paths laufen VOR dem LLM** (Folie 8).
 
-| Backend | Retrieval | Finale Antwort |
-|---------|-----------|----------------|
-| **Regelbasiert** | BM25/TF-IDF (kein LLM) | deterministisch (Fast-Paths + Quellen) |
-| **QWEN** | + qwen-HyDE + qwen-Rerank | deterministisch (kein qwen-Text) |
+Alle drei nutzen dieselbe **Basis-Suche** (Titel-BM25 + Volltext-BM25 +
+**Semantik**, TF-IDF nur als Fallback wenn Semantik fehlt — Folie 5). Der
+Backend-Schalter steuert nur den **LLM-Assist** (HyDE/Rerank), nicht die Semantik.
+
+| Backend | Zusätzlicher LLM-Assist | Finale Antwort |
+|---------|-------------------------|----------------|
+| **Regelbasiert** | **keiner** (kein qwen/Claude) | deterministisch (Fast-Paths + Quellen) |
+| **QWEN** | qwen-HyDE + qwen-Rerank (nur Suche) | deterministisch (kein qwen-Text) |
 | **Claude** | agentischer Tool-Loop | Claude **formuliert** (nach Fast-Paths) |
 
+- „kein LLM" = **kein generatives Modell** legt sich auf die Suche (kein HyDE/
+  Rerank). Die **semantische Suche** ist ein *Embedding*-Modell und läuft
+  backend-unabhängig, sobald verfügbar — **auch bei Regelbasiert**.
+- **Lokal**: Regelbasiert = BM25 + **Semantik**. **Render Free** (keine
+  sentence-transformers): BM25 + **TF-IDF-Fallback** (siehe Folie 13).
 - Regelbasiert öffnet die Top-Quelle automatisch im Handbuch-Viewer
 - QWEN: fällt der lokale Server aus, läuft es ohne Assist weiter (Antwort ist
   ohnehin deterministisch)
 - Claude: beste Qualität bei prozeduralen Fragen, benötigt Internet + API-Key
 
-> Notiz: „QWEN" hilft nur suchen. Frei formuliert nur „Claude" — und auch nur,
-> wenn kein Fast-Path bereits deterministisch geantwortet hat.
+> Notiz: Zwei getrennte Achsen — (1) LLM-Assist = der Backend-Schalter,
+> (2) Semantik = env-gesteuert und modusunabhängig. „QWEN" hilft nur suchen;
+> frei formuliert nur „Claude", und auch nur, wenn kein Fast-Path schon
+> deterministisch geantwortet hat.
 
 ---
 
