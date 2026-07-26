@@ -9,7 +9,11 @@ in einer neuen Konversation sofort verfügbar sind.
 
 ## 1. Überblick: Modi & Backends
 
-Die UI hat **zwei** Modi mit jeweils Backend-Umschaltern:
+Die UI hat **drei Tabs**: **Assistent** (Frage/Antwort — der Kern dieses Dokuments),
+**Meldungen** (Fehlercode-/Meldungs-Lookup) und **Wartungen** (interaktive
+Wartungs-Checkliste, deterministisch & offline — Details in §15).
+
+Der Tab **Assistent** hat **zwei** Modi mit jeweils Backend-Umschaltern:
 
 | UI | Backend | Endpoint | Retrieval | Finale Antwort |
 |----|---------|----------|-----------|----------------|
@@ -275,6 +279,11 @@ Das Skript prüft die Engine **vorab** und bricht sonst mit klarer Anleitung ab.
   Elemente liegt in `localStorage` (`ma_context_fields`) → An-/Abhaken ohne Re-Analyse.
 - **Quellen mit Breadcrumb + Kurz-Snippet** (deterministisch aus `main._enrich_sources`):
   gleichnamige Seiten sind an ihrem Pfad unterscheidbar.
+- **Verlauf löschen** (Assistent-Tab): Button leert den Gesprächsverlauf und zeigt
+  die Hero-Ansicht wieder (Chat wird nicht persistiert — nur DOM-Reset, mit Rückfrage).
+- **Wartungen-Tab**: dritter Tab neben Assistent/Meldungen — eigener View mit
+  Bh-Eingabe, Intervall-Chips, Task-Karten, Anleitungs-Modal und Schichtbericht;
+  Composer dort ausgeblendet (siehe §15).
 
 ---
 
@@ -334,8 +343,13 @@ backend/search.py          Fusion, Dokumenttyp-Boost, Index-Augmentation
 backend/main.py            /ask_agent-Routing + AGENT_BACKEND + ENABLE_LOCAL_BACKEND
 preprocessing/ocr_compositions.py   OCR-Generator für compositions.json
 data/compositions.json     Zusammenstellungs-Daten (5 Seiten, 79 Zeilen)
-frontend/MaschinenAssistent.html    Responsive-Fixes + Backend-Umschalter
+frontend/MaschinenAssistent.html    Responsive-Fixes + Backend-Umschalter + Wartungen-Tab (§15)
+maintenance_tasks.json     Wartungs-/Inspektionsplan (545 Tasks, 67 Baugruppen) — für §15
+maintenance_instructions.json   Schritt-für-Schritt-Anleitungen (222 Seiten) — für §15
 ```
+
+> Wartungs-Endpunkte in `main.py`: `GET /maintenance/tasks.json` und
+> `GET /maintenance/instructions.json` (FileResponse; nur genau diese zwei Dateien).
 
 ---
 
@@ -363,6 +377,11 @@ Nicht-Fast-Path-Fragen fallen sauber in den Loop.
 ## 14. Erledigt / geplant
 
 **Erledigt (chronologisch, neueste zuerst):**
+- ✅ **Wartungen-Tab** (Maintenance-Assistent integriert, siehe §15): dritter Tab,
+  vollständig im LDS-Design, localStorage-persistent (+ Reset), Handbuch-Links über
+  den vorhandenen Iframe-Viewer (funktionieren — alle 345 Seiten liegen in `manuals/`).
+  Backend liefert die zwei JSONs über `GET /maintenance/{tasks|instructions}.json`.
+  Zusätzlich „Verlauf löschen"-Button im Assistent-Tab.
 - ✅ **Dimensionsgenaue Rückfrage** (`rule_agent`): Wert-/Tabellenfragen
   (Traglast/Mindestgewicht/Seillänge/…) brauchen **Länge UND Einscherung**. Fehlt eine —
   auch wenn die andere per Kontext da ist — wird **gezielt** danach gefragt
@@ -402,3 +421,64 @@ Nicht-Fast-Path-Fragen fallen sauber in den Loop.
   Embeddings neu erzeugen).
 - **Nadelausleger-Composition**: mehrere Varianten + 2 abweichende Tabellenstrukturen
   (siehe §11) — Disambiguierung über die Konfiguration + Parser-Erweiterung.
+
+---
+
+## 15. Wartungen-Tab (Maintenance-Assistent)
+
+**Zweck.** Digitalisiert den Wartungs- und Inspektionsprozess der Maschine als
+interaktive Tages-Checkliste: statt manuell in Plan-Tabelle und Handbuchseiten zu
+blättern, gibt der Bediener die **Betriebsstunden (Bh)** ein und sieht genau die
+fälligen Aufgaben — gruppiert nach Baugruppe, abhakbar, kommentierbar, mit direktem
+Sprung in die zugehörige Handbuchseite. Rein **deterministisch & offline** (kein LLM).
+
+**Daten & Endpunkte.** Zwei statische JSONs aus dem Repo-Root, per FileResponse
+ausgeliefert (kein Static-Mount des ganzen Roots):
+- `GET /maintenance/tasks.json` → `maintenance_tasks.json` (545 Tasks, 67 Baugruppen;
+  je Task: Baugruppe, Text, Intervall, Verantwortlicher, `instruction_link`, Sub-Items).
+- `GET /maintenance/instructions.json` → `maintenance_instructions.json` (222 Anleitungen;
+  je Seite: Titel, Breadcrumb, Voraussetzungen, Warnungen, nummerierte Schritte).
+- Quelle der JSONs: LiRS-2.0-Export (`extract_maintenance_data.py`, offline, siehe
+  `MaintenanceAssistant - SETUP.md`).
+
+**Ablauf (deterministisch).**
+1. Tab wird beim ersten Öffnen lazy geladen (`maintEnsureLoaded`).
+2. **Bh eingeben** → alle Stunden-Intervalle mit `bh ≥ Intervall` werden automatisch
+   aktiviert; Spezial-Filter bleiben manuell.
+3. **Filtern** über Intervall-Chips (Mehrfachauswahl; „Alle").
+4. Aufgaben nach **Baugruppe gruppiert**, mit Fortschrittsbalken je Gruppe und gesamt.
+5. Aufgabe **abhaken / kommentieren / Foto** dokumentieren.
+6. **Anleitung** (Voraussetzungen/Warnungen/Schritte) im Modal öffnen — oder
+   **Handbuch** direkt im Iframe-Viewer.
+7. **Schichtbericht** (erledigt / offen / kommentiert) generieren.
+
+**Intervall-Buckets (generisch aus den Daten abgeleitet — kein Hardcoding).**
+- Stunden-Buckets: **8 / 40 / 500 / 1000 / 2000 / 4000 h** (Bh-gesteuert).
+- Spezial-Buckets: **„Bei Bedarf"** (on_demand) und **„Hauptuntersuchung"** (die
+  ✔-Markierungen des Plans) — manuell zuschaltbar.
+- Zuordnung: `interval.hours` → Stunden-Bucket; sonst `type=on_demand` → „Bei Bedarf";
+  sonst `interval.label` → gleichnamiger Bucket; sonst „Weitere".
+
+**Handbuch-Links (korrekt umgeleitet).** „Handbuch" / „Im Handbuch öffnen" rufen
+`openManual('/manuals/' + instruction_link, titel)` → öffnet die echte Seite im
+**vorhandenen Iframe-Viewer** (statt totem `target="_blank"`); „Zurück" landet wieder
+im Wartungen-Tab (`openManual` merkt sich die aktive View). **Alle 345 verlinkten
+Seiten sind in `manuals/` vorhanden** — entgegen der Warnung in der SETUP.md sind die
+Links hier also nicht tot.
+
+**Persistenz.** Zustand in `localStorage` (`ma_maint_state`): Bh, aktive Intervalle,
+Haken, Kommentare, Fotos (data-URL), eingeklappte Gruppen. **Reset-Button** löscht
+alles. Quota-sicher: bei vollem Speicher wird ohne Fotos gesichert, statt alles zu
+verlieren.
+
+**LDS-Konformität.** UI vollständig auf Design-System-Tokens/-Komponenten (`lds-*`,
+`--r-*`, `--s-*`) umgeschrieben; keine eigenen Farben/Fonts, **keine Emojis** (Icons
+als Inline-SVG). Das dunkle Theme der v3-Demo ist entfernt.
+
+**Wichtige Dateien.**
+```
+frontend/MaschinenAssistent.html   view-maintenance + maint*-JS + Wartungs-CSS
+backend/main.py                    /maintenance/{name}.json (FileResponse)
+maintenance_tasks.json             Plan-Tabelle (545 Tasks)
+maintenance_instructions.json      Anleitungen (222 Seiten)
+```

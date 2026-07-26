@@ -98,6 +98,14 @@
       margin-top: var(--s-3);
     }
 
+    /* ── Chat toolbar (Verlauf löschen) ─────────────────────── */
+    .chat-toolbar {
+      max-width: 760px;
+      margin: 0 auto var(--s-3);
+      display: flex;
+      justify-content: flex-end;
+    }
+
     /* ── Chat history ───────────────────────────────────────── */
     #chat-history {
       max-width: 760px;
@@ -775,6 +783,271 @@
         height: 56px;
       }
     }
+
+    /* ── Wartungen (Maintenance) ────────────────────────────── */
+    .maint { max-width: 860px; margin: 0 auto; }
+    .maint-head { margin-bottom: var(--s-4); }
+    .maint-head__intro h2 {
+      font: 400 22px/28px var(--font-head);
+      color: var(--r-on-surface-default);
+      margin: 0 0 var(--s-2);
+    }
+    .maint-head__intro p {
+      font: 400 14px/20px var(--font-text);
+      color: var(--r-on-surface-muted);
+      margin: 0 0 var(--s-4);
+      max-width: 640px;
+    }
+    .maint-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      flex-wrap: wrap;
+      padding: var(--s-3) var(--s-4);
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-high);
+    }
+    .maint-bar .spacer { flex: 1; }
+    .maint-bar__bh { display: flex; align-items: center; gap: var(--s-2); }
+    .maint-bar__label {
+      font: 700 11px/14px var(--font-text-b);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--r-on-surface-muted);
+    }
+    .maint-bar__input { width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+    .maint-bar__unit { font: 400 13px/18px var(--font-text); color: var(--r-on-surface-muted); }
+    .maint-bar__machine { font: 400 13px/18px var(--font-text); color: var(--r-on-surface-muted); }
+    .maint-bar__machine strong { color: var(--r-on-surface-default); font-family: var(--font-text-m); font-weight: 500; }
+
+    /* Chips (Intervalle) */
+    .maint-chips {
+      display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center;
+      margin-bottom: var(--s-4);
+    }
+    .maint-chips__label {
+      font: 700 11px/14px var(--font-text-b);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--r-on-surface-muted); margin-right: var(--s-1);
+    }
+    .maint-chip {
+      display: inline-flex; align-items: center; gap: var(--s-1);
+      padding: 4px 12px;
+      border: 1px solid var(--r-outline-default);
+      border-radius: var(--radius-pill);
+      background: var(--r-surface-default);
+      color: var(--r-on-surface-default);
+      font: 400 13px/18px var(--font-text);
+      cursor: pointer; user-select: none;
+      transition: background var(--motion-fast), border-color var(--motion-fast), color var(--motion-fast);
+    }
+    .maint-chip:hover { border-color: var(--r-outline-variant); }
+    .maint-chip .cnt { font-size: 11px; color: var(--r-on-surface-muted); }
+    .maint-chip--due { border-color: var(--r-outline-success); color: var(--r-on-success-soft); background: var(--r-success-soft); }
+    .maint-chip--due .cnt { color: var(--r-on-success-soft); }
+    .maint-chip--active {
+      border-color: var(--r-brand);
+      background: var(--r-brand);
+      color: var(--r-on-brand);
+      font-family: var(--font-text-m); font-weight: 500;
+    }
+    .maint-chip--active .cnt { color: var(--r-on-brand); }
+    .maint-chips__link {
+      font: 400 12px/16px var(--font-text);
+      color: var(--r-on-brand); background: none; border: none; cursor: pointer;
+      text-decoration: underline; padding: 0 var(--s-1); margin-left: var(--s-1);
+    }
+    .maint-chips__link:hover { color: var(--r-on-surface-default); }
+
+    /* Fortschritt */
+    .maint-progress {
+      padding: var(--s-3) var(--s-4);
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-high);
+      margin-bottom: var(--s-4);
+    }
+    .maint-progress__top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font: 400 13px/18px var(--font-text); color: var(--r-on-surface-muted);
+      margin-bottom: var(--s-2);
+    }
+    .maint-progress__top strong {
+      font: 700 12px/16px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--r-on-surface-default);
+    }
+    .maint-bar-track { height: 8px; background: var(--r-surface-higher); border-radius: var(--radius-pill); overflow: hidden; }
+    .maint-bar-fill { height: 100%; background: var(--r-brand); border-radius: var(--radius-pill); transition: width var(--motion-medium, .3s); }
+    .maint-bar-fill--done { background: var(--r-success); }
+
+    /* Baugruppen-Gruppe */
+    .maint-group {
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-default);
+      overflow: hidden;
+      margin-bottom: var(--s-3);
+    }
+    .maint-group__hdr {
+      display: flex; align-items: center; gap: var(--s-2);
+      width: 100%; text-align: left;
+      padding: var(--s-3) var(--s-4);
+      background: var(--r-surface-high);
+      border: none; cursor: pointer; user-select: none;
+      transition: background var(--motion-fast);
+    }
+    .maint-group__hdr:hover { background: var(--r-surface-higher); }
+    .maint-group__arrow { color: var(--r-on-surface-muted); transition: transform var(--motion-fast); flex-shrink: 0; }
+    .maint-group__arrow.open { transform: rotate(90deg); }
+    .maint-group__name { flex: 1; font: 500 14px/20px var(--font-text-m); color: var(--r-on-surface-default); }
+    .maint-group__cnt { font: 400 12px/16px var(--font-text); color: var(--r-on-surface-muted); font-variant-numeric: tabular-nums; }
+    .maint-group__mini { width: 56px; height: 5px; background: var(--r-surface-higher); border-radius: var(--radius-pill); overflow: hidden; }
+    .maint-group__mini > span { display: block; height: 100%; background: var(--r-brand); border-radius: var(--radius-pill); }
+    .maint-group__mini > span.done { background: var(--r-success); }
+    .maint-group__body { padding: var(--s-2); }
+    .maint-group__body.hide { display: none; }
+
+    /* Task-Karte */
+    .maint-task {
+      border: 1px solid var(--r-outline-bright);
+      border-left: 3px solid var(--r-outline-default);
+      border-radius: var(--radius-1);
+      background: var(--r-surface-default);
+      margin-bottom: var(--s-2);
+      overflow: hidden;
+      transition: border-color var(--motion-fast);
+    }
+    .maint-task:last-child { margin-bottom: 0; }
+    .maint-task--done { border-left-color: var(--r-success); background: var(--r-surface-high); }
+    .maint-task--done .maint-task__text { color: var(--r-on-surface-muted); text-decoration: line-through; }
+    .maint-task__main { display: flex; align-items: flex-start; gap: var(--s-3); padding: var(--s-3) var(--s-4); cursor: pointer; }
+    .maint-task__chk {
+      width: 24px; height: 24px; min-width: 24px; margin-top: 1px;
+      border: 2px solid var(--r-outline-default); border-radius: var(--radius-0);
+      background: var(--r-surface-default); color: var(--r-on-success);
+      display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+      transition: background var(--motion-fast), border-color var(--motion-fast);
+    }
+    .maint-task__chk:hover { border-color: var(--r-success); }
+    .maint-task__chk.on { background: var(--r-success); border-color: var(--r-success); }
+    .maint-task__body { flex: 1; min-width: 0; }
+    .maint-task__text { font: 400 14px/20px var(--font-text); color: var(--r-on-surface-default); }
+    .maint-task__meta { display: flex; gap: var(--s-1); flex-wrap: wrap; margin-top: var(--s-2); align-items: center; }
+    .maint-tag {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 8px; border-radius: var(--radius-pill);
+      font: 500 11px/14px var(--font-text-m);
+    }
+    .maint-tag--int { background: var(--r-brand); color: var(--r-on-brand); }
+    .maint-tag--resp { background: var(--r-surface-higher); color: var(--r-on-surface-muted); }
+    .maint-tag--note { background: var(--r-surface-higher); color: var(--r-on-surface-muted); border: 1px solid var(--r-outline-bright); }
+    .maint-task__chev { color: var(--r-on-surface-muted); transition: transform var(--motion-fast); flex-shrink: 0; margin-top: 2px; }
+    .maint-task__chev.open { transform: rotate(90deg); }
+
+    .maint-task__det { display: none; padding: 0 var(--s-4) var(--s-4) 52px; }
+    .maint-task__det.open { display: block; }
+    .maint-det-acts { display: flex; gap: var(--s-2); flex-wrap: wrap; margin: var(--s-2) 0 var(--s-3); }
+
+    .maint-subs {
+      background: var(--r-surface-high);
+      border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-1);
+      padding: var(--s-2) var(--s-3); margin-bottom: var(--s-3);
+    }
+    .maint-subs__title { font: 700 10px/14px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.05em; color: var(--r-on-surface-muted); margin-bottom: var(--s-1); }
+    .maint-sub { display: flex; align-items: baseline; gap: var(--s-2); padding: var(--s-1) 0; border-bottom: 1px solid var(--r-outline-bright); font: 400 12px/18px var(--font-text); color: var(--r-on-surface-default); }
+    .maint-sub:last-child { border-bottom: none; }
+    .maint-sub__links { display: inline-flex; gap: var(--s-1); flex-shrink: 0; }
+    .maint-sub__link { background: none; border: none; padding: 2px; cursor: pointer; color: var(--r-on-brand); display: inline-flex; }
+    .maint-sub__link:hover { color: var(--r-on-surface-default); }
+
+    .maint-cmt { margin-bottom: var(--s-2); }
+    .maint-cmt label { display: block; font: 700 10px/14px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.05em; color: var(--r-on-surface-muted); margin-bottom: var(--s-1); }
+    .maint-cmt textarea {
+      width: 100%; box-sizing: border-box; resize: vertical; min-height: 44px;
+      padding: var(--s-2) var(--s-3);
+      border: 1px solid var(--r-outline-default); border-radius: var(--radius-1);
+      background: var(--r-surface-default); color: var(--r-on-surface-default);
+      font: 400 13px/18px var(--font-text); outline: none;
+    }
+    .maint-cmt textarea:focus { border-color: var(--r-outline-variant); box-shadow: 0 0 0 3px var(--r-focus-ring-soft); }
+    .maint-photos { display: flex; gap: var(--s-2); flex-wrap: wrap; margin: var(--s-2) 0; }
+    .maint-photo { position: relative; display: inline-block; }
+    .maint-photo img { width: 64px; height: 64px; object-fit: cover; border-radius: var(--radius-1); border: 1px solid var(--r-outline-bright); display: block; }
+    .maint-photo__rm {
+      position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
+      border-radius: 50%; border: none; cursor: pointer;
+      background: var(--r-error); color: var(--r-on-error);
+      display: flex; align-items: center; justify-content: center; padding: 0;
+    }
+    .maint-saved-cmt {
+      background: var(--r-surface-high); border: 1px solid var(--r-outline-bright);
+      border-radius: var(--radius-1); padding: var(--s-2) var(--s-3); margin-top: var(--s-2);
+      font: 400 12px/18px var(--font-text); color: var(--r-on-surface-default);
+    }
+    .maint-saved-cmt .time { font: 400 10px/14px var(--font-text); color: var(--r-on-surface-muted); margin-right: var(--s-1); }
+
+    .maint-empty { text-align: center; padding: var(--s-8) var(--s-4); color: var(--r-on-surface-muted); }
+    .maint-empty__title { font: 400 15px/22px var(--font-text); margin-bottom: var(--s-1); }
+    .maint-empty__hint { font: 400 13px/18px var(--font-text); color: var(--r-on-surface-disabled); }
+
+    /* Modal (Anleitung / Bericht) */
+    .maint-modal-ov {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: var(--r-scrim, rgba(0,0,0,.5));
+      align-items: center; justify-content: center; padding: var(--s-4);
+    }
+    .maint-modal-ov.open { display: flex; }
+    .maint-modal {
+      background: var(--r-surface-default); color: var(--r-on-surface-default);
+      border: 1px solid var(--r-outline-bright); border-radius: var(--radius-2);
+      box-shadow: var(--shadow-2, var(--shadow-1));
+      max-width: 680px; width: 100%; max-height: 85vh; overflow-y: auto;
+      padding: var(--s-6);
+    }
+    .maint-modal h3 { font: 400 20px/26px var(--font-head); margin: 0 0 var(--s-1); color: var(--r-on-surface-default); }
+    .maint-modal__crumb { font: 400 12px/16px var(--font-text); color: var(--r-on-surface-muted); margin-bottom: var(--s-4); }
+    .maint-modal__close { margin-top: var(--s-5); }
+    .maint-instr-prereqs {
+      background: var(--r-surface-high); border-left: 4px solid var(--r-outline-variant);
+      border-radius: 0 var(--radius-1) var(--radius-1) 0; padding: var(--s-3) var(--s-4);
+      margin-bottom: var(--s-4); font: 400 13px/20px var(--font-text);
+    }
+    .maint-instr-prereqs strong { display: block; font: 700 11px/14px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.05em; color: var(--r-on-surface-muted); margin-bottom: var(--s-2); }
+    .maint-instr-warn {
+      background: var(--r-warning-soft); color: var(--r-on-warning-soft);
+      border-left: 4px solid var(--r-outline-warning);
+      border-radius: 0 var(--radius-1) var(--radius-1) 0; padding: var(--s-3) var(--s-4);
+      margin-bottom: var(--s-2); font: 400 13px/20px var(--font-text);
+    }
+    .maint-instr-warn .sw { font: 700 12px/16px var(--font-text-b); }
+    .maint-instr-step { display: flex; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--r-outline-bright); }
+    .maint-instr-step:last-child { border-bottom: none; }
+    .maint-instr-num {
+      width: 26px; height: 26px; min-width: 26px; border-radius: 50%;
+      background: var(--r-brand); color: var(--r-on-brand);
+      display: flex; align-items: center; justify-content: center;
+      font: 700 12px/16px var(--font-text-b);
+    }
+    .maint-instr-res { display: flex; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--r-outline-bright); align-items: center; color: var(--r-on-success-soft); }
+    .maint-instr-res:last-child { border-bottom: none; }
+    .maint-instr-res__ic { width: 26px; height: 26px; min-width: 26px; border-radius: 50%; background: var(--r-success-soft); color: var(--r-success); display: flex; align-items: center; justify-content: center; }
+    .maint-instr-text { flex: 1; font: 400 13px/20px var(--font-text); }
+    .maint-report-stats { display: flex; gap: var(--s-2); flex-wrap: wrap; margin: var(--s-4) 0; }
+    .maint-report-stat { flex: 1; min-width: 92px; text-align: center; padding: var(--s-3); border: 1px solid var(--r-outline-bright); border-radius: var(--radius-1); background: var(--r-surface-high); }
+    .maint-report-stat__v { font: 400 24px/28px var(--font-head); color: var(--r-on-surface-default); }
+    .maint-report-stat__l { font: 400 11px/14px var(--font-text); color: var(--r-on-surface-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .maint-report-sec { margin-bottom: var(--s-4); }
+    .maint-report-sec > strong { display: block; font: 700 12px/16px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.05em; color: var(--r-on-surface-muted); margin-bottom: var(--s-2); }
+    .maint-report-line { font: 400 13px/20px var(--font-text); padding: 2px 0; color: var(--r-on-surface-default); }
+    .maint-report-line .bg { color: var(--r-on-surface-muted); }
+
+    @media (max-width: 768px) {
+      .maint-bar { gap: var(--s-2); }
+      .maint-bar .spacer { flex-basis: 100%; height: 0; }
+      .maint-task__det { padding-left: var(--s-4); }
+    }
   </style>
 </head>
 
@@ -829,6 +1102,10 @@
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="6" y="8" width="12" height="11" rx="6"/><path d="M9 8a3 3 0 0 1 6 0M2 13h4M18 13h4M3 8l3 2M21 8l-3 2M3 18l3-2M21 18l-3-2M12 8v11"/></svg>
         Meldungen
       </button>
+      <button class="lds-nav__item" data-view="maintenance" onclick="switchView('maintenance')">
+        <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11M3 12h8M3 18h11"/><path d="m15.5 15.5 2 2 4-4"/></svg>
+        Wartungen
+      </button>
     </nav>
     <div class="app-sidebar__footer">
       v0.1 &nbsp;<span>MTP-Demo</span>
@@ -856,6 +1133,12 @@
           <button class="lds-pill" onclick="prefill('Hydraulik Störung')">Hydraulik Störung</button>
         </div>
       </div>
+      <div id="chat-toolbar" class="chat-toolbar" style="display:none">
+        <button class="lds-btn lds-btn--ghost lds-btn--sm" onclick="clearChat()" title="Gesprächsverlauf löschen">
+          <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v5M14 11v5"/></svg>
+          Verlauf löschen
+        </button>
+      </div>
       <div id="chat-history"></div>
     </div>
 
@@ -863,9 +1146,9 @@
     <div id="view-errorcode" class="view app-scroll">
       <div class="errorcode-view">
         <h2>Meldung nachschlagen</h2>
-        <p>Code eingeben (z. B. <strong>0x00000035</strong> oder <strong>R-003</strong>) oder Stichwort (z. B. <strong>Batterie</strong>, <strong>Hydraulik</strong>) — zeigt Beschreibung, Auswirkung, Problemlösung und mögliche Ursachen.</p>
+        <p>Code eingeben (z. B. <strong>0x0000006B</strong> oder <strong>R-003</strong>) oder Stichwort (z. B. <strong>Batterie</strong>, <strong>Hydraulik</strong>) — zeigt Beschreibung, Auswirkung, Problemlösung und mögliche Ursachen.</p>
         <div class="errorcode-row">
-          <input class="lds-input" id="ec-input" type="text" placeholder="z. B. 0x00000035 oder Hydraulik"
+          <input class="lds-input" id="ec-input" type="text" placeholder="z. B. 0x0000006B oder Hydraulik"
             onkeydown="if(event.key==='Enter')lookupCode()" />
           <button class="lds-btn lds-btn--ghost lds-btn--icon" title="Spracheingabe" onclick="toggleVoice('ec-input')">
             <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
@@ -882,6 +1165,42 @@
           <button class="lds-btn lds-btn--primary" onclick="lookupCode()">Nachschlagen</button>
         </div>
         <div id="errorcode-result"></div>
+      </div>
+    </div>
+
+    <!-- Maintenance view -->
+    <div id="view-maintenance" class="view app-scroll">
+      <div class="maint">
+        <div class="maint-head">
+          <div class="maint-head__intro">
+            <h2>Wartungen</h2>
+            <p>Betriebsstunden eingeben — fällige Intervalle werden automatisch aktiviert. Aufgaben abhaken, kommentieren, Anleitung öffnen und einen Schichtbericht erstellen.</p>
+          </div>
+          <div class="maint-bar">
+            <div class="maint-bar__bh">
+              <label class="maint-bar__label" for="maint-bh">Betriebsstunden</label>
+              <input class="lds-input maint-bar__input" id="maint-bh" type="number" min="0" inputmode="numeric"
+                placeholder="0" oninput="maintOnBh()" />
+              <span class="maint-bar__unit">Bh</span>
+            </div>
+            <div class="maint-bar__machine">
+              Maschine: <strong id="maint-machine">—</strong>
+            </div>
+            <span class="spacer"></span>
+            <button class="lds-btn lds-btn--secondary lds-btn--sm" onclick="maintReport()">Schichtbericht</button>
+            <button class="lds-btn lds-btn--ghost lds-btn--sm" onclick="maintReset()" title="Betriebsstunden, Haken, Kommentare und Fotos zurücksetzen">Zurücksetzen</button>
+          </div>
+        </div>
+
+        <div id="maint-loading" class="maint-empty">
+          <div class="maint-empty__title">Lade Wartungsdaten…</div>
+        </div>
+
+        <div id="maint-content" style="display:none">
+          <div class="maint-chips" id="maint-chips"></div>
+          <div class="maint-progress" id="maint-progress"></div>
+          <div class="maint-tasks" id="maint-tasks"></div>
+        </div>
       </div>
     </div>
 
@@ -984,6 +1303,10 @@
     <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="6" y="8" width="12" height="11" rx="6"/><path d="M9 8a3 3 0 0 1 6 0M2 13h4M18 13h4M3 8l3 2M21 8l-3 2M3 18l3-2M21 18l-3-2M12 8v11"/></svg>
     Meldungen
   </button>
+  <button class="lds-nav__item" data-view="maintenance" onclick="switchView('maintenance')">
+    <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11M3 12h8M3 18h11"/><path d="m15.5 15.5 2 2 4-4"/></svg>
+    Wartungen
+  </button>
 </nav>
 
 <!-- ═══ VOICE OVERLAY ═════════════════════════════════════════════════════ -->
@@ -1011,6 +1334,16 @@
   <button class="lds-btn lds-btn--ghost" style="color:var(--p-white);border-color:var(--p-steel-500)"
     onclick="stopScan()">Abbrechen</button>
   <canvas id="scan-canvas" hidden></canvas>
+</div>
+
+<!-- ═══ WARTUNGEN: ANLEITUNGS-MODAL ══════════════════════════════════════════ -->
+<div class="maint-modal-ov" id="maint-instr-ov" onclick="if(event.target===this)maintCloseInstr()">
+  <div class="maint-modal" id="maint-instr-content" role="dialog" aria-modal="true"></div>
+</div>
+
+<!-- ═══ WARTUNGEN: SCHICHTBERICHT-MODAL ══════════════════════════════════════ -->
+<div class="maint-modal-ov" id="maint-report-ov" onclick="if(event.target===this)maintCloseReport()">
+  <div class="maint-modal" id="maint-report-content" role="dialog" aria-modal="true"></div>
 </div>
 
 <!-- ═══ SCRIPT ════════════════════════════════════════════════════════════ -->
@@ -1106,6 +1439,16 @@ function prefill(text) {
   el.focus();
 }
 
+// Gesprächsverlauf löschen: DOM leeren, Toolbar ausblenden, Hero wieder zeigen.
+// (Der Chat wird nicht persistiert — es gibt also nichts aus localStorage zu räumen.)
+function clearChat() {
+  const history = document.getElementById('chat-history');
+  if (history.children.length && !confirm('Gesprächsverlauf löschen?')) return;
+  history.innerHTML = '';
+  document.getElementById('chat-toolbar').style.display = 'none';
+  document.getElementById('hero').style.display = '';
+}
+
 function switchView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('is-active'));
   document.getElementById('view-' + id).classList.add('is-active');
@@ -1114,6 +1457,8 @@ function switchView(id) {
   });
   const composer = document.getElementById('composer-wrap');
   composer.style.display = id === 'chat' ? '' : 'none';
+  updateToolbarVisibility();
+  if (id === 'maintenance') maintEnsureLoaded();
 }
 
 let _manualReturnView = 'chat';
@@ -1130,6 +1475,7 @@ function openManual(url, title) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('is-active'));
   document.getElementById('view-manual').classList.add('is-active');
   document.getElementById('composer-wrap').style.display = 'none';
+  updateToolbarVisibility();
 }
 
 function closeManual() {
@@ -1380,9 +1726,18 @@ function setMode(m) {
   localStorage.setItem(MODE_KEY, m);
   document.getElementById('mode-btn-classic').classList.toggle('mode-toggle__btn--active', m === 'classic');
   document.getElementById('mode-btn-agent').classList.toggle('mode-toggle__btn--active', m === 'agent');
-  // Backend-Umschalter je nach Modus zeigen
-  document.getElementById('backend-toggle').style.display = (m === 'agent') ? '' : 'none';
-  document.getElementById('classic-backend-toggle').style.display = (m === 'classic') ? '' : 'none';
+  updateToolbarVisibility();
+}
+
+// Modus- und Backend-Umschalter gehören logisch in den Assistent-Tab (chat) und
+// werden nur dort gezeigt. Der jeweils passende Backend-Umschalter richtet sich
+// zusätzlich nach dem aktiven Modus (Klassisch → QWEN/Claude, Assistent → Regelbasiert/QWEN/Claude).
+function updateToolbarVisibility() {
+  const active = document.querySelector('.view.is-active');
+  const isChat = active ? active.id === 'view-chat' : true;
+  document.getElementById('mode-toggle').style.display = isChat ? '' : 'none';
+  document.getElementById('backend-toggle').style.display = (isChat && _mode === 'agent') ? '' : 'none';
+  document.getElementById('classic-backend-toggle').style.display = (isChat && _mode === 'classic') ? '' : 'none';
 }
 
 // Assistent-Backend: "rule" (Regelbasiert, kein LLM), "qwen" (lokales Modell nur
@@ -1437,6 +1792,7 @@ async function sendQuestion(opts = {}) {
 
   if (!opts.question) { el.value = ''; autoResize(el); }
   document.getElementById('hero').style.display = 'none';
+  document.getElementById('chat-toolbar').style.display = 'flex';
 
   const history = document.getElementById('chat-history');
 
@@ -2076,6 +2432,538 @@ function speak(btn) {
 
 function copyAnswer(btn) {
   navigator.clipboard.writeText(btn.dataset.text).catch(() => {});
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  WARTUNGEN (Maintenance-Assistent)
+//  Portiert aus MaintenanceAssistant_v3.html — LDS-Look, localStorage-persistent,
+//  Manual-Links über den vorhandenen Iframe-Viewer (openManual).
+// ════════════════════════════════════════════════════════════════════════
+const MAINT_STATE_KEY = 'ma_maint_state';
+
+// Geladene Daten (einmalig)
+let MAINT = null;               // { tasks, instr, machine, buckets }
+let _maintLoading = false;
+
+// Persistenter Zustand
+let maintState = { bh: 0, active: [], tasks: {}, collapsed: [] };
+// UI-Zustand (nicht persistiert)
+const maintOpen = new Set();    // aufgeklappte Task-Details
+
+function maintLoadState() {
+  try {
+    const raw = localStorage.getItem(MAINT_STATE_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      maintState = {
+        bh: s.bh || 0,
+        active: Array.isArray(s.active) ? s.active : [],
+        tasks: s.tasks || {},
+        collapsed: Array.isArray(s.collapsed) ? s.collapsed : [],
+      };
+    }
+  } catch { /* defekter Zustand → Defaults */ }
+}
+
+function maintSaveState() {
+  try {
+    localStorage.setItem(MAINT_STATE_KEY, JSON.stringify(maintState));
+  } catch (e) {
+    // Quota (z. B. viele Fotos) — Zustand ohne Fotos speichern, sonst geht alles verloren.
+    try {
+      const lite = { ...maintState, tasks: {} };
+      for (const [id, ts] of Object.entries(maintState.tasks)) {
+        lite.tasks[id] = { done: ts.done, comments: ts.comments, photos: [] };
+      }
+      localStorage.setItem(MAINT_STATE_KEY, JSON.stringify(lite));
+      if (!maintState._photoWarned) {
+        maintState._photoWarned = true;
+        console.warn('Speicher voll — Fotos werden nicht dauerhaft gesichert.');
+      }
+    } catch { /* aufgeben */ }
+  }
+}
+
+function maintTaskState(id) {
+  if (!maintState.tasks[id]) maintState.tasks[id] = { done: false, comments: [], photos: [] };
+  const t = maintState.tasks[id];
+  if (!Array.isArray(t.comments)) t.comments = [];
+  if (!Array.isArray(t.photos)) t.photos = [];
+  return t;
+}
+
+// ── Laden ─────────────────────────────────────────────────────────────────
+function maintEnsureLoaded() {
+  if (MAINT || _maintLoading) return;
+  _maintLoading = true;
+  maintLoadState();
+  maintLoad();
+}
+
+async function maintLoad() {
+  try {
+    const [tResp, iResp] = await Promise.all([
+      fetch(API + '/maintenance/tasks.json'),
+      fetch(API + '/maintenance/instructions.json'),
+    ]);
+    if (!tResp.ok || !iResp.ok) throw new Error('JSON nicht ladbar');
+    const tData = await tResp.json();
+    const iData = await iResp.json();
+    maintBuildModel(tData, iData);
+    document.getElementById('maint-loading').style.display = 'none';
+    document.getElementById('maint-content').style.display = 'block';
+    const bhInput = document.getElementById('maint-bh');
+    if (maintState.bh) bhInput.value = maintState.bh;
+    maintRender();
+  } catch (e) {
+    _maintLoading = false;
+    document.getElementById('maint-loading').innerHTML =
+      '<div class="maint-empty__title">Wartungsdaten konnten nicht geladen werden.</div>' +
+      '<div class="maint-empty__hint">Server prüfen (Endpoint <code>/maintenance/tasks.json</code>).</div>';
+    console.error(e);
+  }
+}
+
+function maintBuildModel(tData, iData) {
+  // Tasks verschlanken
+  const tasks = (tData.tasks || []).map(t => {
+    const iv = t.interval || {};
+    let bucketKey, bucketLabel;
+    if (iv.hours) {
+      bucketKey = 'h' + iv.hours; bucketLabel = iv.hours + ' h';
+    } else if (iv.type === 'on_demand') {
+      bucketKey = 'on_demand'; bucketLabel = iv.label || 'Bei Bedarf';
+    } else if (iv.label) {
+      bucketKey = 'lab:' + iv.label; bucketLabel = iv.label;
+    } else {
+      bucketKey = 'other'; bucketLabel = 'Weitere';
+    }
+    return {
+      id: t.id, seq: t.seq, bg: t.baugruppe || 'Sonstiges', text: t.text || '',
+      resp: t.responsible, kind: t.task_kind, symLabel: t.symbol_label || '',
+      hours: iv.hours || null, bucketKey, bucketLabel,
+      link: t.instruction_link || null,
+      hasInstr: !!(t.instruction_link && (iData.instructions || {})[t.instruction_link]),
+      subs: (t.sub_items || []).map(s => ({
+        text: s.full_text || s.text || '',
+        link: s.instruction_link || null,
+        hasInstr: !!(s.instruction_link && (iData.instructions || {})[s.instruction_link]),
+      })),
+    };
+  });
+
+  // Buckets ableiten: Stunden-Buckets aufsteigend, dann Spezial-Buckets.
+  const seen = new Map();  // key → { key, label, hours }
+  tasks.forEach(t => {
+    if (!seen.has(t.bucketKey)) seen.set(t.bucketKey, { key: t.bucketKey, label: t.bucketLabel, hours: t.hours });
+    seen.get(t.bucketKey).count = (seen.get(t.bucketKey).count || 0) + 1;
+  });
+  const all = [...seen.values()];
+  const hourB = all.filter(b => b.hours).sort((a, b) => a.hours - b.hours);
+  const specialB = all.filter(b => !b.hours).sort((a, b) => (b.count || 0) - (a.count || 0));
+  const buckets = [...hourB, ...specialB];
+
+  const m = tData.machine || {};
+  const machine = [m.document_title, m.description].filter(Boolean).join(' · ') || 'Unbekannt';
+
+  MAINT = { tasks, instr: (iData.instructions || {}), machine, buckets };
+  document.getElementById('maint-machine').textContent = machine;
+
+  // Falls noch kein aktiver Filter gesetzt: aus gespeicherten Bh ableiten.
+  if (!maintState.active.length && maintState.bh) maintApplyBh(maintState.bh, false);
+}
+
+// ── Bh & Filter ─────────────────────────────────────────────────────────────
+function maintApplyBh(bh, keepSpecials) {
+  const specials = keepSpecials
+    ? maintState.active.filter(k => MAINT.buckets.find(b => b.key === k && !b.hours))
+    : [];
+  const due = MAINT.buckets.filter(b => b.hours && bh >= b.hours).map(b => b.key);
+  maintState.active = [...new Set([...specials, ...due])];
+}
+
+function maintOnBh() {
+  const bh = parseInt(document.getElementById('maint-bh').value, 10) || 0;
+  maintState.bh = bh;
+  maintApplyBh(bh, true);
+  maintSaveState();
+  maintRender();
+}
+
+function maintToggleChip(key) {
+  const i = maintState.active.indexOf(key);
+  if (i >= 0) maintState.active.splice(i, 1);
+  else maintState.active.push(key);
+  maintSaveState();
+  maintRender();
+}
+
+function maintSelectAll() {
+  maintState.active = MAINT.buckets.map(b => b.key);
+  maintSaveState();
+  maintRender();
+}
+
+function maintVisibleTasks() {
+  const active = new Set(maintState.active);
+  return MAINT.tasks.filter(t => active.has(t.bucketKey));
+}
+
+// ── Rendern ─────────────────────────────────────────────────────────────────
+function maintRender() {
+  if (!MAINT) return;
+  maintRenderChips();
+  maintRenderProgress();
+  maintRenderTasks();
+}
+
+function maintRenderChips() {
+  const el = document.getElementById('maint-chips');
+  const active = new Set(maintState.active);
+  const bh = maintState.bh;
+  const chips = MAINT.buckets.map(b => {
+    const isActive = active.has(b.key);
+    const due = b.hours && bh >= b.hours;
+    const cls = 'maint-chip' + (isActive ? ' maint-chip--active' : (due ? ' maint-chip--due' : ''));
+    return `<button class="${cls}" onclick="maintToggleChip('${escHtml(b.key)}')">${escHtml(b.label)}<span class="cnt">${b.count || 0}</span></button>`;
+  }).join('');
+  el.innerHTML = `<span class="maint-chips__label">Intervalle</span>${chips}` +
+    `<button class="maint-chips__link" onclick="maintSelectAll()">Alle</button>`;
+}
+
+function maintRenderProgress() {
+  const vis = maintVisibleTasks();
+  const done = vis.filter(t => maintTaskState(t.id).done).length;
+  const pct = vis.length ? Math.round(done / vis.length * 100) : 0;
+  document.getElementById('maint-progress').innerHTML =
+    `<div class="maint-progress__top"><strong>Fortschritt</strong><span>${done} / ${vis.length} erledigt (${pct} %)</span></div>` +
+    `<div class="maint-bar-track"><div class="maint-bar-fill${pct === 100 && vis.length ? ' maint-bar-fill--done' : ''}" style="width:${pct}%"></div></div>`;
+}
+
+function maintRenderTasks() {
+  const c = document.getElementById('maint-tasks');
+  const vis = maintVisibleTasks();
+
+  // Unsaved Kommentar-Entwürfe über das Re-Render retten.
+  const drafts = {};
+  c.querySelectorAll('textarea[data-maint-cmt]').forEach(t => { if (t.value) drafts[t.dataset.maintCmt] = t.value; });
+
+  if (!vis.length) {
+    c.innerHTML = maintState.bh || maintState.active.length
+      ? '<div class="maint-empty"><div class="maint-empty__title">Keine Aufgaben für die aktiven Intervalle</div><div class="maint-empty__hint">Intervall-Chips oben wählen.</div></div>'
+      : '<div class="maint-empty"><div class="maint-empty__title">Betriebsstunden eingeben</div><div class="maint-empty__hint">Fällige Intervalle werden dann automatisch aktiviert.</div></div>';
+    return;
+  }
+
+  // Nach Baugruppe gruppieren
+  const bucketOrder = new Map(MAINT.buckets.map((b, i) => [b.key, i]));
+  const map = new Map();
+  vis.forEach(t => { if (!map.has(t.bg)) map.set(t.bg, []); map.get(t.bg).push(t); });
+  const groups = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], 'de'));
+  const collapsed = new Set(maintState.collapsed);
+
+  c.innerHTML = groups.map(([bg, tasks]) => {
+    tasks.sort((a, b) => (bucketOrder.get(a.bucketKey) - bucketOrder.get(b.bucketKey)) || a.text.localeCompare(b.text, 'de'));
+    const d = tasks.filter(t => maintTaskState(t.id).done).length;
+    const pct = Math.round(d / tasks.length * 100);
+    const col = collapsed.has(bg);
+    return `<div class="maint-group">
+      <button class="maint-group__hdr" onclick="maintToggleGroup('${escHtml(bg).replace(/'/g, "\\'")}')">
+        <svg class="maint-group__arrow ${col ? '' : 'open'}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+        <span class="maint-group__name">${escHtml(bg)}</span>
+        <span class="maint-group__cnt">${d}/${tasks.length}</span>
+        <span class="maint-group__mini"><span class="${d === tasks.length ? 'done' : ''}" style="width:${pct}%"></span></span>
+      </button>
+      <div class="maint-group__body ${col ? 'hide' : ''}">${tasks.map(maintRenderTask).join('')}</div>
+    </div>`;
+  }).join('');
+
+  // Entwürfe zurückschreiben
+  Object.entries(drafts).forEach(([id, val]) => {
+    const t = c.querySelector(`textarea[data-maint-cmt="${id}"]`);
+    if (t) t.value = val;
+  });
+}
+
+const MAINT_RESP_LABEL = { customer: 'Kunde', service: 'Service', note: 'Hinweis' };
+
+function maintRenderTask(t) {
+  const s = maintTaskState(t.id);
+  const open = maintOpen.has(t.id);
+  const resp = MAINT_RESP_LABEL[t.resp];
+  const badges =
+    (s.comments.length ? `<span class="maint-tag maint-tag--note">${maintIcon('cmt')} ${s.comments.length}</span>` : '') +
+    (s.photos.length ? `<span class="maint-tag maint-tag--note">${maintIcon('cam')} ${s.photos.length}</span>` : '');
+  return `<div class="maint-task ${s.done ? 'maint-task--done' : ''}" id="mt-${t.id}">
+    <div class="maint-task__main" onclick="maintToggleDetail('${t.id}')">
+      <button class="maint-task__chk ${s.done ? 'on' : ''}" id="mt-chk-${t.id}" onclick="event.stopPropagation();maintToggleDone('${t.id}')" aria-label="Erledigt">${s.done ? maintIcon('check') : ''}</button>
+      <div class="maint-task__body">
+        <div class="maint-task__text">${escHtml(t.text)}</div>
+        <div class="maint-task__meta" id="mt-meta-${t.id}">
+          <span class="maint-tag maint-tag--int">${escHtml(t.bucketLabel)}</span>
+          ${resp ? `<span class="maint-tag maint-tag--resp">${resp}</span>` : ''}
+          ${badges}
+        </div>
+      </div>
+      <svg class="maint-task__chev ${open ? 'open' : ''}" id="mt-chev-${t.id}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+    </div>
+    <div class="maint-task__det ${open ? 'open' : ''}" id="mt-det-${t.id}">
+      <div class="maint-det-acts">
+        ${t.hasInstr ? `<button class="lds-btn lds-btn--secondary lds-btn--sm" onclick="maintShowInstr('${t.link}')">${maintIcon('list')} Anleitung</button>` : ''}
+        ${t.link ? `<button class="lds-btn lds-btn--ghost lds-btn--sm" onclick="maintOpenManual('${t.link}')">${maintIcon('book')} Handbuch</button>` : ''}
+        <button class="lds-btn lds-btn--ghost lds-btn--sm" onclick="maintToggleDone('${t.id}')">${s.done ? 'Wieder öffnen' : 'Als erledigt markieren'}</button>
+      </div>
+      ${t.subs.length ? maintRenderSubs(t) : ''}
+      <div class="maint-cmt">
+        <label for="mt-c-${t.id}">Kommentar</label>
+        <textarea id="mt-c-${t.id}" data-maint-cmt="${t.id}" placeholder="Abweichung, Beobachtung…" rows="2"></textarea>
+      </div>
+      <div>
+        <label class="lds-btn lds-btn--ghost lds-btn--sm" style="cursor:pointer">${maintIcon('cam')} Foto
+          <input type="file" accept="image/*" capture="environment" style="display:none" onchange="maintAddPhoto('${t.id}',this)"></label>
+        <button class="lds-btn lds-btn--primary lds-btn--sm" style="margin-left:var(--s-2)" onclick="maintSaveComment('${t.id}')">Speichern</button>
+        <div class="maint-photos" id="mt-ph-${t.id}">${maintRenderPhotos(t.id)}</div>
+      </div>
+      <div id="mt-sc-${t.id}">${maintRenderSavedComments(t.id)}</div>
+    </div>
+  </div>`;
+}
+
+function maintRenderSubs(t) {
+  return `<div class="maint-subs"><div class="maint-subs__title">Zusätzliche Hinweise / Unterintervalle</div>` +
+    t.subs.map(s => {
+      const instr = s.hasInstr ? `<button class="maint-sub__link" title="Anleitung" onclick="maintShowInstr('${s.link}')">${maintIcon('list')}</button>` : '';
+      const book = s.link ? `<button class="maint-sub__link" title="Im Handbuch öffnen" onclick="maintOpenManual('${s.link}')">${maintIcon('book')}</button>` : '';
+      return `<div class="maint-sub"><span style="flex:1">${escHtml(s.text)}</span><span class="maint-sub__links">${instr}${book}</span></div>`;
+    }).join('') + `</div>`;
+}
+
+function maintRenderPhotos(id) {
+  return maintTaskState(id).photos.map((p, i) =>
+    `<div class="maint-photo"><img src="${p}" alt="Foto"><button class="maint-photo__rm" onclick="maintRemovePhoto('${id}',${i})" aria-label="Foto entfernen">${maintIcon('x')}</button></div>`
+  ).join('');
+}
+
+function maintRenderSavedComments(id) {
+  return maintTaskState(id).comments.map(c =>
+    `<div class="maint-saved-cmt"><span class="time">${escHtml(c.time)}</span>${escHtml(c.text)}</div>`
+  ).join('');
+}
+
+// ── Interaktionen ───────────────────────────────────────────────────────────
+function maintToggleGroup(bg) {
+  const i = maintState.collapsed.indexOf(bg);
+  if (i >= 0) maintState.collapsed.splice(i, 1);
+  else maintState.collapsed.push(bg);
+  maintSaveState();
+  maintRender();
+}
+
+function maintToggleDetail(id) {
+  const det = document.getElementById('mt-det-' + id);
+  const chev = document.getElementById('mt-chev-' + id);
+  if (!det) return;
+  const open = det.classList.toggle('open');
+  if (chev) chev.classList.toggle('open', open);
+  if (open) maintOpen.add(id); else maintOpen.delete(id);
+}
+
+function maintToggleDone(id) {
+  const s = maintTaskState(id);
+  s.done = !s.done;
+  maintSaveState();
+  // Gezielt aktualisieren (Detail bleibt offen, Kommentar-Entwürfe bleiben erhalten).
+  const card = document.getElementById('mt-' + id);
+  const chk = document.getElementById('mt-chk-' + id);
+  if (card) card.classList.toggle('maint-task--done', s.done);
+  if (chk) { chk.classList.toggle('on', s.done); chk.innerHTML = s.done ? maintIcon('check') : ''; }
+  // "Als erledigt markieren"-Buttontext im Detail aktualisieren
+  const det = document.getElementById('mt-det-' + id);
+  if (det) {
+    const btn = det.querySelector('.maint-det-acts .lds-btn:last-child');
+    if (btn) btn.textContent = s.done ? 'Wieder öffnen' : 'Als erledigt markieren';
+  }
+  maintRenderChips();
+  maintRenderProgress();
+  maintRefreshGroupCounts();
+}
+
+// Gruppen-Zähler/Balken ohne komplettes Neu-Rendern der Tasks aktualisieren.
+function maintRefreshGroupCounts() {
+  const vis = maintVisibleTasks();
+  const map = new Map();
+  vis.forEach(t => { if (!map.has(t.bg)) map.set(t.bg, []); map.get(t.bg).push(t); });
+  document.querySelectorAll('#maint-tasks .maint-group').forEach(g => {
+    const name = g.querySelector('.maint-group__name');
+    if (!name) return;
+    const tasks = map.get(name.textContent) || [];
+    const d = tasks.filter(t => maintTaskState(t.id).done).length;
+    const cnt = g.querySelector('.maint-group__cnt');
+    const mini = g.querySelector('.maint-group__mini > span');
+    if (cnt) cnt.textContent = `${d}/${tasks.length}`;
+    if (mini) {
+      mini.style.width = (tasks.length ? Math.round(d / tasks.length * 100) : 0) + '%';
+      mini.classList.toggle('done', tasks.length > 0 && d === tasks.length);
+    }
+  });
+}
+
+function maintSaveComment(id) {
+  const inp = document.getElementById('mt-c-' + id);
+  if (!inp || !inp.value.trim()) return;
+  maintTaskState(id).comments.push({
+    text: inp.value.trim(),
+    time: new Date().toLocaleString('de-AT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+  });
+  inp.value = '';
+  maintSaveState();
+  const sc = document.getElementById('mt-sc-' + id);
+  if (sc) sc.innerHTML = maintRenderSavedComments(id);
+  maintUpdateMeta(id);
+}
+
+function maintAddPhoto(id, input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    maintTaskState(id).photos.push(e.target.result);
+    maintSaveState();
+    const ph = document.getElementById('mt-ph-' + id);
+    if (ph) ph.innerHTML = maintRenderPhotos(id);
+    maintUpdateMeta(id);
+  };
+  r.readAsDataURL(file);
+  input.value = '';
+}
+
+function maintRemovePhoto(id, i) {
+  maintTaskState(id).photos.splice(i, 1);
+  maintSaveState();
+  const ph = document.getElementById('mt-ph-' + id);
+  if (ph) ph.innerHTML = maintRenderPhotos(id);
+  maintUpdateMeta(id);
+}
+
+// Kommentar-/Foto-Badges in der Task-Meta aktualisieren (ohne Neu-Render).
+function maintUpdateMeta(id) {
+  const meta = document.getElementById('mt-meta-' + id);
+  if (!meta) return;
+  const t = MAINT.tasks.find(x => x.id === id);
+  const s = maintTaskState(id);
+  const resp = MAINT_RESP_LABEL[t.resp];
+  meta.innerHTML =
+    `<span class="maint-tag maint-tag--int">${escHtml(t.bucketLabel)}</span>` +
+    (resp ? `<span class="maint-tag maint-tag--resp">${resp}</span>` : '') +
+    (s.comments.length ? `<span class="maint-tag maint-tag--note">${maintIcon('cmt')} ${s.comments.length}</span>` : '') +
+    (s.photos.length ? `<span class="maint-tag maint-tag--note">${maintIcon('cam')} ${s.photos.length}</span>` : '');
+}
+
+// ── Anleitungs-Modal ────────────────────────────────────────────────────────
+function maintShowInstr(link) {
+  const inst = MAINT.instr[link];
+  if (!inst) return;
+  let h = `<h3>${escHtml(inst.title || 'Anleitung')}</h3>`;
+  if (inst.breadcrumb && inst.breadcrumb.length) h += `<div class="maint-modal__crumb">${inst.breadcrumb.map(escHtml).join(' › ')}</div>`;
+
+  if (inst.prerequisites && inst.prerequisites.length) {
+    h += `<div class="maint-instr-prereqs"><strong>Voraussetzungen</strong>` +
+      inst.prerequisites.map(p => `<div>${maintIcon('check')} ${escHtml(p)}</div>`).join('') + `</div>`;
+  }
+  if (inst.warnings && inst.warnings.length) {
+    inst.warnings.forEach(w => {
+      h += `<div class="maint-instr-warn"><span class="sw">${escHtml(w.signal_word || 'Achtung')}</span>`;
+      if (w.cause) h += ` ${escHtml(w.cause)}`;
+      if (w.consequences) h += `<br><em>${escHtml(w.consequences)}</em>`;
+      if (w.actions && w.actions.length) h += '<br>' + w.actions.map(a => `${maintIcon('arrow')} ${escHtml(a)}`).join('<br>');
+      h += `</div>`;
+    });
+  }
+  if (inst.steps && inst.steps.length) {
+    h += `<div style="margin-top:var(--s-4)">`;
+    inst.steps.forEach(s => {
+      if (s.type === 'result') {
+        h += `<div class="maint-instr-res"><span class="maint-instr-res__ic">${maintIcon('check')}</span><div class="maint-instr-text">${escHtml(s.text)}</div></div>`;
+      } else {
+        h += `<div class="maint-instr-step"><span class="maint-instr-num">${escHtml(String(s.step_number || '•'))}</span><div class="maint-instr-text">${escHtml(s.text)}</div></div>`;
+      }
+    });
+    h += `</div>`;
+  }
+  h += `<button class="lds-btn lds-btn--ghost lds-btn--sm" style="margin-top:var(--s-3)" onclick="maintOpenManual('${link}')">${maintIcon('book')} Im Handbuch öffnen</button>`;
+  h += `<div><button class="lds-btn lds-btn--secondary maint-modal__close" onclick="maintCloseInstr()">Schließen</button></div>`;
+  document.getElementById('maint-instr-content').innerHTML = h;
+  document.getElementById('maint-instr-ov').classList.add('open');
+}
+
+function maintCloseInstr() { document.getElementById('maint-instr-ov').classList.remove('open'); }
+
+// Manual-Link über den vorhandenen Iframe-Viewer öffnen (statt totem target=_blank).
+// openManual merkt sich die aktive View → Zurück landet wieder im Wartungen-Tab.
+function maintOpenManual(link) {
+  maintCloseInstr();
+  const inst = MAINT.instr[link];
+  const title = (inst && inst.title) || 'Handbuch';
+  openManual('/manuals/' + link, title);
+}
+
+// ── Schichtbericht ──────────────────────────────────────────────────────────
+function maintReport() {
+  const vis = maintVisibleTasks();
+  const done = vis.filter(t => maintTaskState(t.id).done);
+  const open = vis.filter(t => !maintTaskState(t.id).done);
+  const withCmt = vis.filter(t => maintTaskState(t.id).comments.length > 0);
+  const dateStr = new Date().toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  let h = `<h3>Schichtbericht</h3><div class="maint-modal__crumb">${escHtml(dateStr)} — ${escHtml(MAINT.machine)} · ${maintState.bh} Bh</div>`;
+  h += `<div class="maint-report-stats">` +
+    [['Erledigt', done.length], ['Offen', open.length], ['Kommentiert', withCmt.length]]
+      .map(([l, v]) => `<div class="maint-report-stat"><div class="maint-report-stat__v">${v}</div><div class="maint-report-stat__l">${l}</div></div>`).join('') +
+    `</div>`;
+  if (done.length) {
+    h += `<div class="maint-report-sec"><strong>Erledigt</strong>` +
+      done.map(t => `<div class="maint-report-line">${maintIcon('check')} ${escHtml(t.text)} <span class="bg">(${escHtml(t.bg)})</span></div>`).join('') + `</div>`;
+  }
+  if (open.length) {
+    h += `<div class="maint-report-sec"><strong>Offen</strong>` +
+      open.map(t => `<div class="maint-report-line">${maintIcon('circle')} ${escHtml(t.text)} <span class="bg">(${escHtml(t.bg)})</span></div>`).join('') + `</div>`;
+  }
+  if (withCmt.length) {
+    h += `<div class="maint-report-sec"><strong>Kommentare</strong>` +
+      withCmt.map(t => `<div class="maint-report-line"><strong>${escHtml(t.text)}</strong>` +
+        maintTaskState(t.id).comments.map(c => `<div class="bg">— ${escHtml(c.text)} (${escHtml(c.time)})</div>`).join('') + `</div>`).join('') + `</div>`;
+  }
+  h += `<div><button class="lds-btn lds-btn--secondary maint-modal__close" onclick="maintCloseReport()">Schließen</button></div>`;
+  document.getElementById('maint-report-content').innerHTML = h;
+  document.getElementById('maint-report-ov').classList.add('open');
+}
+
+function maintCloseReport() { document.getElementById('maint-report-ov').classList.remove('open'); }
+
+// ── Zurücksetzen ────────────────────────────────────────────────────────────
+function maintReset() {
+  if (!confirm('Wartungen zurücksetzen? Betriebsstunden, Haken, Kommentare und Fotos werden gelöscht.')) return;
+  maintState = { bh: 0, active: [], tasks: {}, collapsed: [] };
+  maintOpen.clear();
+  try { localStorage.removeItem(MAINT_STATE_KEY); } catch {}
+  const bhInput = document.getElementById('maint-bh');
+  if (bhInput) bhInput.value = '';
+  maintRender();
+}
+
+// Kleine Inline-SVG-Icons (keine Emojis — CLAUDE.md).
+function maintIcon(name) {
+  const p = {
+    check:  '<path d="M20 6 9 17l-5-5"/>',
+    circle: '<circle cx="12" cy="12" r="7"/>',
+    list:   '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+    book:   '<path d="M4 4h11a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2V4zM17 20V6a2 2 0 0 1 2-2h1v16h-3z"/>',
+    cam:    '<path d="M3 7h4l2-2.5h6L17 7h4v13H3V7z"/><circle cx="12" cy="13" r="3.5"/>',
+    cmt:    '<path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z"/>',
+    arrow:  '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    x:      '<path d="M18 6 6 18M6 6l12 12"/>',
+  };
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-2px">${p[name] || ''}</svg>`;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
