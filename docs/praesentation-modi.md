@@ -142,6 +142,34 @@ Backend-Schalter steuert nur den **LLM-Assist** (HyDE/Rerank), nicht die Semanti
 
 ---
 
+## Folie 7b — Regelbasiert: Ablauf Schritt für Schritt
+
+`/ask_agent` → `run_agent_local(mode="sources", assist=None)` — **0 Modell-Calls**.
+
+1. **Clarification** (reine Regeln): Wert-/Tabellenfrage ohne **Länge UND
+   Einscherung** → gezielte Rückfrage, Abbruch.
+2. **Query bauen** (bei Folgerunde + letzte Nutzerantwort).
+3. **Retrieval / Fusion**: mehrere `search()`-Aufrufe (roh, normalisiert,
+   Kontext+normalisiert) → `_merge`. `search()` = Titel-BM25 + Volltext-BM25 +
+   Semantik (RRF), TF-IDF-Fallback. **Kein** qwen-HyDE/Rerank.
+4. **Score/Gap**: `top_score`, Score-Gap-Filter, `confidence`.
+5. **Deterministische Fast-Paths** (score-unabhängig, **vor** dem Gate):
+   Tabellenwert / Composition-Zählung / -Anordnung / -Seilführung mit
+   Präzisions-Gates. Greift einer → exakter Wert + Quelle, **fertig**.
+6. **Confidence-Gate**: kein Fast-Path & Score zu schwach → ehrlich
+   „nicht gefunden" + Top-3-Quellen.
+7. **Default „sources"**: Top-Quellen + wörtlicher Snippet, kein Modelltext.
+
+- **Keine LLM-Tool-Calls** — die Fast-Paths rufen die Funktionen (`lookup_table`,
+  `composition_*`) *direkt* auf, kein Modell entscheidet (Details Folie 8b).
+- **Anzeige immer „(1 Suchschritt)"**: `rounds` ist im `sources`-Pfad stets 0
+  (Quellen/Confidence/Composition) oder 1 (Tabelle); die UI zeigt beide als
+  „1 Suchschritt". Mehrere Suchschritte gibt es nur im **Claude**-Loop.
+
+> Notiz: Deterministisch von A bis Z — sofort, offline, kostenlos, kein API-Key.
+
+---
+
 ## Folie 8 — Deterministische Fast-Paths (Herzstück)
 
 Laufen in **allen** Assistent-Backends **vor** dem LLM (`backend/fastpaths.py`):
@@ -158,6 +186,47 @@ der Zusammenstellungs-Grafiken, jede Zeile plausibilisiert).
 
 > Notiz: 0 Modell-Calls, kein API-Key nötig — auch „Claude" beantwortet diese
 > Fälle exakt über den Fast-Path.
+
+---
+
+## Folie 8b — Tool-Calls: wer, was, wann
+
+**Zwei Arten von „Tools" — nicht verwechseln:**
+- **A) LLM-Tool-Calling**: ein *Modell entscheidet*, ein Tool aufzurufen
+  (Function-Calling-Loop). → **nur Claude**.
+- **B) Deterministische Funktionsaufrufe**: die Fast-Paths rufen dieselben
+  Funktionen *direkt* auf, kein Modell dazwischen. → alle Assistent-Backends.
+
+**Die Tools** (`agent_tools.py`):
+
+| Tool | Für Claude sichtbar? (`TOOL_SCHEMAS`) | Deterministisch (Fast-Path) |
+|------|:--:|:--:|
+| `search` | ja | ja (Retrieval) |
+| `read_page` | ja | — |
+| `grep_manual` | ja | — |
+| `bal_search` | ja | — |
+| `lookup_table` | **nein** (bewusst) | ja (Tabellen-Fast-Path) |
+| `composition_count/arrangement/seilfuehrung` | **nein** | ja (Composition) |
+
+**Pro Modus:**
+
+| Modus / Backend | LLM-Tool-Calls (A) | Deterministisch (B) | Modell-Calls |
+|---|:--:|---|---|
+| Klassisch · QWEN/Claude | keine | nur `search` (Lib-Aufruf) | HyDE + Rerank |
+| Assistent · **Regelbasiert** | **keine** | `search`, `lookup_table`, `composition_*` | **0** |
+| Assistent · **QWEN** | **keine** | wie Regelbasiert (+ qwen-HyDE/Rerank nur fürs Retrieval) | nur Retrieval-Assist |
+| Assistent · **Claude** | **ja** (Loop) | Fast-Paths **zuerst** | 0 bei Fast-Path, sonst Loop |
+
+**Wann ruft Claude Tools?** (`run_agent`)
+1. Zuerst deterministische Fast-Paths — greift einer → **0 LLM-/Tool-Calls**.
+2. Sonst Tool-Loop: `search` → `read_page` → `grep_manual` → `bal_search`
+   (bis `MAX_ROUNDS`/`MAX_TOOL_ROUNDS`), dann formulieren. `lookup_table`/
+   `composition_*` bekommt Claude **nicht** — die laufen immer über den Fast-Path.
+→ Echte Tool-Calls also nur bei **prozeduralen/Freitext-Fragen ohne Fast-Path**.
+
+> Notiz: `agent_local` hat einen experimentellen qwen-Tool-Loop
+> (`mode="tools"`), aber `main.py` erzwingt `mode="sources"` — über die UI ist
+> er nie aktiv. „QWEN" ändert damit nur das Retrieval, nie die Antworterzeugung.
 
 ---
 
