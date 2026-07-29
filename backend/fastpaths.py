@@ -77,6 +77,55 @@ def _config_tokens(context: str) -> list[str]:
     return out
 
 
+def _resolve_boom(question: str, context: str) -> str:
+    """Auslegertyp bestimmen — die FRAGE hat Vorrang. Nennt die Frage einen
+    Ausleger („Hauptausleger"/„Nadelausleger"), entscheidet er; nur wenn die Frage
+    keinen nennt, zählt der Kontext. Verhindert, dass ein irrelevantes Konfig-Feld
+    (z. B. ein aktiver Nadelausleger) den Fast-Path einer Hauptausleger-Frage kippt."""
+    if re.search(r"nadelausleger", question, re.I):
+        return "nadelausleger"
+    if re.search(r"hauptausleger", question, re.I):
+        return "hauptausleger"
+    # Frage nennt keinen Ausleger → Kontext. Existiert ein Hauptausleger-Feld, ist
+    # der Hauptausleger der plausible Default (Hauptstruktur); ein Nadelausleger
+    # wird in Fragen praktisch immer explizit genannt. Nur wenn ausschließlich ein
+    # Nadelausleger konfiguriert ist, greift dieser.
+    keys = " ".join(k for k, _ in _split_context_fields(context)).lower()
+    if "haupt" in keys:
+        return "hauptausleger"
+    if "nadel" in keys or re.search(r"nadelausleger", context or "", re.I):
+        return "nadelausleger"
+    return "hauptausleger"
+
+
+def _boom_field_length(boom: str, context: str) -> int | None:
+    """Auslegerlänge aus dem zum boom PASSENDEN Konfig-Feld (Hauptausleger/
+    Nadelausleger), statt „erste Meterangabe im Kontext". Fällt auf die erste
+    Kontext-Länge zurück, wenn kein passendes Feld existiert."""
+    needle = "nadel" if boom == "nadelausleger" else "haupt"
+    for k, v in _split_context_fields(context):
+        if needle in k.lower():
+            m = re.search(r"(\d+)\s*m\b", v)
+            if m:
+                return int(m.group(1))
+    c_lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", context or "")]
+    return c_lens[0] if c_lens else None
+
+
+def _length_for_boom(boom: str, question: str, context: str) -> int | None:
+    """Länge für Anordnungs-/Seilführungs-Fragen: nennt die Frage selbst eine
+    Länge, gewinnt sie; sonst das passende Konfig-Feld."""
+    q_lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", question)]
+    if q_lens:
+        return q_lens[0]
+    return _boom_field_length(boom, context)
+
+
+def _used_config_note(boom: str, length: int) -> str:
+    """Transparenz: welche Konfiguration die deterministische Antwort getrieben hat."""
+    return f" Verwendete Konfiguration: {boom.capitalize()} {length} m."
+
+
 def _extract_row_col(question: str, context: str) -> tuple[str | None, str | None]:
     """Zeilen-/Spaltenwert für die Tabellensuche aus Frage+Kontext ableiten:
     Länge in Metern → Zeile, Einscherung (…-fach / …x) → Spalte."""
@@ -224,12 +273,14 @@ def composition_fastpath(question: str, context: str, conf: float = 1.0) -> dict
     if not re.search(r"zwischenstück|segment|bauteil", text, re.I):
         return None
     q_lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", question)]
-    ctx_lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", context)]
-    length = ctx_lens[0] if ctx_lens else (max(q_lens) if q_lens else None)
+    boom = _resolve_boom(question, context)
+    # Auslegerlänge bevorzugt aus dem passenden Konfig-Feld, sonst größte Länge in der Frage.
+    length = _boom_field_length(boom, context)
+    if length is None:
+        length = max(q_lens) if q_lens else None
     segment = next((n for n in q_lens if n != length), None)
     if length is None or segment is None:
         return None
-    boom = "nadelausleger" if re.search(r"nadelausleger", text, re.I) else "hauptausleger"
     res = composition_count(boom, length, segment)
     if "error" in res:
         if res.get("error") == "length_not_found":
@@ -247,7 +298,8 @@ def composition_fastpath(question: str, context: str, conf: float = 1.0) -> dict
     answer = (f"{res['count']} Zwischenstück(e) à {segment} m in der {length}-m-"
               f"Zusammenstellung ({boom.capitalize()}). "
               f"Segmente (ohne Anlenkstück/Kopf): "
-              f"{', '.join(str(x) + ' m' for x in res['zwischenstuecke'])}.")
+              f"{', '.join(str(x) + ' m' for x in res['zwischenstuecke'])}."
+              + _used_config_note(boom, length))
     return {
         "type": "answer", "answer": answer,
         "sources": [{"filename": res["filename"], "title": res["title"]}],
@@ -263,11 +315,10 @@ def arrangement_fastpath(question: str, context: str, conf: float = 1.0) -> dict
         return None
     if not re.search(r"zwischenst|segment|ausleger|zusammenstell", text, re.I):
         return None
-    lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", text)]
-    if not lens:
+    boom = _resolve_boom(question, context)
+    length = _length_for_boom(boom, question, context)
+    if length is None:
         return None
-    length = lens[0]
-    boom = "nadelausleger" if re.search(r"nadelausleger", text, re.I) else "hauptausleger"
     res = composition_arrangement(boom, length)
     if "error" in res:
         if res.get("error") == "length_not_found":
@@ -282,7 +333,8 @@ def arrangement_fastpath(question: str, context: str, conf: float = 1.0) -> dict
     logger.info("Fast-Path Anordnung %d m (%d Segmente)", length, len(res["segments"]))
     answer = (f"Zusammenstellung {length} m {boom.capitalize()} (von unten nach oben): "
               f"Anlenkstück {res['anlenkstueck']} m → {' → '.join(f'{x} m' for x in res['zwischenstuecke'])} "
-              f"→ Kopf {res['kopf']} m. Zwischenstücke: {grp}.")
+              f"→ Kopf {res['kopf']} m. Zwischenstücke: {grp}."
+              + _used_config_note(boom, length))
     return {"type": "answer", "answer": answer,
             "sources": [{"filename": res["filename"], "title": res["title"]}],
             "rounds": 0, "confidence": conf}
@@ -296,11 +348,10 @@ def seilfuehrung_fastpath(question: str, context: str, conf: float = 1.0) -> dic
         return None
     if not re.search(r"\bwo\b|stelle|position|einbau|einbauen|welche", text, re.I):
         return None
-    lens = [int(x) for x in re.findall(r"(\d+)\s*m\b", text)]
-    if not lens:
+    boom = _resolve_boom(question, context)
+    length = _length_for_boom(boom, question, context)
+    if length is None:
         return None
-    length = lens[0]
-    boom = "nadelausleger" if re.search(r"nadelausleger", text, re.I) else "hauptausleger"
     res = composition_seilfuehrung(boom, length)
     if "error" in res:
         if res.get("error") == "length_not_found":
@@ -317,8 +368,9 @@ def seilfuehrung_fastpath(question: str, context: str, conf: float = 1.0) -> dic
         parts.append(f"{cfg}: am {p['segment_index']}. Segment von {res['n_segments']} "
                      f"(ein {p['segment_m']}-m-Zwischenstück, Markierung „{p['marker']}“)")
     logger.info("Fast-Path Seilführung %d m → %d Position(en)", length, len(parts))
-    answer = (f"Einbauposition der Seilführung bei {length} m Hauptausleger — "
-              + "; ".join(parts) + ". Genaue Lage siehe Grafik auf der Quellseite.")
+    answer = (f"Einbauposition der Seilführung bei {length} m {boom.capitalize()} — "
+              + "; ".join(parts) + ". Genaue Lage siehe Grafik auf der Quellseite."
+              + _used_config_note(boom, length))
     return {"type": "answer", "answer": answer,
             "sources": [{"filename": res["filename"], "title": res["title"]}],
             "rounds": 0, "confidence": conf}
