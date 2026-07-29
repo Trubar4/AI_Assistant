@@ -152,12 +152,29 @@ in `lds.css` registrieren; neue Tokens als Rolle in jeder `roles-*.css`):
 
 ---
 
-## 6. Offene Fragen (Abstimmung nötig)
+## 6. Getroffene Entscheidungen
 
-1. **Umfang jetzt:** nur dieser Designvorschlag + optischer Mockup – oder direkt der
-   interaktive Klick-Prototyp der Schritte ①–⑥ auf Basis von `compositions.json`?
-2. **Einstiegsmodell:** Vorwärts-Konfiguration (Ausleger → …) genügt, oder soll die
-   **Ziel-zuerst-Abkürzung** (Last/Ausladung → Vorschlag) mit rein? (Architektur-relevant.)
-3. **Datenanspruch:** nur bereits strukturierte Daten (per Hand um Einscher-/Ballast-Tabellen
-   erweitern) – oder soll der Konfigurator für Randbedingungen **live den RAG-Assistenten** rufen?
-4. **Maschinenumfang:** LR 1300 SX für die Demo fix – oder von Anfang an maschinen-generisch?
+1. **Umfang:** interaktiver Klick-Prototyp der Schritte ①–⑥ → umgesetzt (§7).
+2. **Einstiegsmodell:** **Vorwärts-Konfiguration**. Ziel-zuerst wurde verworfen, weil die
+   Traglasttabellen im Manual nur als Bildschirm-/UI-Seiten, nicht als strukturierte
+   Zahlentabellen (Last × Ausladung × Höhe) vorliegen – eine datenbasierte Rückwärts-Konfiguration
+   ist damit nicht belegbar.
+3. **Datenquelle:** Constraints **vorab statisch extrahiert** → `data/config_constraints.json`
+   (aus `compositions.json` + Manual-Tabellen 316/317/326/351/353/1916).
+4. **Maschinenumfang:** LR 1300 SX für die Demo fix (Datenschema ist maschinen-generisch angelegt).
+
+## 7. Umsetzungsstand (Prototyp)
+
+- `data/config_constraints.json` – statisch extrahierte Konfigurationsdaten (Längen + Segmente,
+  Ballast → zulässige Drehung inkl. Fußnoten A/B/C, Einscher-Grenzen HA 1–20 / NA 1–6).
+- `frontend/konfig-data.js` – einbindbare Daten (Prototyp läuft ohne Server per `file://`).
+- `frontend/Konfigurator.html` – Klick-Prototyp, dreispaltig (Stepper · Arbeitsbereich ·
+  Zusammenstellungs-Leiste), Vanilla JS, ausschließlich `design-system/lds.css` + Tokens.
+  Realisierte Muster: Option-Karten mit Auslegerschema, einrastender Längen-Picker mit
+  Segment-Vorschau, Ballast-Radial mit Fußnoten, Einscher-Stepper mit Lastort-Umschaltung,
+  belegte Zusammenstellung mit Gültigkeitsprüfung und Brücke zum Frage-Assistenten.
+
+**Bekannte Vereinfachungen (Demo):** Schritt ⑥ als einfache Auswahl; Ballast-Tabelle zeigt für
+LR 1300 SX (breite Spur) durchgängig 360° mit Rüst-Fußnoten; NA-fest/-verstellbar sind auf zwei
+repräsentative Datensätze aus `compositions.json` gemappt. Nächster Schritt bei Freigabe:
+Überführung der `cfg-*`-Muster in echte LDS-Komponenten (§5) und Anbindung an echte Manual-Links.
