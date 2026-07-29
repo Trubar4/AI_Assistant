@@ -145,10 +145,9 @@ Wiederverwendung ausschließlich aus dem LDS: `lds-card`, `lds-btn`, `lds-alert`
 
 **Neu zu ergänzende Komponenten** (nach Erweiterungs-Regeln: `design-system/components/<name>.css`,
 in `lds.css` registrieren; neue Tokens als Rolle in jeder `roles-*.css`):
-- `lds-stepper` – vertikaler Fortschritts-Stepper.
+- `lds-stepper` – vertikaler Fortschritts-Stepper (zeigt zugleich den laufenden Stand je Schritt).
 - `lds-option-card` – große, selektierbare Auswahlkarte (Schritt ①).
 - `lds-length-picker` – einrastende Längen-Skala mit Segment-Vorschau.
-- `lds-summary-rail` – persistente Zusammenstellungs-Leiste rechts.
 
 ---
 
@@ -168,11 +167,12 @@ in `lds.css` registrieren; neue Tokens als Rolle in jeder `roles-*.css`):
 - `data/config_constraints.json` – statisch extrahierte Konfigurationsdaten (Längen + Segmente,
   Ballast → zulässige Drehung inkl. Fußnoten A/B/C, Einscher-Grenzen HA 1–20 / NA 1–6).
 - `frontend/konfig-data.js` – einbindbare Daten (Prototyp läuft ohne Server per `file://`).
-- `frontend/Konfigurator.html` – Klick-Prototyp, dreispaltig (Stepper · Arbeitsbereich ·
-  Zusammenstellungs-Leiste), Vanilla JS, ausschließlich `design-system/lds.css` + Tokens.
-  Realisierte Muster: Option-Karten mit Auslegerschema, einrastender Längen-Picker mit
-  Segment-Vorschau, Ballast-Radial mit Fußnoten, Einscher-Stepper mit Lastort-Umschaltung,
-  belegte Zusammenstellung mit Gültigkeitsprüfung und Brücke zum Frage-Assistenten.
+- `frontend/Konfigurator.html` – Klick-Prototyp, zweispaltig (Stepper · Arbeitsbereich),
+  Vanilla JS, ausschließlich `design-system/lds.css` + Tokens. Realisierte Muster:
+  Option-Karten, einrastender Längen-Picker mit Segment-Vorschau, Ballast-Radial mit Fußnoten,
+  Einscher-Stepper mit Lastort-Umschaltung, belegte Zusammenstellung im Ergebnis-Schritt mit
+  Gültigkeitsprüfung und Brücke zum Frage-Assistenten. Der Stepper trägt zugleich den laufenden
+  Stand je Schritt.
 
 **Bekannte Vereinfachungen (Demo):** Schritt ⑥ als einfache Auswahl; Ballast-Tabelle zeigt für
 LR 1300 SX (breite Spur) durchgängig 360° mit Rüst-Fußnoten; NA-fest/-verstellbar sind auf zwei

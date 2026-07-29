@@ -12,8 +12,8 @@
        Length-Picker, Summary-Rail) und würden bei Umsetzung nach
        design-system/components/ überführt. */
     body { background: var(--r-bg-dim); }
-    .cfg-app { display: grid; grid-template-columns: 240px 1fr 340px; min-height: 100vh; }
-    @media (max-width: 1100px){ .cfg-app{ grid-template-columns: 200px 1fr; } .cfg-rail{ display:none; } }
+    .cfg-app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+    @media (max-width: 1100px){ .cfg-app{ grid-template-columns: 200px 1fr; } }
 
     /* ---- Appbar ---- */
     .cfg-bar { grid-column: 1 / -1; }
@@ -50,7 +50,7 @@
 
     /* Option cards (Step 1) */
     .cfg-opts { display:grid; gap: var(--s-4); }
-    .cfg-opt { display:grid; grid-template-columns: 88px 1fr; gap: var(--s-4); align-items:center;
+    .cfg-opt { display:grid; grid-template-columns: 1fr; gap: var(--s-4); align-items:center;
       padding: var(--s-4) var(--s-5); background: var(--r-surface-default); cursor:pointer;
       border:1px solid var(--r-outline-bright); box-shadow: var(--shadow-1);
       transition: border-color var(--motion-fast), box-shadow var(--motion-fast); }
@@ -58,10 +58,6 @@
     .cfg-opt.is-sel{ border-color: var(--r-brand); box-shadow: 0 0 0 2px var(--r-brand); }
     .cfg-opt__name { font: 700 16px/20px var(--font-text-b); }
     .cfg-opt__desc { font: 400 13px/18px var(--font-text); color: var(--r-on-surface-muted); margin-top: 2px; }
-    .cfg-opt svg { width:88px; height:56px; }
-    .cfg-schem { stroke: var(--r-on-surface-default); fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
-    .cfg-schem--accent { stroke: var(--r-accent-3); }
-
     /* Length picker (Step 2/3) */
     .cfg-pick { display:flex; flex-wrap:wrap; gap: var(--s-2); }
     .cfg-chip { min-width:64px; padding: var(--s-3) var(--s-3); text-align:center; cursor:pointer;
@@ -107,10 +103,7 @@
     .cfg-falls { display:flex; gap:4px; align-items:flex-end; height:44px; }
     .cfg-falls i { width:4px; background: var(--r-accent-3); border-radius: var(--radius-1); }
 
-    /* Rail */
-    .cfg-rail { background: var(--r-bg-bright); border-left: 1px solid var(--r-outline-bright);
-      padding: var(--s-5); display:flex; flex-direction:column; gap: var(--s-4); position:sticky; top:0; align-self:start; }
-    .cfg-rail__t { font: 700 12px/16px var(--font-text-b); text-transform:uppercase; letter-spacing:.08em; color: var(--r-on-surface-muted); }
+    /* Summary (Ergebnis-Schritt) */
     .cfg-sum { display:flex; flex-direction:column; }
     .cfg-sum__row { display:flex; justify-content:space-between; gap: var(--s-3); padding: var(--s-3) 0;
       border-bottom:1px solid var(--r-outline-bright); }
@@ -151,17 +144,10 @@ function visibleSteps(){ return STEPS.filter(s=>s.show()); }
 function ballastLabel(i){ const b=D.ballast.stufen[i]; return `${b.heck} t / ${b.zentral} t`; }
 function einscherVal(){ return S.lastort==='HA' ? S.einscherHA+'-fach' : S.einscherNA+'-fach'; }
 
-// ---------- Schemas ----------
-const SCHEMA = {
-  HA:  `<svg viewBox="0 0 88 56"><g class="cfg-schem"><rect x="6" y="40" width="30" height="10"/><circle cx="13" cy="52" r="3"/><circle cx="29" cy="52" r="3"/><path d="M30 40 L74 8"/><path d="M22 40 L30 40"/></g></svg>`,
-  'HA+NF': `<svg viewBox="0 0 88 56"><g class="cfg-schem"><rect x="4" y="42" width="26" height="9"/><path d="M26 42 L58 12"/></g><g class="cfg-schem cfg-schem--accent"><path d="M58 12 L82 26"/></g></svg>`,
-  'HA+NV': `<svg viewBox="0 0 88 56"><g class="cfg-schem"><rect x="4" y="42" width="26" height="9"/><path d="M26 42 L56 14"/></g><g class="cfg-schem cfg-schem--accent"><path d="M56 14 L80 8"/><path d="M56 14 L70 4" stroke-dasharray="3 3"/></g></svg>`,
-};
-
 // ---------- Render ----------
 function render(){
   const app = document.getElementById('app');
-  app.innerHTML = bar() + stepper() + `<div class="cfg-main">${panel()}</div>` + rail();
+  app.innerHTML = bar() + stepper() + `<div class="cfg-main">${panel()}</div>`;
   bind();
 }
 
@@ -208,7 +194,6 @@ function head(eye,title,lead,src){
 function pKonfig(){
   const opts = D.konfigurationen.map(k=>`
     <div class="cfg-opt ${S.konfig===k.id?'is-sel':''}" data-konfig="${k.id}">
-      ${SCHEMA[k.schema]}
       <div><div class="cfg-opt__name">${k.lang}</div>
         <div class="cfg-opt__desc">${k.nadel?('Nadelausleger '+k.nadel+' · '+k.nadelTabelle):'Ohne Nadelausleger'} · ${k.quelle}</div></div>
     </div>`).join('');
@@ -341,20 +326,6 @@ function nav(){
   return `<div class="cfg-nav">
     ${first?'':'<button class="lds-btn lds-btn--ghost" data-prev>Zurück</button>'}
     <button class="lds-btn lds-btn--primary" data-next>Weiter</button></div>`;
-}
-
-function rail(){
-  const rows = [
-    ['Konfiguration', S.konfig ? D.konfigurationen.find(x=>x.id===S.konfig).kurz : null, S.konfig],
-    ['Hauptausleger', S.haLen?`${S.haLen} m`:null, S.haLen?'Tab. 317':''],
-    hasNadel() ? ['Nadelausleger', S.naLen?`${S.naLen} m`:null, S.naLen?(nadelTyp()==='fest'?'Tab. 326':'Tab. 1916'):''] : null,
-    ['Ballast', S.ballastIdx!=null?ballastLabel(S.ballastIdx):null, S.ballastIdx!=null?'Tab. 316':''],
-    ['Einscherung', S.lastort?einscherVal():null, S.lastort?(S.lastort==='HA'?'Tab. 353':'Tab. 351'):''],
-  ].filter(Boolean).map(([k,v,src])=>`<div class="cfg-sum__row"><div class="cfg-sum__k">${k}</div>
-      <div class="cfg-sum__v ${v?'':'is-empty'}">${v||'offen'}${v&&src?`<em>belegt · ${src}</em>`:''}</div></div>`).join('');
-  return `<aside class="cfg-rail"><div class="cfg-rail__t">Zusammenstellung</div>
-    <div class="cfg-sum">${rows}</div>
-    <p class="cfg-src">Jede Angabe ist mit der exakten Manual-Stelle belegt – analog zum Frage-Assistenten.</p></aside>`;
 }
 
 // ---------- Events ----------
