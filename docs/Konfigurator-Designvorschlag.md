@@ -51,26 +51,27 @@ und „Lastort NA-Kopf" nur bei 3/5).
 
 ## 3. Designvorschlag – UX-Konzept
 
-### 3.1 Grundmuster: geführte Konfiguration als neue Ansicht im bestehenden Shell
+### 3.1 Grundmuster: Konfigurator als Dialog aus „Konfiguration aktiv"
 
-Neue Sidebar-Ansicht **„Konfiguration"** (Icon `settings`), neben Assistent / Fehlercodes /
-Verlauf. Layout dreispaltig, konsistent mit der bestehenden App:
+Der Konfigurator ist **kein eigenständiger Screen**, sondern ein **modaler Dialog**. Im
+Assistent-Kontext gibt es das Panel **„Konfiguration aktiv"** mit einem **Zahnrad-/Settings-Button**;
+dieser öffnet den Dialog. „Übernehmen" speichert die gewählten Werte zurück in „Konfiguration
+aktiv" – von dort aus kontextualisiert der Assistent seine Antworten.
 
 ```
-┌ Header (Maschine LR 1300 SX) ───────────────────────────────────────┐
-├ Stepper (links) ┬ Arbeitsbereich (Mitte) ┬ Zusammenstellung (rechts) ┤
-│ ① Auslegerkonfig │  aktueller Schritt      │  Live-Summary + Schema-   │
-│ ② Hauptausleger  │  (Auswahl-Karten,       │  Silhouette des Auslegers │
-│ ③ Nadelausleger  │   Längen-Picker …)      │  füllt sich pro Schritt   │
-│ ④ Ballast        │                         │  + „Belegt durch Tab. xx" │
-│ ⑤ Einscherung    │                         │                           │
-│ ⑥ Weiteres       │                         │  [Traglasttabelle] [Teilen]│
-└──────────────────┴─────────────────────────┴───────────────────────────┘
+HOST (Assistent)                          DIALOG (Konfigurator, modal)
+┌ Konfiguration aktiv        [⚙] ┐        ┌ Konfigurator · LR 1300 SX   [✕] ┐
+│ Ausleger: HA + fester NA       │  ⚙ →   ├ Stepper (links) ┬ Arbeitsbereich ┤
+│ HA 47 m · NA 20 m · …          │        │ ① Auslegerkonfig │ Auswahl-Karten │
+│ (belegt · Tab. 317/326/…)      │        │ ② Hauptausleger  │ Längen-Picker  │
+└────────────────────────────────┘        │ …                │ …              │
+                                          └ [Übernehmen] [Abbrechen] ──────────┘
 ```
 
-Die rechte **Zusammenstellungs-Leiste** ist der rote Faden: Sie zeigt jederzeit den aktuellen
-Stand (Konfig-Typ, HA-Länge + Segmente, NA-Länge, Ballast, Einscherung) und pro Zeile den
-Link zur belegenden Manual-Seite (wiederverwendetes `SourceCard`-Muster).
+Der **Stepper links** ist zugleich der rote Faden: Er zeigt pro Schritt den aktuellen Stand
+(Konfig-Typ, HA-/NA-Länge, Ballast, Einscherung). Die vollständige, je Zeile mit der Manual-Tabelle
+**belegte** Zusammenstellung steht im Ergebnis-Schritt und – nach „Übernehmen" – im Panel
+„Konfiguration aktiv". Wird der Dialog erneut geöffnet, sind die gespeicherten Werte vorbelegt.
 
 ### 3.2 Drei „intelligente" Auswahl-Mechanismen
 
@@ -115,12 +116,13 @@ Radial-/Zifferblatt. Aus einem Tabellen-Lookup wird eine sichtbare Randbedingung
 - **Betriebsmodus / Traglasttabelle** – welche Tabelle für den Rüstzustand gilt.
 - **Hakenflasche / Lasthaken** passend zur Einscherung.
 
-**Ergebnis – „Konfiguration abgeschlossen"**
+**Ergebnis – „Konfiguration prüfen & übernehmen"**
 - Vollständige Zusammenstellung als Spec-Sheet.
 - **Gültigkeitsprüfung** (`lds-alert`): „Kombination laut Manual zulässig" bzw. Konflikt-Hinweis.
 - Manual-Links zu jeder Entscheidung.
-- Aktionen: „Traglasttabelle öffnen", „Als Rüstplan speichern/teilen", **„Im Assistent fragen"**
-  (Brücke zurück zum Q&A: z. B. „Welche Schritte beim Aufrüsten dieser Konfiguration?").
+- Aktionen: **„Konfiguration übernehmen"** (nur bei vollständiger Konfig aktiv) speichert die Werte
+  als aktive Konfiguration und schließt den Dialog · „Abbrechen" verwirft. **Kein** Rüstplan-Export
+  oder Traglasttabellen-Aufruf – der Konfigurator dient allein dem Setzen der aktiven Konfiguration.
 
 ---
 
@@ -167,12 +169,13 @@ in `lds.css` registrieren; neue Tokens als Rolle in jeder `roles-*.css`):
 - `data/config_constraints.json` – statisch extrahierte Konfigurationsdaten (Längen + Segmente,
   Ballast → zulässige Drehung inkl. Fußnoten A/B/C, Einscher-Grenzen HA 1–20 / NA 1–6).
 - `frontend/konfig-data.js` – einbindbare Daten (Prototyp läuft ohne Server per `file://`).
-- `frontend/Konfigurator.html` – Klick-Prototyp, zweispaltig (Stepper · Arbeitsbereich),
-  Vanilla JS, ausschließlich `design-system/lds.css` + Tokens. Realisierte Muster:
-  Option-Karten, einrastender Längen-Picker mit Segment-Vorschau, Ballast-Radial mit Fußnoten,
-  Einscher-Stepper mit Lastort-Umschaltung, belegte Zusammenstellung im Ergebnis-Schritt mit
-  Gültigkeitsprüfung und Brücke zum Frage-Assistenten. Der Stepper trägt zugleich den laufenden
-  Stand je Schritt.
+- `frontend/Konfigurator.html` – Klick-Prototyp, ausschließlich `design-system/lds.css` + Tokens,
+  Vanilla JS. **Host-Ansicht** mit Panel „Konfiguration aktiv" (Zahnrad-Button, Leer- und
+  Konfiguriert-Zustand) + **modaler Konfigurator-Dialog** (Stepper · Arbeitsbereich). „Übernehmen"
+  speichert die Werte in „Konfiguration aktiv", erneutes Öffnen belegt vor; Schließen via X, Scrim
+  oder Escape. Realisierte Muster: Option-Karten, einrastender Längen-Picker mit Segment-Vorschau,
+  Ballast-Radial mit Fußnoten, Einscher-Stepper mit Lastort-Umschaltung, belegte Zusammenstellung
+  mit Gültigkeitsprüfung.
 
 **Bekannte Vereinfachungen (Demo):** Schritt ⑥ als einfache Auswahl; Ballast-Tabelle zeigt für
 LR 1300 SX (breite Spur) durchgängig 360° mit Rüst-Fußnoten; NA-fest/-verstellbar sind auf zwei

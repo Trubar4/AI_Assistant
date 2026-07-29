@@ -12,19 +12,57 @@
        Length-Picker, Summary-Rail) und würden bei Umsetzung nach
        design-system/components/ überführt. */
     body { background: var(--r-bg-dim); }
-    .cfg-app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
-    @media (max-width: 1100px){ .cfg-app{ grid-template-columns: 200px 1fr; } }
+    #app { min-height: 100vh; }
 
     /* ---- Appbar ---- */
-    .cfg-bar { grid-column: 1 / -1; }
     .cfg-bar__brand { font: 900 18px/22px var(--font-head-b); }
     .cfg-bar__brand span { color: var(--r-brand); }
     .cfg-bar__machine { margin-left:auto; display:flex; align-items:center; gap: var(--s-3);
       font: 400 13px/16px var(--font-text); color: var(--r-chrome-on, var(--r-on-surface-default)); opacity:.85; }
 
+    /* ---- Host (Assistent-Kontext) ---- */
+    .cfg-host { min-height:100vh; display:flex; flex-direction:column; }
+    .cfg-host__body { flex:1; padding: var(--s-8) var(--s-7); display:flex; justify-content:center; }
+    .cfg-host__inner { width:100%; max-width: 860px; }
+    .cfg-host__eyebrow { font: 700 12px/16px var(--font-text-b); text-transform:uppercase; letter-spacing:.08em; color: var(--r-accent-3); }
+    .cfg-host__title { font: 900 28px/34px var(--font-head-b); margin: var(--s-2) 0 var(--s-6); letter-spacing:-.01em; }
+
+    /* "Konfiguration aktiv" Panel */
+    .cfg-active { background: var(--r-surface-default); border:1px solid var(--r-outline-bright); box-shadow: var(--shadow-1); }
+    .cfg-active__head { display:flex; align-items:center; gap: var(--s-3); padding: var(--s-4) var(--s-5); border-bottom:1px solid var(--r-outline-bright); }
+    .cfg-active__title { font: 700 12px/16px var(--font-text-b); text-transform:uppercase; letter-spacing:.06em; color: var(--r-on-surface-muted); }
+    .cfg-active__body { padding: var(--s-5); }
+    .cfg-gear { margin-left:auto; display:inline-flex; align-items:center; gap: var(--s-2);
+      padding: var(--s-2) var(--s-3); border:1px solid var(--r-outline-default); background: var(--r-surface-default);
+      font: 500 13px/16px var(--font-text-m); color: var(--r-on-surface-default); cursor:pointer;
+      transition: background var(--motion-fast), border-color var(--motion-fast); }
+    .cfg-gear:hover { background: var(--r-surface-high); border-color: var(--r-outline-dim); }
+    .cfg-gear svg { width:16px; height:16px; }
+    .cfg-kv { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--s-3) var(--s-6); }
+    .cfg-kv__k { font: 400 12px/16px var(--font-text); color: var(--r-on-surface-muted); }
+    .cfg-kv__v { font: 500 14px/18px var(--font-text-m); }
+    .cfg-kv__v em { font-style:normal; font: 400 11px/14px var(--font-text); color: var(--r-accent-3); }
+    .cfg-empty { display:flex; flex-direction:column; align-items:flex-start; gap: var(--s-4);
+      color: var(--r-on-surface-muted); font: 400 14px/20px var(--font-text); }
+
+    /* ---- Dialog (Modal) ---- */
+    .cfg-modal { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+      padding: var(--s-5); background: color-mix(in srgb, var(--r-on-surface-default) 42%, transparent); }
+    .cfg-dialog { background: var(--r-bg-default); width:100%; max-width: 1040px; max-height: 92vh;
+      display:flex; flex-direction:column; box-shadow: var(--shadow-3); border:1px solid var(--r-outline-bright); }
+    .cfg-dialog__head { display:flex; align-items:center; gap: var(--s-3); padding: var(--s-4) var(--s-5);
+      border-bottom:1px solid var(--r-outline-bright); background: var(--r-bg-bright); }
+    .cfg-dialog__title { font: 700 15px/20px var(--font-text-b); }
+    .cfg-dialog__title span { color: var(--r-on-surface-muted); font-family: var(--font-text); font-weight:400; }
+    .cfg-x { margin-left:auto; width:34px; height:34px; display:grid; place-items:center; cursor:pointer;
+      border:0; background:transparent; color: var(--r-on-surface-muted); }
+    .cfg-x:hover { background: var(--r-surface-high); color: var(--r-on-surface-default); }
+    .cfg-dialog__grid { display:grid; grid-template-columns: 220px 1fr; flex:1; min-height:0; }
+    @media (max-width: 820px){ .cfg-dialog__grid{ grid-template-columns: 1fr; } }
+
     /* ---- Stepper ---- */
     .cfg-steps { background: var(--r-bg-bright); border-right: 1px solid var(--r-outline-bright);
-      padding: var(--s-5) var(--s-3); display:flex; flex-direction:column; gap: var(--s-1); }
+      padding: var(--s-5) var(--s-3); display:flex; flex-direction:column; gap: var(--s-1); overflow-y:auto; }
     .cfg-steps__label { font: 700 11px/14px var(--font-text-b); text-transform:uppercase; letter-spacing:.08em;
       color: var(--r-on-surface-muted); padding: 0 var(--s-3) var(--s-3); }
     .cfg-step { display:flex; align-items:center; gap: var(--s-3); padding: var(--s-3);
@@ -41,7 +79,8 @@
     .cfg-step__sub { display:block; font-size:11px; opacity:.7; }
 
     /* ---- Work area ---- */
-    .cfg-main { padding: var(--s-6) var(--s-7); max-width: 780px; }
+    .cfg-main { padding: var(--s-6) var(--s-7); overflow-y:auto; }
+    .cfg-main__inner { max-width: 720px; }
     .cfg-eyebrow { font: 700 12px/16px var(--font-text-b); text-transform:uppercase; letter-spacing:.08em; color: var(--r-accent-3); }
     .cfg-title { font: 900 30px/36px var(--font-head-b); margin: var(--s-2) 0 var(--s-2); letter-spacing:-.01em; }
     .cfg-lead { font: 400 15px/22px var(--font-text); color: var(--r-on-surface-muted); margin-bottom: var(--s-6); max-width: 60ch; }
@@ -123,9 +162,20 @@
 
 <script>
 const D = window.KONFIG_DATA;
-const S = { step: 0, konfig: null, haLen: null, naLen: null,
-            ballastIdx: null, lastort: null, einscherHA: 1, einscherNA: 1,
-            spur: 'breit', wind: '9', modus: 'HD' };
+const ICON = {
+  gear:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-2.9-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.1-2.9H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.1-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.1V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 2.9 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" stroke-linejoin="round"/></svg>`,
+  x:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+};
+
+// Arbeits-Felder (Working-Copy im Dialog) + Meta (open, saved).
+function freshWork(){ return { konfig:null, haLen:null, naLen:null, ballastIdx:null, lastort:null,
+  einscherHA:1, einscherNA:1, spur:'breit', wind:'9', modus:'HD' }; }
+const S = Object.assign({ open:false, saved:null, step:0 }, freshWork());
+function workSnapshot(){ const {open,saved,step,...w}=S; return {...w}; }
+
+function openDialog(){ Object.assign(S, S.saved ? S.saved : freshWork(), { step:0, open:true }); render(); }
+function closeDialog(){ S.open=false; render(); }
+function commitDialog(){ if(!isComplete()) return; S.saved = workSnapshot(); S.open=false; render(); }
 
 // welche Schritte sind aktiv (Progressive Disclosure)
 function hasNadel(){ const k = D.konfigurationen.find(x=>x.id===S.konfig); return k && k.nadel; }
@@ -143,20 +193,81 @@ const STEPS = [
 function visibleSteps(){ return STEPS.filter(s=>s.show()); }
 function ballastLabel(i){ const b=D.ballast.stufen[i]; return `${b.heck} t / ${b.zentral} t`; }
 function einscherVal(){ return S.lastort==='HA' ? S.einscherHA+'-fach' : S.einscherNA+'-fach'; }
+function isComplete(){ return !!(S.konfig && S.haLen && (!hasNadel()||S.naLen) && S.ballastIdx!=null && S.lastort); }
 
 // ---------- Render ----------
 function render(){
   const app = document.getElementById('app');
-  app.innerHTML = bar() + stepper() + `<div class="cfg-main">${panel()}</div>`;
+  app.innerHTML = hostView() + (S.open ? dialogView() : '');
   bind();
 }
 
 function bar(){
   return `<header class="lds-appbar cfg-bar">
-    <div class="cfg-bar__brand">Maschinen<span>Assistent</span> · Konfigurator</div>
+    <div class="cfg-bar__brand">Maschinen<span>Assistent</span></div>
     <div class="cfg-bar__machine"><span>Aktive Maschine</span>
       <strong>${D.machine.series}</strong><span>Manual ${D.machine.manualVersion}</span></div>
   </header>`;
+}
+
+// ---------- Host: "Konfiguration aktiv" ----------
+function hostView(){
+  return `<div class="cfg-host">${bar()}
+    <div class="cfg-host__body"><div class="cfg-host__inner">
+      <div class="cfg-host__eyebrow">Maschinen-Assistent · ${D.machine.series}</div>
+      <h1 class="cfg-host__title">Aktive Maschine.</h1>
+      <div class="cfg-active">
+        <div class="cfg-active__head">
+          <span class="cfg-active__title">Konfiguration aktiv</span>
+          ${S.saved?`<span class="lds-badge lds-badge--success">Konfiguriert</span>`
+                   :`<span class="lds-badge">Nicht konfiguriert</span>`}
+          <button class="cfg-gear" data-open>${ICON.gear}<span>Konfigurator</span></button>
+        </div>
+        <div class="cfg-active__body">${activeBody()}</div>
+      </div>
+    </div></div>
+  </div>`;
+}
+
+function activeBody(){
+  const c = S.saved;
+  if(!c){
+    return `<div class="cfg-empty">
+      <div>Für diese Maschine ist noch keine Auslegerkonfiguration hinterlegt.
+        Der Assistent bezieht Antworten sonst auf die Maschine allgemein.</div>
+      <button class="lds-btn lds-btn--primary" data-open>Konfiguration festlegen</button>
+    </div>`;
+  }
+  const konf = D.konfigurationen.find(x=>x.id===c.konfig);
+  const nadel = konf && konf.nadel;
+  const kv=(k,v,src)=>`<div><div class="cfg-kv__k">${k}</div>
+    <div class="cfg-kv__v">${v}${src?` <em>· ${src}</em>`:''}</div></div>`;
+  const system = (c.haLen||0)+(c.naLen||0);
+  return `<div class="cfg-kv">
+    ${kv('Auslegerkonfiguration', konf?konf.lang:'–')}
+    ${kv('Hauptausleger', c.haLen?`${c.haLen} m`:'–','Tab. 317')}
+    ${nadel?kv('Nadelausleger', c.naLen?`${c.naLen} m (${konf.nadel})`:'–', konf.nadelTabelle):kv('Nadelausleger','—')}
+    ${kv('Systemlänge', system?`${system} m`:'–')}
+    ${kv('Ballastierung', c.ballastIdx!=null?`Heck ${D.ballast.stufen[c.ballastIdx].heck} t · Zentral ${D.ballast.stufen[c.ballastIdx].zentral} t`:'–','Tab. 316')}
+    ${kv('Einscherung', c.lastort?(c.lastort==='HA'?c.einscherHA:c.einscherNA)+'-fach':'–', c.lastort?(c.lastort==='HA'?'Tab. 353':'Tab. 351'):'')}
+    ${kv('Aufstellung', `${c.spur==='breit'?'Breite':'Schmale'} Spur · ${c.modus} · Wind ${c.wind} m/s`)}
+  </div>`;
+}
+
+// ---------- Dialog-Rahmen ----------
+function dialogView(){
+  return `<div class="cfg-modal" data-scrim>
+    <div class="cfg-dialog" role="dialog" aria-modal="true">
+      <div class="cfg-dialog__head">
+        <div class="cfg-dialog__title">Konfigurator <span>· ${D.machine.series}</span></div>
+        <button class="cfg-x" data-close aria-label="Schließen">${ICON.x}</button>
+      </div>
+      <div class="cfg-dialog__grid">
+        ${stepper()}
+        <div class="cfg-main"><div class="cfg-main__inner">${panel()}</div></div>
+      </div>
+    </div>
+  </div>`;
 }
 
 function stepper(){
@@ -297,9 +408,9 @@ function pResult(){
   const bal = S.ballastIdx!=null ? D.ballast.stufen[S.ballastIdx] : null;
   const system = (S.haLen||0) + (S.naLen||0);
   const row=(k,v,src)=>`<div class="cfg-sum__k">${k}</div><div class="cfg-sum__v">${v}${src?`<em>${src}</em>`:''}</div>`;
-  const complete = S.konfig && S.haLen && (!hasNadel()||S.naLen) && S.ballastIdx!=null && S.lastort;
-  return head('Zusammenstellung','Konfiguration prüfen.',
-    'Alle Entscheidungen sind mit der jeweiligen Manual-Tabelle belegt. Übernehmen erzeugt einen Rüstplan und verbindet zum Assistenten für die Aufrüst-Schritte.','')
+  const complete = isComplete();
+  return head('Zusammenstellung','Konfiguration prüfen & übernehmen.',
+    'Alle Entscheidungen sind mit der jeweiligen Manual-Tabelle belegt. „Übernehmen" speichert diese Werte als aktive Konfiguration der Maschine – der Assistent bezieht seine Antworten anschließend darauf.','')
     + `<div class="${complete?'lds-alert lds-alert--success':'lds-alert lds-alert--warning'}" style="margin-bottom:var(--s-6)"><div>
         <div class="lds-alert__title">${complete?'Kombination laut Manual zulässig':'Konfiguration unvollständig'}</div>
         <div class="lds-alert__text">${complete?'Alle Pflichtangaben liegen vor und sind belegt.':'Bitte offene Schritte im Stepper vervollständigen.'}</div></div></div>`
@@ -314,11 +425,11 @@ function pResult(){
         ${row('Aufstellung', `${S.spur==='breit'?'Breite':'Schmale'} Spur · ${S.modus} · Wind ${S.wind} m/s`)}
        </div></div>
        <div class="lds-card__footer">
-        <button class="lds-btn lds-btn--primary">Traglasttabelle öffnen</button>
-        <button class="lds-btn lds-btn--ghost">Als Rüstplan speichern</button>
-        <button class="lds-btn lds-btn--ghost">Im Assistent fragen: „Aufrüst-Schritte?"</button>
-       </div></div>`
-    + `<div class="cfg-nav"><button class="lds-btn lds-btn--ghost" data-prev>Zurück</button></div>`;
+        <button class="lds-btn lds-btn--primary" data-commit ${complete?'':'disabled'}>Konfiguration übernehmen</button>
+        <button class="lds-btn lds-btn--ghost" data-close>Abbrechen</button>
+        <span class="spacer" style="flex:1"></span>
+        <button class="lds-btn lds-btn--ghost" data-prev>Zurück</button>
+       </div></div>`;
 }
 
 function nav(){
@@ -330,6 +441,11 @@ function nav(){
 
 // ---------- Events ----------
 function bind(){
+  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=openDialog);
+  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDialog);
+  document.querySelectorAll('[data-commit]').forEach(b=>b.onclick=()=>{ if(!b.disabled) commitDialog(); });
+  const scrim=document.querySelector('[data-scrim]');
+  if(scrim) scrim.onclick=(e)=>{ if(e.target===scrim) closeDialog(); };
   document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>{ if(!b.disabled){ S.step=+b.dataset.goto; render(); }});
   const next=document.querySelector('[data-next]'); if(next) next.onclick=goNext;
   const prev=document.querySelector('[data-prev]'); if(prev) prev.onclick=goPrev;
@@ -346,6 +462,7 @@ function bind(){
 function goNext(){ let i=S.step+1; while(i<STEPS.length && !STEPS[i].show()) i++; S.step=Math.min(i,STEPS.length-1); render(); }
 function goPrev(){ let i=S.step-1; while(i>0 && !STEPS[i].show()) i--; S.step=Math.max(i,0); render(); }
 
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && S.open) closeDialog(); });
 render();
 </script>
 </body>
