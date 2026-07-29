@@ -54,7 +54,10 @@
       border-bottom:1px solid var(--r-outline-bright); background: var(--r-bg-bright); }
     .cfg-dialog__title { font: 700 15px/20px var(--font-text-b); }
     .cfg-dialog__title span { color: var(--r-on-surface-muted); font-family: var(--font-text); font-weight:400; }
-    .cfg-x { margin-left:auto; width:34px; height:34px; display:grid; place-items:center; cursor:pointer;
+    .cfg-reset { margin-left:auto; cursor:pointer; border:1px solid var(--r-outline-default); background: var(--r-surface-default);
+      color: var(--r-on-surface-default); font: 500 12px/16px var(--font-text-m); padding: var(--s-2) var(--s-3); }
+    .cfg-reset:hover { background: var(--r-surface-high); border-color: var(--r-outline-dim); }
+    .cfg-x { width:34px; height:34px; display:grid; place-items:center; cursor:pointer;
       border:0; background:transparent; color: var(--r-on-surface-muted); }
     .cfg-x:hover { background: var(--r-surface-high); color: var(--r-on-surface-default); }
     .cfg-dialog__grid { display:grid; grid-template-columns: 220px 1fr; flex:1; min-height:0; }
@@ -183,6 +186,7 @@ function workSnapshot(){ const {open,saved,step,...w}=S; return {...w}; }
 const EMBED = new URLSearchParams(location.search).get('embed')==='1';
 
 function openDialog(){ Object.assign(S, S.saved ? S.saved : freshWork(), { step:0, open:true }); render(); }
+function resetDialog(){ Object.assign(S, freshWork(), { step:0, open:true }); render(); }
 function closeDialog(){ if(EMBED){ parent.postMessage({type:'konfig:close'},'*'); return; } S.open=false; render(); }
 function commitDialog(){
   if(!isComplete()) return;
@@ -286,6 +290,7 @@ function dialogView(){
     <div class="cfg-dialog" role="dialog" aria-modal="true">
       <div class="cfg-dialog__head">
         <div class="cfg-dialog__title">Konfigurator <span>· ${D.machine.series}</span></div>
+        <button class="cfg-reset" data-reset title="Alle Eingaben zurücksetzen">Zurücksetzen</button>
         <button class="cfg-x" data-close aria-label="Schließen">${ICON.x}</button>
       </div>
       <div class="cfg-dialog__grid">
@@ -451,6 +456,7 @@ function nav(){
 function bind(){
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=openDialog);
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDialog);
+  document.querySelectorAll('[data-reset]').forEach(b=>b.onclick=resetDialog);
   document.querySelectorAll('[data-commit]').forEach(b=>b.onclick=()=>{ if(!b.disabled) commitDialog(); });
   const scrim=document.querySelector('[data-scrim]');
   if(scrim) scrim.onclick=(e)=>{ if(e.target===scrim) closeDialog(); };

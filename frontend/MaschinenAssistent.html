@@ -787,11 +787,6 @@
     /* ── Wartungen (Maintenance) ────────────────────────────── */
     .maint { max-width: 860px; margin: 0 auto; }
     .maint-head { margin-bottom: var(--s-4); }
-    .maint-head__top { display: flex; align-items: flex-start; gap: var(--s-4); }
-    .maint-head__top .maint-gear { flex-shrink: 0; margin-top: var(--s-1); }
-    .maint-bar__bhbadge:empty { display: none; }
-    .maint-bar__bhbadge { font: 500 13px/16px var(--font-text-m); color: var(--r-on-surface-default);
-      background: var(--r-surface-high); padding: var(--s-1) var(--s-3); }
     .maint-head__intro h2 {
       font: 400 22px/28px var(--font-head);
       color: var(--r-on-surface-default);
@@ -1081,6 +1076,10 @@
     .masch-tile__badge { display: none; font: 700 11px/14px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.05em;
       color: var(--r-on-success-soft); background: var(--r-success-soft); padding: 3px 8px; }
     .masch-tile.is-active .masch-tile__badge { display: inline-flex; }
+    .masch-tile__deselect { display: none; cursor: pointer; border: 0; background: transparent;
+      color: var(--r-on-surface-muted); font: 400 12px/16px var(--font-text); text-decoration: underline; padding: 0; }
+    .masch-tile__deselect:hover { color: var(--r-on-surface-default); }
+    .masch-tile.is-active .masch-tile__deselect { display: inline-flex; }
     .masch-tile__gear { display: inline-flex; align-items: center; gap: var(--s-2); cursor: pointer;
       border: 1px solid var(--r-outline-default); background: var(--r-surface-default); color: var(--r-on-surface-default);
       padding: var(--s-2) var(--s-3); font: 500 13px/16px var(--font-text-m);
@@ -1096,13 +1095,21 @@
     .konfig-box iframe { width: 100%; height: 100%; border: 0; display: block; }
 
     /* ── Betriebsstunden-Popup (Wartungen) ───────────────────────────────── */
-    .maint-gear { display: inline-flex; align-items: center; gap: var(--s-2); cursor: pointer;
-      border: 1px solid var(--r-outline-default); background: var(--r-surface-default); color: var(--r-on-surface-default);
-      padding: var(--s-2) var(--s-3); font: 500 13px/16px var(--font-text-m); }
-    .maint-gear:hover { background: var(--r-surface-high); border-color: var(--r-outline-dim); }
     .maint-bh-pop { max-width: 380px; }
     .maint-bh-pop h3 { font: 900 18px/24px var(--font-head-b); margin: 0 0 var(--s-2); }
     .maint-bh-pop p { font: 400 13px/19px var(--font-text); color: var(--r-on-surface-muted); margin: 0 0 var(--s-4); }
+
+    /* Betriebsstunden-Button im dunklen App-Header */
+    .appbar-bh { display: inline-flex; align-items: center; gap: var(--s-2); cursor: pointer;
+      border: 1px solid var(--r-chrome-border); background: transparent; color: var(--r-chrome-on);
+      padding: 6px 12px; font: 500 13px/16px var(--font-text-m);
+      transition: background var(--motion-fast), border-color var(--motion-fast); }
+    .appbar-bh:hover { background: color-mix(in srgb, var(--r-chrome-on) 12%, transparent); }
+    .appbar-bh__val { color: var(--r-brand); font-variant-numeric: tabular-nums; }
+    .appbar-bh__val:empty { display: none; }
+
+    /* Filter-Chip "mit Kommentar/Foto" */
+    .maint-chip--filter { margin-left: var(--s-3); border-color: var(--r-outline-variant); }
   </style>
 </head>
 
@@ -1141,6 +1148,11 @@
     <button class="mode-toggle__btn" id="cbe-anthropic"
       onclick="setClassicBackend('anthropic')" title="Claude für HyDE + Reranking · benötigt Internet + API-Key">Claude</button>
   </div>
+  <!-- Betriebsstunden – nur im Wartungen-Tab (analog Modus-Umschalter im Assistent) -->
+  <button class="appbar-bh" id="appbar-bh-btn" style="display:none" onclick="maintOpenBh()" title="Betriebsstunden einstellen">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-2.9-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.1-2.9H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.1-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.1V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 2.9 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" stroke-linejoin="round"/></svg>
+    Betriebsstunden <span id="maint-bh-badge" class="appbar-bh__val"></span>
+  </button>
 </header>
 
 <!-- ═══ LAYOUT ════════════════════════════════════════════════════════════ -->
@@ -1205,6 +1217,8 @@
             </div>
             <div class="masch-tile__side">
               <span class="masch-tile__badge" id="tile-badge">Aktiv</span>
+              <button class="masch-tile__deselect" title="Maschinenauswahl zurücksetzen"
+                onclick="event.stopPropagation();deselectMachine()">Abwählen</button>
               <button class="masch-tile__gear" title="Konfigurator öffnen"
                 onclick="event.stopPropagation();openConfigurator()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-2.9-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.1-2.9H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.1-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.1V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 2.9 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" stroke-linejoin="round"/></svg>
@@ -1273,22 +1287,14 @@
     <div id="view-maintenance" class="view app-scroll">
       <div class="maint">
         <div class="maint-head">
-          <div class="maint-head__top">
-            <div class="maint-head__intro">
-              <h2>Wartungen</h2>
-              <p>Aufgaben abhaken, kommentieren, Anleitung öffnen und einen Schichtbericht erstellen.
-                 Betriebsstunden über das Zahnrad einstellen — fällige Intervalle werden automatisch aktiviert.</p>
-            </div>
-            <button class="maint-gear" onclick="maintOpenBh()" title="Betriebsstunden einstellen">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-2.9-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.1-2.9H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.1-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.1V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 2.9 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" stroke-linejoin="round"/></svg>
-              Betriebsstunden
-            </button>
+          <div class="maint-head__intro">
+            <h2>Wartungen</h2>
+            <p>Aufgaben abhaken, kommentieren, Anleitung öffnen und einen Schichtbericht erstellen.</p>
           </div>
           <div class="maint-bar">
             <div class="maint-bar__machine">
               Maschine: <strong id="maint-machine">—</strong>
             </div>
-            <div class="maint-bar__bhbadge" id="maint-bh-badge"></div>
             <span class="spacer"></span>
             <button class="lds-btn lds-btn--secondary lds-btn--sm" onclick="maintReport()">Schichtbericht</button>
             <button class="lds-btn lds-btn--ghost lds-btn--sm" onclick="maintReset()" title="Betriebsstunden, Haken, Kommentare und Fotos zurücksetzen">Zurücksetzen</button>
@@ -1622,6 +1628,13 @@ function selectMachine(name) {
   switchView('chat');
 }
 
+function deselectMachine() {
+  machineSelected = false;
+  try { localStorage.removeItem(MACHINE_KEY); } catch {}
+  applyGating();
+  switchView('maschinen');
+}
+
 // ── Konfigurator-Dialog (eingebettet per iframe) ───────────────────────────
 function openConfigurator() {
   const f = document.getElementById('konfig-frame');
@@ -1938,6 +1951,8 @@ function updateToolbarVisibility() {
   document.getElementById('mode-toggle').style.display = isChat ? '' : 'none';
   document.getElementById('backend-toggle').style.display = (isChat && _mode === 'agent') ? '' : 'none';
   document.getElementById('classic-backend-toggle').style.display = (isChat && _mode === 'classic') ? '' : 'none';
+  const isMaint = active ? active.id === 'view-maintenance' : false;
+  document.getElementById('appbar-bh-btn').style.display = isMaint ? 'inline-flex' : 'none';
 }
 
 // Assistent-Backend: "rule" (Regelbasiert, kein LLM), "qwen" (lokales Modell nur
@@ -2646,7 +2661,7 @@ let MAINT = null;               // { tasks, instr, machine, buckets }
 let _maintLoading = false;
 
 // Persistenter Zustand
-let maintState = { bh: 0, active: [], tasks: {}, collapsed: [] };
+let maintState = { bh: 0, active: [], tasks: {}, collapsed: [], annotated: false };
 // UI-Zustand (nicht persistiert)
 const maintOpen = new Set();    // aufgeklappte Task-Details
 
@@ -2660,6 +2675,7 @@ function maintLoadState() {
         active: Array.isArray(s.active) ? s.active : [],
         tasks: s.tasks || {},
         collapsed: Array.isArray(s.collapsed) ? s.collapsed : [],
+        annotated: !!s.annotated,
       };
     }
   } catch { /* defekter Zustand → Defaults */ }
@@ -2811,9 +2827,22 @@ function maintSelectAll() {
   maintRender();
 }
 
+function maintToggleAnnotated() {
+  maintState.annotated = !maintState.annotated;
+  maintSaveState();
+  maintRender();
+}
+
+function maintTaskAnnotated(t) {
+  const s = maintTaskState(t.id);
+  return s.comments.length > 0 || s.photos.length > 0;
+}
+
 function maintVisibleTasks() {
   const active = new Set(maintState.active);
-  return MAINT.tasks.filter(t => active.has(t.bucketKey));
+  let tasks = MAINT.tasks.filter(t => active.has(t.bucketKey));
+  if (maintState.annotated) tasks = tasks.filter(maintTaskAnnotated);
+  return tasks;
 }
 
 // ── Rendern ─────────────────────────────────────────────────────────────────
@@ -2834,8 +2863,10 @@ function maintRenderChips() {
     const cls = 'maint-chip' + (isActive ? ' maint-chip--active' : (due ? ' maint-chip--due' : ''));
     return `<button class="${cls}" onclick="maintToggleChip('${escHtml(b.key)}')">${escHtml(b.label)}<span class="cnt">${b.count || 0}</span></button>`;
   }).join('');
+  const annoCount = MAINT.tasks.filter(t => active.has(t.bucketKey) && maintTaskAnnotated(t)).length;
+  const annoChip = `<button class="maint-chip maint-chip--filter${maintState.annotated ? ' maint-chip--active' : ''}" onclick="maintToggleAnnotated()">${maintIcon('cmt')} mit Kommentar/Foto<span class="cnt">${annoCount}</span></button>`;
   el.innerHTML = `<span class="maint-chips__label">Intervalle</span>${chips}` +
-    `<button class="maint-chips__link" onclick="maintSelectAll()">Alle</button>`;
+    `<button class="maint-chips__link" onclick="maintSelectAll()">Alle</button>` + annoChip;
 }
 
 function maintRenderProgress() {

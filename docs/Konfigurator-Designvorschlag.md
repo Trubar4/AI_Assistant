@@ -190,10 +190,12 @@ keine Duplikate. Bei „Übernehmen" meldet er die Werte per `postMessage` zurü
 damit das bestehende **„Maschinenkonfiguration"-Kontextpanel** (Chips), das den Assistenten steuert.
 
 - **Neues Tab „Maschinen"** (erste Position) mit einer Maschinen-Kachel (`LR 1200.1`, SN 137187,
-  Bild-Platzhalter → `frontend/assets/lr1200-1.png`). Solange keine Maschine gewählt ist, sind die
-  übrigen Tabs (Assistent/Meldungen/Wartungen) **ausgegraut**. Auswahl per Klick auf die Kachel;
-  der Konfigurator startet über den ⚙-Button der Kachel.
+  Icon `frontend/assets/lr1200-1.png`). Solange keine Maschine gewählt ist, sind die übrigen Tabs
+  (Assistent/Meldungen/Wartungen) **ausgegraut**. Auswahl per Klick auf die Kachel; **Abwählen**
+  setzt zurück (Tabs wieder gesperrt). Der Konfigurator startet über den ⚙-Button der Kachel.
 - **Assistent-Tab:** ⚙-Button „Konfigurator" im Kopf des „Maschinenkonfiguration"-Panels.
-- **Wartungen-Tab:** Betriebsstunden liegen in einem **Popup** (⚙ oben rechts, nur in diesem Tab);
-  Schichtbericht & Zurücksetzen bleiben auf der Seite.
+- **Konfigurator:** „Zurücksetzen" im Dialog-Header verwirft alle Eingaben; „Abbrechen"/X schließt.
+- **Wartungen-Tab:** Betriebsstunden-Button **oben rechts im App-Header** (nur in diesem Tab, öffnet
+  das Betriebsstunden-Popup, zeigt den aktuellen Bh-Wert); Schichtbericht & Zurücksetzen bleiben auf
+  der Seite. Neuer Filter **„mit Kommentar/Foto"** neben den Intervall-Chips.
 - Maschinenname **LR 1200.1** durchgängig (Titel, Appbar, Hero, Wartungen).
