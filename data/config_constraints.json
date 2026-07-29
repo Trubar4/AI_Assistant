@@ -1,7 +1,7 @@
 {
-  "_note": "Statisch aus compositions.json + Manual-Tabellen 316/317/326/351/353/1916 extrahiert. Demo: LR 1300 SX.",
+  "_note": "Statisch aus compositions.json + Manual-Tabellen 316/317/326/351/353/1916 extrahiert. Demo: LR 1200.1.",
   "machine": {
-    "series": "LR 1300 SX",
+    "series": "LR 1200.1",
     "manualVersion": "DE 04/2025"
   },
   "konfigurationen": [

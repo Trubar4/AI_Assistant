@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kran-Konfigurator · LR 1300 SX</title>
+  <title>Kran-Konfigurator · LR 1200.1</title>
   <link rel="stylesheet" href="../design-system/lds.css" />
   <script src="konfig-data.js"></script>
   <style>
@@ -59,6 +59,11 @@
     .cfg-x:hover { background: var(--r-surface-high); color: var(--r-on-surface-default); }
     .cfg-dialog__grid { display:grid; grid-template-columns: 220px 1fr; flex:1; min-height:0; }
     @media (max-width: 820px){ .cfg-dialog__grid{ grid-template-columns: 1fr; } }
+
+    /* ---- Embed-Modus (iframe in der App): nur der Dialog, füllt das iframe ---- */
+    html.cfg-embed body { background: var(--r-bg-default); }
+    html.cfg-embed .cfg-modal { position:static; padding:0; background:transparent; height:100vh; }
+    html.cfg-embed .cfg-dialog { max-width:none; max-height:none; width:100%; height:100vh; border:0; box-shadow:none; }
 
     /* ---- Stepper ---- */
     .cfg-steps { background: var(--r-bg-bright); border-right: 1px solid var(--r-outline-bright);
@@ -169,13 +174,35 @@ const ICON = {
 
 // Arbeits-Felder (Working-Copy im Dialog) + Meta (open, saved).
 function freshWork(){ return { konfig:null, haLen:null, naLen:null, ballastIdx:null, lastort:null,
-  einscherHA:1, einscherNA:1, spur:'breit', wind:'9', modus:'HD' }; }
+  einscherHA:1, einscherNA:1 }; }
 const S = Object.assign({ open:false, saved:null, step:0 }, freshWork());
 function workSnapshot(){ const {open,saved,step,...w}=S; return {...w}; }
 
+// Embed-Modus: als iframe in der App eingebettet (?embed=1). Dann wird nur der
+// Dialog gezeigt und Ergebnis/Schließen per postMessage an die App gemeldet.
+const EMBED = new URLSearchParams(location.search).get('embed')==='1';
+
 function openDialog(){ Object.assign(S, S.saved ? S.saved : freshWork(), { step:0, open:true }); render(); }
-function closeDialog(){ S.open=false; render(); }
-function commitDialog(){ if(!isComplete()) return; S.saved = workSnapshot(); S.open=false; render(); }
+function closeDialog(){ if(EMBED){ parent.postMessage({type:'konfig:close'},'*'); return; } S.open=false; render(); }
+function commitDialog(){
+  if(!isComplete()) return;
+  S.saved = workSnapshot();
+  if(EMBED){ parent.postMessage({type:'konfig:commit', config:workSnapshot(), fields:buildFields()},'*'); return; }
+  S.open=false; render();
+}
+
+// Felder für das "Maschinenkonfiguration"-Kontextpanel der App
+function buildFields(){
+  const konf=D.konfigurationen.find(x=>x.id===S.konfig); const f=[];
+  if(konf) f.push({key:'Auslegerkonfiguration', value:konf.lang});
+  if(S.haLen) f.push({key:'Hauptausleger', value:S.haLen+' m'});
+  if(hasNadel()&&S.naLen) f.push({key:'Nadelausleger', value:S.naLen+' m ('+nadelTyp()+')'});
+  if(S.ballastIdx!=null){ const b=D.ballast.stufen[S.ballastIdx];
+    f.push({key:'Heckballast', value:b.heck+' t'});
+    if(b.zentral) f.push({key:'Zentralballast', value:b.zentral+' t'}); }
+  if(S.lastort){ const c=S.lastort==='HA'?S.einscherHA:S.einscherNA; f.push({key:'Einscherung', value:c+'x'}); }
+  return f;
+}
 
 // welche Schritte sind aktiv (Progressive Disclosure)
 function hasNadel(){ const k = D.konfigurationen.find(x=>x.id===S.konfig); return k && k.nadel; }
@@ -187,7 +214,6 @@ const STEPS = [
   { key:'na',     num:'③', label:'Nadelausleger',        sub:()=>S.naLen?S.naLen+' m':(nadelTyp()==='fest'?'Tab. 326':'Tab. 1916'), done:()=>!hasNadel()||!!S.naLen, show:()=>hasNadel() },
   { key:'ballast',num:'④', label:'Ballast',              sub:()=>S.ballastIdx!=null?ballastLabel(S.ballastIdx):'Tab. 316', done:()=>S.ballastIdx!=null, show:()=>true },
   { key:'einsch', num:'⑤', label:'Einscherung',          sub:()=>S.lastort?einscherVal():'Tab. 353 / 351', done:()=>!!S.lastort, show:()=>true },
-  { key:'weiter', num:'⑥', label:'Weiteres',             sub:()=>'Aufstellung, Wind …', done:()=>true, show:()=>true },
   { key:'result', num:'✓', label:'Zusammenstellung',     sub:()=>'Prüfen & übernehmen', done:()=>false, show:()=>true },
 ];
 function visibleSteps(){ return STEPS.filter(s=>s.show()); }
@@ -198,6 +224,7 @@ function isComplete(){ return !!(S.konfig && S.haLen && (!hasNadel()||S.naLen) &
 // ---------- Render ----------
 function render(){
   const app = document.getElementById('app');
+  if(EMBED){ app.innerHTML = dialogView(); bind(); return; }
   app.innerHTML = hostView() + (S.open ? dialogView() : '');
   bind();
 }
@@ -250,7 +277,6 @@ function activeBody(){
     ${kv('Systemlänge', system?`${system} m`:'–')}
     ${kv('Ballastierung', c.ballastIdx!=null?`Heck ${D.ballast.stufen[c.ballastIdx].heck} t · Zentral ${D.ballast.stufen[c.ballastIdx].zentral} t`:'–','Tab. 316')}
     ${kv('Einscherung', c.lastort?(c.lastort==='HA'?c.einscherHA:c.einscherNA)+'-fach':'–', c.lastort?(c.lastort==='HA'?'Tab. 353':'Tab. 351'):'')}
-    ${kv('Aufstellung', `${c.spur==='breit'?'Breite':'Schmale'} Spur · ${c.modus} · Wind ${c.wind} m/s`)}
   </div>`;
 }
 
@@ -292,7 +318,6 @@ function panel(){
     case 'na':      return pLength('na');
     case 'ballast': return pBallast();
     case 'einsch':  return pEinsch();
-    case 'weiter':  return pWeiter();
     case 'result':  return pResult();
   }
 }
@@ -385,22 +410,6 @@ function pEinsch(){
        </div>${stepperUI}` + nav();
 }
 
-function pWeiter(){
-  const sel=(name,val,opts)=>`<div class="lds-field"><label class="lds-label">${name}</label>
-    <select class="lds-input" data-set="${val}">${opts.map(o=>`<option value="${o.v}" ${S[val]===o.v?'selected':''}>${o.l}</option>`).join('')}</select></div>`;
-  return head('Schritt ⑥ · Weiteres','Aufstellung & Rahmenbedingungen.',
-    'Ergänzende Einstellungen, die Standsicherheit und gültige Traglasttabelle beeinflussen. In der Demo als Auswahl abgebildet.','')
-    + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s-5);max-width:560px">
-        ${sel('Raupen-Spurweite','spur',[{v:'breit',l:'Breite Spur'},{v:'schmal',l:'Schmale Spur'}])}
-        ${sel('Betriebsmodus / Traglasttabelle','modus',[{v:'HD',l:'HD – Heavy Duty'},{v:'STD',l:'Standard'}])}
-        ${sel('Max. Windgeschwindigkeit','wind',[{v:'9',l:'9 m/s'},{v:'14',l:'14 m/s'},{v:'20',l:'20 m/s'}])}
-       </div>`
-    + `<div class="lds-alert lds-alert--info" style="margin-top:var(--s-6)"><div>
-        <div class="lds-alert__title">Hinweis</div>
-        <div class="lds-alert__text">Schmale Spur schränkt die zulässige Drehung des Oberwagens zusätzlich ein (Tab. 316).</div></div></div>`
-    + nav();
-}
-
 function pResult(){
   const k = D.konfigurationen.find(x=>x.id===S.konfig);
   const haSel = S.haLen && D.hauptausleger.laengen.find(l=>l.m===S.haLen);
@@ -422,7 +431,6 @@ function pResult(){
         ${row('Systemlänge', system?`${system} m`:'–')}
         ${row('Ballastierung', bal?`Heck ${bal.heck} t · Zentral ${bal.zentral} t`:'–', bal?`Drehung ${bal.drehung} · Tab. 316`:'')}
         ${row('Einscherung', S.lastort?einscherVal():'–', S.lastort?(S.lastort==='HA'?'HA-Kopf 2320 · Tab. 353':'NA-Kopf 1916 · Tab. 351'):'')}
-        ${row('Aufstellung', `${S.spur==='breit'?'Breite':'Schmale'} Spur · ${S.modus} · Wind ${S.wind} m/s`)}
        </div></div>
        <div class="lds-card__footer">
         <button class="lds-btn lds-btn--primary" data-commit ${complete?'':'disabled'}>Konfiguration übernehmen</button>
@@ -457,12 +465,20 @@ function bind(){
   document.querySelectorAll('[data-einsch]').forEach(el=>el.onclick=()=>{ const d=+el.dataset.einsch;
     if(S.lastort==='HA')S.einscherHA=Math.max(D.einscherung.HA.min,Math.min(D.einscherung.HA.max,S.einscherHA+d));
     else S.einscherNA=Math.max(D.einscherung.NA.min,Math.min(D.einscherung.NA.max,S.einscherNA+d)); render(); });
-  document.querySelectorAll('[data-set]').forEach(el=>el.onchange=()=>{ S[el.dataset.set]=el.value; render(); });
 }
 function goNext(){ let i=S.step+1; while(i<STEPS.length && !STEPS[i].show()) i++; S.step=Math.min(i,STEPS.length-1); render(); }
 function goPrev(){ let i=S.step-1; while(i>0 && !STEPS[i].show()) i--; S.step=Math.max(i,0); render(); }
 
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && S.open) closeDialog(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && (S.open||EMBED)) closeDialog(); });
+
+// Embed: App kann eine bestehende Konfiguration zum Vorbelegen schicken.
+window.addEventListener('message', e=>{
+  if(e.data && e.data.type==='konfig:init'){
+    Object.assign(S, freshWork(), e.data.config||{}, {step:0, open:true}); render();
+  }
+});
+
+if(EMBED){ document.documentElement.classList.add('cfg-embed'); Object.assign(S,{step:0,open:true}); }
 render();
 </script>
 </body>

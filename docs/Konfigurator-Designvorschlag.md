@@ -162,7 +162,8 @@ in `lds.css` registrieren; neue Tokens als Rolle in jeder `roles-*.css`):
    ist damit nicht belegbar.
 3. **Datenquelle:** Constraints **vorab statisch extrahiert** → `data/config_constraints.json`
    (aus `compositions.json` + Manual-Tabellen 316/317/326/351/353/1916).
-4. **Maschinenumfang:** LR 1300 SX für die Demo fix (Datenschema ist maschinen-generisch angelegt).
+4. **Maschinenumfang:** **LR 1200.1** für die Demo fix (passend zu den Manual-Files; Datenschema
+   ist maschinen-generisch angelegt). Schritt ⑥ „Aufstellung/Rahmenbedingungen" wurde entfernt.
 
 ## 7. Umsetzungsstand (Prototyp)
 
@@ -177,7 +178,22 @@ in `lds.css` registrieren; neue Tokens als Rolle in jeder `roles-*.css`):
   Ballast-Radial mit Fußnoten, Einscher-Stepper mit Lastort-Umschaltung, belegte Zusammenstellung
   mit Gültigkeitsprüfung.
 
-**Bekannte Vereinfachungen (Demo):** Schritt ⑥ als einfache Auswahl; Ballast-Tabelle zeigt für
-LR 1300 SX (breite Spur) durchgängig 360° mit Rüst-Fußnoten; NA-fest/-verstellbar sind auf zwei
-repräsentative Datensätze aus `compositions.json` gemappt. Nächster Schritt bei Freigabe:
-Überführung der `cfg-*`-Muster in echte LDS-Komponenten (§5) und Anbindung an echte Manual-Links.
+**Bekannte Vereinfachungen (Demo):** Ballast-Tabelle zeigt für LR 1200.1 (breite Spur) durchgängig
+360° mit Rüst-Fußnoten; NA-fest/-verstellbar sind auf zwei repräsentative Datensätze aus
+`compositions.json` gemappt. Nächster Schritt bei Freigabe: Überführung der `cfg-*`-Muster in echte
+LDS-Komponenten (§5) und Anbindung an echte Manual-Links.
+
+## 8. Integration in die App (`frontend/MaschinenAssistent.html`)
+
+Der Konfigurator ist per **iframe** (`Konfigurator.html?embed=1`) eingebettet — eine Codebasis,
+keine Duplikate. Bei „Übernehmen" meldet er die Werte per `postMessage` zurück und die App füllt
+damit das bestehende **„Maschinenkonfiguration"-Kontextpanel** (Chips), das den Assistenten steuert.
+
+- **Neues Tab „Maschinen"** (erste Position) mit einer Maschinen-Kachel (`LR 1200.1`, SN 137187,
+  Bild-Platzhalter → `frontend/assets/lr1200-1.png`). Solange keine Maschine gewählt ist, sind die
+  übrigen Tabs (Assistent/Meldungen/Wartungen) **ausgegraut**. Auswahl per Klick auf die Kachel;
+  der Konfigurator startet über den ⚙-Button der Kachel.
+- **Assistent-Tab:** ⚙-Button „Konfigurator" im Kopf des „Maschinenkonfiguration"-Panels.
+- **Wartungen-Tab:** Betriebsstunden liegen in einem **Popup** (⚙ oben rechts, nur in diesem Tab);
+  Schichtbericht & Zurücksetzen bleiben auf der Seite.
+- Maschinenname **LR 1200.1** durchgängig (Titel, Appbar, Hero, Wartungen).
