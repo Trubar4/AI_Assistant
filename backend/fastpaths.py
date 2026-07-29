@@ -29,10 +29,17 @@ from collections import Counter
 from backend.agent_tools import (
     lookup_table, composition_count, composition_arrangement, composition_seilfuehrung,
 )
-from backend.search import search
 from backend.rule_agent import _normalize_query, _STOPWORDS
 
 logger = logging.getLogger(__name__)
+
+
+def _search(query: str, top_n: int):
+    """Lazy-Import der (ML-lastigen) Volltextsuche. Hält dieses Modul ohne
+    numpy/Embeddings importierbar — die deterministischen Fast-Paths und ihre
+    Unit-Tests brauchen nur data/compositions.json, kein Retrieval."""
+    from backend.search import search
+    return search(query, top_n=top_n)
 
 # ── Muster (verbatim aus agent_local.py) ────────────────────────────────────
 
@@ -128,16 +135,27 @@ def _used_config_note(boom: str, length: int) -> str:
 
 def _extract_row_col(question: str, context: str) -> tuple[str | None, str | None]:
     """Zeilen-/Spaltenwert für die Tabellensuche aus Frage+Kontext ableiten:
-    Länge in Metern → Zeile, Einscherung (…-fach / …x) → Spalte."""
-    text = f"{context} {question}"
+    Länge in Metern → Zeile, Einscherung (…-fach / …x) → Spalte.
+
+    Feldbezogen statt „erste Meterangabe im Volltext": Nennt die Frage selbst eine
+    Länge, gewinnt sie; sonst wird die zum Ausleger passende Konfig-Länge genutzt
+    (_boom_field_length), damit z. B. ein aktives Nadelausleger-Feld die Zeile
+    einer Hauptausleger-Traglastfrage nicht verfälscht."""
     row = None
-    m = re.search(r"(\d+(?:[.,]\d+)?)\s*m\b", text, re.I)
+    m = re.search(r"(\d+(?:[.,]\d+)?)\s*m\b", question, re.I)
     if m:
         row = f"{m.group(1)} m"
+    else:
+        length = _boom_field_length(_resolve_boom(question, context), context)
+        if length is not None:
+            row = f"{length} m"
+    # Spalte (Einscherung): Frage zuerst, dann Kontext.
     col = None
-    m = re.search(r"(\d+)\s*-?\s*fach", text, re.I) or re.search(r"(\d+)\s*x\b", text, re.I)
-    if m:
-        col = m.group(1)
+    for src in (question, context or ""):
+        m = re.search(r"(\d+)\s*-?\s*fach", src, re.I) or re.search(r"(\d+)\s*x\b", src, re.I)
+        if m:
+            col = m.group(1)
+            break
     return row, col
 
 
@@ -193,7 +211,7 @@ def _prelookup_table(intent_text: str, context: str, candidates: list[dict],
     rel_ref = f"{search_query or ''} {intent_text}"
     pool: list[tuple[str, str]] = [(c["filename"], c["title"]) for c in candidates[:20]]
     # Gezielte, gerankte Suche nach der Tabellenseite über die reine Sach-Frage.
-    for r in search(search_query or intent_text, top_n=25):
+    for r in _search(search_query or intent_text, 25):
         pool.append((r["filename"], r["title"]))
 
     best: tuple[dict, dict] | None = None
@@ -435,11 +453,11 @@ def retrieve_fusion(raw_query: str, context: str = "", top_n: int = 15) -> list[
     lokalen Agenten. Liefert dem Tabellen-Fast-Path des Claude-Agenten die
     Kandidatenliste, die er selbst (Tool-Loop) sonst nicht deterministisch hätte."""
     normalized = _normalize_query(raw_query)
-    lists = [search(raw_query, top_n=top_n)]
+    lists = [_search(raw_query, top_n)]
     if normalized and normalized.lower() != raw_query.lower():
-        lists.append(search(normalized, top_n=top_n))
+        lists.append(_search(normalized, top_n))
     if context:
-        lists.append(search(f"{context} {normalized}", top_n=top_n))
+        lists.append(_search(f"{context} {normalized}", top_n))
     by_fname: dict[str, dict] = {}
     for lst in lists:
         for c in lst:

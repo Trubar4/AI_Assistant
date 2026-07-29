@@ -1,0 +1,7 @@
+# Entwicklungs-/Testabhängigkeiten (nicht für den Produktivbetrieb nötig).
+# Installation:  pip install -r requirements-dev.txt
+# Tests laufen:  pytest
+#
+# Die Fast-Path-Tests (tests/test_fastpaths.py) brauchen KEIN numpy/Retrieval —
+# fastpaths.py importiert die Volltextsuche lazy.
+pytest>=8.0
