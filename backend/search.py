@@ -549,6 +549,32 @@ def _expand_synonyms(query: str) -> str:
     return query + " " + " ".join(extra)
 
 
+# ── Stub-/Kanonik-Unterscheidung (Hebel D) ───────────────────────────────────
+# Kurze Verweis-Seiten („… Weitere Informationen siehe: …") sind fast reine
+# Pointer ohne Sachinhalt. BM25 bevorzugt sie (kurzes Dokument → hoher Score pro
+# Term), sodass bei GLEICHNAMIGEN Seiten der Stub die inhaltliche Kanonik-Seite
+# aus der Titel-Deduplizierung verdrängt. Solche Seiten werden abgewertet, damit
+# die substanzielle Seite gewinnt. Signal: wenig Inhalt UND Verweismuster
+# (sprachrobust: primär die Wortzahl, das Verweiswort als Bestätigung). 1.0 = aus.
+_STUB_PENALTY   = float(os.environ.get("SEARCH_STUB_PENALTY", "0.5"))
+_STUB_MAX_WORDS = int(os.environ.get("SEARCH_STUB_MAX_WORDS", "18"))
+_STUB_REF_RE = re.compile(
+    r"weitere informationen siehe|\(siehe|siehe:|→\s*siehe|\bsee also\b|voir aussi|véase|vedi",
+    re.I,
+)
+
+
+def _is_stub(entry: dict) -> bool:
+    """Kurze Verweis-/Pointer-Seite: wenig Inhalt (≤ _STUB_MAX_WORDS Wörter) UND
+    ein „siehe …"-Verweismuster."""
+    wc = entry.get("word_count")
+    if not isinstance(wc, int) or wc <= 0:
+        wc = len((entry.get("text") or "").split())
+    if wc > _STUB_MAX_WORDS:
+        return False
+    return bool(_STUB_REF_RE.search(entry.get("text", "") or ""))
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -623,6 +649,18 @@ def search(
             rrf_scores[fname] *= _RARE_TERM_BOOST
         logger.info("Seltene-Wort-Bonus (×%.2f) für %s → %d Kandidat(en) angehoben",
                     _RARE_TERM_BOOST, rare_terms, len(boosted))
+
+    # Stub-Abwertung (Hebel D): kurze Verweis-Seiten zurückstufen, damit bei
+    # gleichnamigen Seiten die inhaltliche Kanonik-Seite die Titel-Dedup gewinnt.
+    if _STUB_PENALTY != 1.0:
+        n_stub = 0
+        for fname in rrf_scores:
+            entry = index_by_filename.get(fname)
+            if entry and _is_stub(entry):
+                rrf_scores[fname] *= _STUB_PENALTY
+                n_stub += 1
+        if n_stub:
+            logger.info("Stub-Abwertung (×%.2f) für %d Verweis-Seite(n)", _STUB_PENALTY, n_stub)
 
     sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 
