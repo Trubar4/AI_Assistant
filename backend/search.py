@@ -50,6 +50,18 @@ _STOPWORDS_DE = {
     "noch", "auch", "schon", "nur", "sehr", "mehr", "alle", "hier",
 }
 
+# Generische Aktions-/Bedienverben: sehr hohe Dokumentfrequenz (>7 % der Seiten),
+# praktisch kein Unterscheidungswert. Sie erzeugen Fehltreffer, wenn eine Frage
+# nur über das Verb matcht — z. B. „Seile *wählen*" bei „Wie *wähle* ich …?" oder
+# „*Fahren* über Geländekuppe" bei „Mit welchem Schalter *fahre* ich …?".
+# Werden – wie Stoppwörter – aus Query UND Index-Tokens gefiltert. Kuratiert &
+# erweiterbar; enthält die Flexionsformen UND die vom leichten Stemmer erzeugten
+# Stämme ("wahl"/"fahr"), sonst bliebe die Stamm-Brücke bestehen.
+_GENERIC_VERBS = {
+    "wählen", "wähle", "wählt", "wählst", "gewählt", "wahl",   # wählen (+ Stamm)
+    "fahren", "fahre", "fahrst", "gefahren", "fahr",           # fahren (+ Stamm)
+}
+
 
 _UNIT_RE = re.compile(r"^(\d+)(m|ft|t|kg|h|hz|kw|kn|bar|mm|cm|rpm)$")
 
@@ -91,13 +103,15 @@ def _tokenize(text: str) -> list[str]:
     def _add(tok: str) -> None:
         result.append(tok)
         # Stammform nur für alphabetische Tokens (keine Zahlen/Einheiten), additiv.
+        # Generische-Verb-Stämme (wahl/fahr) werden NICHT emittiert, sonst würde
+        # z. B. „Fahrer" über den Stamm „fahr" doch wieder als Verb matchen.
         if tok.isalpha():
             stem = _stem_de(tok)
-            if stem != tok:
+            if stem != tok and stem not in _GENERIC_VERBS:
                 result.append(stem)
 
     for t in raw:
-        if len(t) <= 1 or t in _STOPWORDS_DE:
+        if len(t) <= 1 or t in _STOPWORDS_DE or t in _GENERIC_VERBS:
             continue
         _add(t)
         m = _UNIT_RE.match(t)
