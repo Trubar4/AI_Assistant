@@ -129,8 +129,9 @@ def _length_for_boom(boom: str, question: str, context: str) -> int | None:
 
 
 def _used_config_note(boom: str, length: int) -> str:
-    """Transparenz: welche Konfiguration die deterministische Antwort getrieben hat."""
-    return f" Verwendete Konfiguration: {boom.capitalize()} {length} m."
+    """Transparenz: welche Konfiguration die deterministische Antwort getrieben hat.
+    Führender Absatzumbruch (\\n\\n) → im Frontend (renderMarkdown) eigene Zeile."""
+    return f"\n\nVerwendete Konfiguration: {boom.capitalize()} {length} m."
 
 
 def _extract_row_col(question: str, context: str) -> tuple[str | None, str | None]:
