@@ -460,6 +460,54 @@ def _rrf(rankings: list[list[tuple[str, float]]]) -> dict[str, float]:
     return scores
 
 
+# ── Seltene-Wort-Bonus (Hebel A) ─────────────────────────────────────────────
+# Kandidaten, die ein SELTENES (distinktives) Frage-Wort wörtlich enthalten,
+# werden angehoben. Fängt den Fall ab, dass ein klarer Schlüsselbegriff (z. B.
+# „Lastort", ~2,5 % der Seiten) in der flachen RRF-Fusion gegen semantische
+# Fast-Duplikate untergeht. RRF verwirft die Trefferstärke — dieser Bonus holt
+# sie gezielt für seltene Begriffe zurück. Alles per Env kalibrierbar (1.0 = aus).
+_RARE_TERM_BOOST   = float(os.environ.get("SEARCH_RARE_TERM_BOOST", "1.6"))
+_RARE_TERM_IDF_MIN = float(os.environ.get("SEARCH_RARE_TERM_IDF_MIN", "3.0"))  # ~ df ≤ 5 %
+# Obergrenze: Wörter in nur 1–2 Seiten (IDF > ~6) sind meist OCR-/Frageartefakte
+# („welches", „konfigurieren"), keine distinktiven Sachbegriffe → nicht boosten.
+_RARE_TERM_IDF_MAX = float(os.environ.get("SEARCH_RARE_TERM_IDF_MAX", "6.0"))  # ~ df ≥ 4
+_RARE_TERM_MAX     = int(os.environ.get("SEARCH_RARE_TERM_MAX", "3"))          # nur die K seltensten
+
+# Frage-/Funktionswörter, die im TECHNISCHEN Korpus selten sind (Interrogativa,
+# generische Verben/Adverbien), aber keinen Sachbezug tragen — sonst würden sie
+# als „seltenes Wort" Seiten anheben, die zufällig „welcher"/„konfigurieren"
+# enthalten. Nur für den Seltene-Wort-Picker (kein globaler BM25-Eingriff).
+_RARE_TERM_STOP = {
+    "welch", "welche", "welcher", "welches", "welchem", "welchen",
+    "wo", "wohin", "woher", "womit", "wodurch", "warum", "wann", "wieso", "weshalb",
+    "konfigurieren", "konfiguriere", "einstellen", "einstelle", "vorwählen",
+    "mindestens", "höchstens", "maximal", "minimal", "benötige", "brauche",
+}
+
+
+def _rare_query_terms(query: str) -> list[str]:
+    """Distinktive (seltene) Sachwörter der Frage — Seltenheit aus der BM25-IDF
+    des Index (kein Themen-Hardcoding, sprachunabhängige Mechanik).
+
+    Alphabetische Tokens ≥4 Zeichen im IDF-Fenster [MIN, MAX]; die K seltensten.
+    Ausgeschlossen: Interrogativa/generische Frage-Verben (_RARE_TERM_STOP) sowie
+    – über die Fenster-Obergrenze – 1–2-Seiten-Artefakte. Wörter außerhalb des
+    Korpus (IDF 0, z. B. „Meisterschalter") sind KEINE seltenen Treffer → Hebel C.
+
+    Bewusst KEINE Großschreibungs-Heuristik: die Manuals (und damit Fragen) können
+    in Sprachen ohne Substantiv-Großschreibung vorliegen. Ein gelegentlich
+    mitgezogenes generisches Wort ist unkritisch, weil der Bonus binär ist und nur
+    bereits gefundene Kandidaten anhebt (die Basis-Relevanz rankt darunter weiter)."""
+    if _bm25 is None:
+        return []
+    idf = getattr(_bm25, "idf", {})
+    toks = {t for t in _tokenize(query)
+            if t.isalpha() and len(t) >= 4 and t not in _RARE_TERM_STOP}
+    rare = [t for t in toks if _RARE_TERM_IDF_MIN <= idf.get(t, 0.0) <= _RARE_TERM_IDF_MAX]
+    rare.sort(key=lambda t: idf.get(t, 0.0), reverse=True)
+    return rare[:_RARE_TERM_MAX]
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -511,6 +559,27 @@ def search(
                 entry = index_by_filename.get(fname)
                 if entry and _page_matches_query_doctype(entry.get("title", ""), q_terms):
                     rrf_scores[fname] *= _DOCTYPE_BOOST
+
+    # Seltene-Wort-Bonus (Hebel A): Kandidaten, die ein seltenes Frage-Wort
+    # WÖRTLICH enthalten, bekommen einen festen Boost. Bewusst binär (nicht nach
+    # Trefferstärke gewichtet), damit eine themenfremde Seite mit dem Wort im Titel
+    # (z. B. „Einscherpläne … (Lastort 2)") nicht stärker angehoben wird als die
+    # eigentlich passende Seite — unter den geboosteten Seiten entscheidet weiter
+    # die Basis-Relevanz (RRF). Wirkt nur auf bereits gefundene Kandidaten.
+    rare_terms = _rare_query_terms(query) if _RARE_TERM_BOOST != 1.0 else []
+    if rare_terms:
+        boosted: set[str] = set()
+        for t in rare_terms:
+            scores = _bm25.get_scores([t])
+            for i, s in enumerate(scores):
+                if s > 0:
+                    fname = _bm25_filenames[i]
+                    if fname in rrf_scores:
+                        boosted.add(fname)
+        for fname in boosted:
+            rrf_scores[fname] *= _RARE_TERM_BOOST
+        logger.info("Seltene-Wort-Bonus (×%.2f) für %s → %d Kandidat(en) angehoben",
+                    _RARE_TERM_BOOST, rare_terms, len(boosted))
 
     sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 
