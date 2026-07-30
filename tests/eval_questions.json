@@ -1,0 +1,93 @@
+{
+  "_info": "Retrieval-Eval-Set: reale Fragen → Soll-Quelle (Regelbasiert). Manuell pflegbar. Läuft über backend.fastpaths (Fast-Paths + retrieve_fusion mit Hebel A–D). Feld 'expect' = Teilstring des erwarteten Seitentitels; 'max_rank' = erwartete Position (1 = muss oben stehen); 'context' = aktive Maschinenkonfiguration (für Fast-Paths mit Länge nötig); 'known_gap' = derzeit bekannt offen (pytest xfail).",
+  "cases": [
+    {
+      "id": "seilfuehrung_ha",
+      "question": "An welcher Stelle im Hauptausleger muss die Seilführung eingebaut werden?",
+      "context": "Hauptausleger: 74 m",
+      "expect": "Zusammenstellung des Hauptauslegers 2320",
+      "max_rank": 1
+    },
+    {
+      "id": "lasthaken_gewicht",
+      "question": "Welches Gewicht muss der Lasthaken am Hauptausleger mindestens haben?",
+      "context": "",
+      "expect": "Wahl des richtigen Lasthakens",
+      "max_rank": 5
+    },
+    {
+      "id": "bildschirm_auslegerkonfig",
+      "question": "Auf welcher Bildschirmseite kann ich die Auslegerkonfiguration auswählen?",
+      "context": "",
+      "expect": "Bildschirmseite Auslegerkonfiguration",
+      "max_rank": 5
+    },
+    {
+      "id": "zwischenstuecke_anzahl",
+      "question": "Wie viele 12m Zwischenstücke brauche ich für die Hauptausleger Konfiguration?",
+      "context": "Hauptausleger: 74 m",
+      "expect": "Zusammenstellung des Hauptauslegers 2320",
+      "max_rank": 1
+    },
+    {
+      "id": "lastort_bildschirm",
+      "question": "Auf welcher Bildschirmseite kann ich den Lastort konfigurieren?",
+      "context": "",
+      "expect": "Bildschirmseite Windenkonfiguration",
+      "max_rank": 5
+    },
+    {
+      "id": "symbol_windenkonfig",
+      "question": "Wie sieht das Symbol für die Bildschirmseite Windenkonfiguration aus?",
+      "context": "",
+      "expect": "Bildschirmseite Windenkonfiguration",
+      "max_rank": 5,
+      "note": "Soll-Quelle aus dem Feedback war vermutlich vertippt (dort stand die Hauptausleger-Zusammenstellung) — bitte bestätigen."
+    },
+    {
+      "id": "anordnung_zwischenstuecke",
+      "question": "Wie ist die richtige Anordnung der Zwischenstücke für die Hauptausleger Konfiguration?",
+      "context": "Hauptausleger: 74 m",
+      "expect": "Zusammenstellung des Hauptauslegers 2320",
+      "max_rank": 1
+    },
+    {
+      "id": "meisterschalter_winde1",
+      "question": "Mit welchem Meisterschalter fahre ich Winde 1 Heben?",
+      "context": "",
+      "expect": "Last an Winde1 heben",
+      "max_rank": 5
+    },
+    {
+      "id": "montagefunktion_vorwaehlen",
+      "question": "Wie wähle ich die Montagefunktion vor?",
+      "context": "",
+      "expect": "Montagefunktionen einschalten",
+      "max_rank": 3,
+      "note": "Feedback: 'aktuell nur Quelle 4' — bitte prüfen, ob D das inzwischen auf #1 hebt."
+    },
+    {
+      "id": "seileinziehwinde_bedienen",
+      "question": "Wie bediene ich die Seileinziehwinde?",
+      "context": "",
+      "expect": "Seileinziehwinde",
+      "max_rank": 5
+    },
+    {
+      "id": "seilfixpunkte_hakopf",
+      "question": "Welche Seilfixpunkte gibt es am Hauptauslegerkopf?",
+      "context": "",
+      "expect": "Seilfixpunkt am Hauptausleger-Kopf montieren",
+      "max_rank": 5
+    },
+    {
+      "id": "einscherplan_ha",
+      "question": "Wie sieht der Einscherplan am Hauptausleger aus?",
+      "context": "",
+      "expect": "Einscherpläne für ein Seil über Hauptausleger-Kopf 2320 (Lastort 1)",
+      "max_rank": 5,
+      "known_gap": true,
+      "note": "Feedback: nicht in Top-5; stattdessen Lastort 2 als Quelle 3. Noch offen."
+    }
+  ]
+}
