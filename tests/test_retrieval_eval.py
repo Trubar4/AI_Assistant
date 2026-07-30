@@ -25,13 +25,6 @@ _agent_local = pytest.importorskip("backend.agent_local")
 _CASES_FILE = Path(__file__).parent / "eval_questions.json"
 
 
-def _regelbasiert_titles(question: str, context: str) -> list[str]:
-    """Quellen-Titel exakt so, wie die App sie im Regelbasiert-Modus liefert
-    (deterministisch, modellfrei): Fast-Paths + Fusion-Retrieval inkl. Hebel A–D."""
-    res = _agent_local.run_agent_local(question, context, mode="sources")
-    return [s.get("title", "") for s in res.get("sources", [])]
-
-
 def _load_cases():
     data = json.loads(_CASES_FILE.read_text(encoding="utf-8"))
     params = []
@@ -45,7 +38,18 @@ def _load_cases():
 
 @pytest.mark.parametrize("case", _load_cases())
 def test_retrieval_eval(case):
-    titles = _regelbasiert_titles(case["question"], case.get("context", ""))
+    res = _agent_local.run_agent_local(case["question"], case.get("context", ""), mode="sources")
+
+    # Mehrdeutige Fragen: der Assistent soll RÜCKFRAGEN, nicht raten.
+    if "expect_clarification" in case:
+        assert res.get("type") == "clarification", (
+            f"[{case['id']}] erwartete Rückfrage, bekam type={res.get('type')!r}")
+        q = (res.get("question") or "").lower()
+        assert case["expect_clarification"].lower() in q, (
+            f"[{case['id']}] Rückfrage ohne '{case['expect_clarification']}': {res.get('question')!r}")
+        return
+
+    titles = [s.get("title", "") for s in res.get("sources", [])]
     needle = case["expect"].lower()
     rank = next((i for i, t in enumerate(titles) if needle in (t or "").lower()), None)
     assert rank is not None and rank < case["max_rank"], (

@@ -83,10 +83,15 @@
       "id": "einscherplan_ha",
       "question": "Wie sieht der Einscherplan am Hauptausleger aus?",
       "context": "",
-      "expect": "Einscherpläne für ein Seil über Hauptausleger-Kopf 2320 (Lastort 1)",
-      "max_rank": 5,
-      "known_gap": true,
-      "note": "Hebel E (Komponenten-Scope) sollte das beheben: die Lastort-2-Kopien liegen unter Nadelausleger-Sektionen und werden bei einer Hauptausleger-Frage abgewertet, sodass die HA-Sektion-Seite (Lastort 1) steigt. Bei grün (xpass) 'known_gap' entfernen."
+      "expect_clarification": "lastort",
+      "note": "Mehrdeutig (Lastort 1 vs 2) → der Assistent fragt nach, statt zu raten."
+    },
+    {
+      "id": "einscherplan_kein_ausleger",
+      "question": "Wie sieht der Einscherplan aus?",
+      "context": "",
+      "expect_clarification": "ausleger",
+      "note": "Auslegerkomponente fehlt → Rückfrage Haupt-/Nadelausleger."
     }
   ]
 }
