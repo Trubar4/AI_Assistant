@@ -10,6 +10,9 @@
     "meisterschalter": ["bedienhebel", "kreuz-bedienhebel"],
     "steuerhebel": ["bedienhebel", "kreuz-bedienhebel"],
     "steuerknüppel": ["bedienhebel", "kreuz-bedienhebel"],
-    "joystick": ["bedienhebel", "kreuz-bedienhebel"]
+    "joystick": ["bedienhebel", "kreuz-bedienhebel"],
+    "vorwählen": ["einschalten"],
+    "vorwahl": ["einschalten"],
+    "aktivieren": ["einschalten"]
   }
 }

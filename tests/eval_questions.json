@@ -86,7 +86,7 @@
       "expect": "Einscherpläne für ein Seil über Hauptausleger-Kopf 2320 (Lastort 1)",
       "max_rank": 5,
       "known_gap": true,
-      "note": "Feedback: nicht in Top-5; stattdessen Lastort 2 als Quelle 3. Noch offen."
+      "note": "Hebel E (Komponenten-Scope) sollte das beheben: die Lastort-2-Kopien liegen unter Nadelausleger-Sektionen und werden bei einer Hauptausleger-Frage abgewertet, sodass die HA-Sektion-Seite (Lastort 1) steigt. Bei grün (xpass) 'known_gap' entfernen."
     }
   ]
 }

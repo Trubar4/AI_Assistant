@@ -575,6 +575,34 @@ def _is_stub(entry: dict) -> bool:
     return bool(_STUB_REF_RE.search(entry.get("text", "") or ""))
 
 
+# ── Komponenten-Scope-Abgleich (Hebel E) ─────────────────────────────────────
+# Nennt die Frage genau EINE Auslegerkomponente (Hauptausleger XOR Nadelausleger),
+# werden Kandidaten abgewertet, deren Breadcrumb-SEKTION (ohne den Seitentitel)
+# unter der NICHT genannten Komponente liegt. Beispiel: „Einscherplan am
+# Hauptausleger" → die (Lastort-2-)Kopien unter „… Nadelausleger …" werden
+# zurückgestuft, die HA-Sektion-Seite (Lastort 1) steigt. Generisch. 1.0 = aus.
+_COMPONENT_PENALTY = float(os.environ.get("SEARCH_COMPONENT_PENALTY", "0.6"))
+
+
+def _query_component(query: str) -> str | None:
+    ql = query.lower()
+    ha = "hauptausleger" in ql
+    na = "nadelausleger" in ql
+    if ha and not na:
+        return "hauptausleger"
+    if na and not ha:
+        return "nadelausleger"
+    return None
+
+
+def _under_other_component(entry: dict, comp: str) -> bool:
+    """True, wenn die Breadcrumb-Sektion (ohne den Seitentitel) unter der ANDEREN
+    Komponente liegt und die genannte NICHT enthält."""
+    other = "nadelausleger" if comp == "hauptausleger" else "hauptausleger"
+    ancestors = " ".join((entry.get("breadcrumb") or [])[:-1]).lower()
+    return other in ancestors and comp not in ancestors
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -661,6 +689,21 @@ def search(
                 n_stub += 1
         if n_stub:
             logger.info("Stub-Abwertung (×%.2f) für %d Verweis-Seite(n)", _STUB_PENALTY, n_stub)
+
+    # Komponenten-Scope (Hebel E): Seiten unter der nicht gefragten Auslegerkomponente
+    # zurückstufen (z. B. Nadelausleger-Sektion bei einer Hauptausleger-Frage).
+    if _COMPONENT_PENALTY != 1.0:
+        comp = _query_component(query)
+        if comp:
+            n_comp = 0
+            for fname in rrf_scores:
+                entry = index_by_filename.get(fname)
+                if entry and _under_other_component(entry, comp):
+                    rrf_scores[fname] *= _COMPONENT_PENALTY
+                    n_comp += 1
+            if n_comp:
+                logger.info("Komponenten-Scope (%s): %d Seite(n) unter anderer Komponente abgewertet",
+                            comp, n_comp)
 
     sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 

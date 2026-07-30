@@ -17,20 +17,19 @@ import pytest
 
 pytest.importorskip("numpy")
 pytest.importorskip("rank_bm25")
-
-from backend.fastpaths import run_fastpaths, retrieve_fusion  # noqa: E402
+# Genau die Funktion, die die App im Regelbasiert-Modus nutzt (/ask_agent →
+# run_agent_local(mode="sources")). importorskip überspringt, falls der volle
+# Agenten-Stack (search/fastapi/claude_client …) in dieser Umgebung fehlt.
+_agent_local = pytest.importorskip("backend.agent_local")
 
 _CASES_FILE = Path(__file__).parent / "eval_questions.json"
 
 
 def _regelbasiert_titles(question: str, context: str) -> list[str]:
-    """Titel der Quellen, die der Regelbasiert-Modus liefern würde:
-    greift ein Fast-Path, ist dessen Quelle maßgeblich; sonst die Fusion-Kandidaten."""
-    cands = retrieve_fusion(question, context)
-    fp = run_fastpaths(question, context, candidates=cands, search_query=question)
-    if fp and fp.get("sources"):
-        return [s.get("title", "") for s in fp["sources"]]
-    return [c.get("title", "") for c in cands]
+    """Quellen-Titel exakt so, wie die App sie im Regelbasiert-Modus liefert
+    (deterministisch, modellfrei): Fast-Paths + Fusion-Retrieval inkl. Hebel A–D."""
+    res = _agent_local.run_agent_local(question, context, mode="sources")
+    return [s.get("title", "") for s in res.get("sources", [])]
 
 
 def _load_cases():
