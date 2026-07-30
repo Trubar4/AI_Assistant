@@ -596,11 +596,29 @@ def _query_component(query: str) -> str | None:
 
 
 def _under_other_component(entry: dict, comp: str) -> bool:
-    """True, wenn die Breadcrumb-Sektion (ohne den Seitentitel) unter der ANDEREN
-    Komponente liegt und die genannte NICHT enthält."""
+    """True, wenn die Seite unter der ANDEREN Komponente liegt UND selbst nicht von
+    der gefragten handelt. Titel-bewusst: eine Seite „…Hauptausleger-Kopf … (Lastort 2)"
+    handelt vom Hauptausleger, auch wenn sie unter einer Nadelausleger-Sektion
+    abgelegt ist — sie darf bei einer Hauptausleger-Frage NICHT abgewertet werden."""
+    if comp in (entry.get("title") or "").lower():
+        return False
     other = "nadelausleger" if comp == "hauptausleger" else "hauptausleger"
     ancestors = " ".join((entry.get("breadcrumb") or [])[:-1]).lower()
     return other in ancestors and comp not in ancestors
+
+
+# ── Lastort-Varianten-Scope (Hebel F) ────────────────────────────────────────
+# Nennt die Frage einen konkreten Lastort (z. B. Followup „Lastort 2"), werden
+# Kandidaten mit einem ANDEREN „Lastort M" im Titel abgewertet. Nötig, weil die
+# reine Ziffer (1/2) als 1-Zeichen-Token wegfällt und BM25 „Lastort 1" und
+# „Lastort 2" sonst nicht unterscheiden kann. 1.0 = aus.
+_LASTORT_PENALTY = float(os.environ.get("SEARCH_LASTORT_PENALTY", "0.4"))
+_LASTORT_RE = re.compile(r"lastort\s*(\d+)", re.I)
+
+
+def _query_lastort(query: str) -> str | None:
+    m = _LASTORT_RE.search(query)
+    return m.group(1) if m else None
 
 
 # ---------------------------------------------------------------------------
@@ -704,6 +722,22 @@ def search(
             if n_comp:
                 logger.info("Komponenten-Scope (%s): %d Seite(n) unter anderer Komponente abgewertet",
                             comp, n_comp)
+
+    # Lastort-Varianten-Scope (Hebel F): bei explizitem „Lastort N" die Seiten mit
+    # abweichendem Lastort im Titel zurückstufen (die Ziffer allein matcht nicht).
+    if _LASTORT_PENALTY != 1.0:
+        lo = _query_lastort(query)
+        if lo:
+            n_lo = 0
+            for fname in rrf_scores:
+                entry = index_by_filename.get(fname)
+                m = _LASTORT_RE.search(entry.get("title", "")) if entry else None
+                if m and m.group(1) != lo:
+                    rrf_scores[fname] *= _LASTORT_PENALTY
+                    n_lo += 1
+            if n_lo:
+                logger.info("Lastort-Scope (Lastort %s): %d Seite(n) mit anderem Lastort abgewertet",
+                            lo, n_lo)
 
     sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 

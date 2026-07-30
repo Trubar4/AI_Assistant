@@ -1,14 +1,15 @@
 """
-Regressionstest für Hebel E: Komponenten-Scope-Abgleich.
+Regressionstest für Hebel E (Komponenten-Scope, titel-bewusst) und
+Hebel F (Lastort-Varianten-Scope).
 
-Nennt die Frage genau EINE Auslegerkomponente (Hauptausleger XOR Nadelausleger),
-werden Kandidaten unter der ANDEREN Komponente abgewertet. Konkreter Fall:
-„Wie sieht der Einscherplan am Hauptausleger aus?" — die fünf (Lastort-2-)Kopien
-liegen unter „… Nadelausleger …"-Sektionen, die richtige (Lastort-1-)Seite unter
-„Hauptausleger 2320".
+E: Nennt die Frage genau EINE Auslegerkomponente, werden Seiten unter der ANDEREN
+   Komponente abgewertet — ABER nur, wenn ihr Titel nicht selbst von der gefragten
+   Komponente handelt. „…Hauptausleger-Kopf … (Lastort 2)" liegt zwar unter einer
+   Nadelausleger-Sektion, handelt aber vom Hauptausleger → NICHT abwerten.
+F: Nennt die Frage einen konkreten „Lastort N" (z. B. Followup „Lastort 2"),
+   werden Kandidaten mit abweichendem Lastort im Titel abgewertet.
 
-backend/search.py importiert numpy/rank_bm25 auf Modulebene → ohne diese Pakete
-werden die Tests übersprungen.
+backend/search.py importiert numpy/rank_bm25 → ohne diese Pakete: Skip.
 """
 import json
 
@@ -25,27 +26,37 @@ def _pages(prefix):
     return [v for v in idx.values() if v.get("title", "").startswith(prefix)]
 
 
+# ── Hebel E ─────────────────────────────────────────────────────────────────
+
 def test_query_component_detects_single_component():
     assert S._query_component("Wie sieht der Einscherplan am Hauptausleger aus?") == "hauptausleger"
     assert S._query_component("Wo Seilführung am Nadelausleger einbauen?") == "nadelausleger"
-    assert S._query_component("Wie hebe ich die Last?") is None            # keine Komponente
-    assert S._query_component("Hauptausleger oder Nadelausleger?") is None  # beide → kein Scope
+    assert S._query_component("Wie hebe ich die Last?") is None
+    assert S._query_component("Hauptausleger oder Nadelausleger?") is None
 
 
-def test_lastort2_under_nadelausleger_penalized_lastort1_not():
-    pages = _pages("Einscherpläne für ein Seil über Hauptausleger-Kopf 2320")
-    l2 = [p for p in pages if "Lastort 2" in p.get("title", "")]
-    l1 = [p for p in pages if "Lastort 1" in p.get("title", "")]
-    assert l2 and l1
-    # Für eine Hauptausleger-Frage: Lastort-2-Kopien (Nadelausleger-Sektion) abgewertet …
-    assert all(S._under_other_component(p, "hauptausleger") for p in l2)
-    # … die Lastort-1-Seite (Hauptausleger-Sektion) NICHT.
-    assert not any(S._under_other_component(p, "hauptausleger") for p in l1)
+def test_component_scope_is_title_aware():
+    # HA-Kopf-Einscherpläne (auch unter Nadelausleger-Sektionen) handeln vom
+    # Hauptausleger → bei einer Hauptausleger-Frage NICHT abwerten.
+    l2 = [p for p in _pages("Einscherpläne für ein Seil über Hauptausleger-Kopf 2320")
+          if "Lastort 2" in p.get("title", "")]
+    assert l2
+    assert not any(S._under_other_component(p, "hauptausleger") for p in l2)
 
 
-def test_no_penalty_when_query_names_no_or_both_components():
-    pages = _pages("Einscherpläne für ein Seil über Hauptausleger-Kopf 2320")
-    assert pages
-    # Ohne erkannte Komponente greift der Hebel nicht (die Penalty-Schleife wird
-    # in search() gar nicht betreten) — hier nur die Vorbedingung geprüft.
-    assert S._query_component("Wie sieht der Einscherplan aus?") is None
+def test_component_scope_penalizes_genuine_other_component():
+    entry = {
+        "title": "Nadelausleger-Verstellwinde bedienen",
+        "breadcrumb": ["Bedienung, Betrieb", "Verstellbarer Nadelausleger 1916",
+                       "Nadelausleger-Verstellwinde bedienen"],
+    }
+    assert S._under_other_component(entry, "hauptausleger")      # unter Nadel, Titel nicht HA
+    assert not S._under_other_component(entry, "nadelausleger")  # ist ja Nadel
+
+
+# ── Hebel F ─────────────────────────────────────────────────────────────────
+
+def test_query_lastort_extraction():
+    assert S._query_lastort("Wie sieht der Einscherplan am Hauptausleger aus? Lastort 2") == "2"
+    assert S._query_lastort("... für Lastort 1 ...") == "1"
+    assert S._query_lastort("Wie sieht der Einscherplan aus?") is None
