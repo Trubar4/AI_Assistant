@@ -41,8 +41,7 @@
       "question": "Wie sieht das Symbol für die Bildschirmseite Windenkonfiguration aus?",
       "context": "",
       "expect": "Bildschirmseite Windenkonfiguration",
-      "max_rank": 5,
-      "note": "Soll-Quelle aus dem Feedback war vermutlich vertippt (dort stand die Hauptausleger-Zusammenstellung) — bitte bestätigen."
+      "max_rank": 5
     },
     {
       "id": "anordnung_zwischenstuecke",
@@ -63,8 +62,8 @@
       "question": "Wie wähle ich die Montagefunktion vor?",
       "context": "",
       "expect": "Montagefunktionen einschalten",
-      "max_rank": 3,
-      "note": "Feedback: 'aktuell nur Quelle 4' — bitte prüfen, ob D das inzwischen auf #1 hebt."
+      "max_rank": 5,
+      "note": "Mit D aktuell Rang 4 (innerhalb Top-5 → Test grün), aber noch nicht #1. Kandidat für Feinschliff, falls die Kanonik-Seite ganz oben stehen soll."
     },
     {
       "id": "seileinziehwinde_bedienen",
