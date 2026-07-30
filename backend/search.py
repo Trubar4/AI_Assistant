@@ -36,6 +36,7 @@ COMPOSITIONS   = _ROOT / "data" / "compositions.json"
 
 _EMB_NPY = _ROOT / "data" / "embeddings.npy"
 _EMB_IDS = _ROOT / "data" / "embedding_ids.json"
+SYNONYMS_PATH  = _ROOT / "data" / "search_synonyms.json"
 
 # ---------------------------------------------------------------------------
 # Tokenization
@@ -508,6 +509,46 @@ def _rare_query_terms(query: str) -> list[str]:
     return rare[:_RARE_TERM_MAX]
 
 
+# ── Synonym-/Query-Expansion (Hebel C) ───────────────────────────────────────
+# Schließt Wortschatz-Lücken zwischen Nutzer- und Manual-Vokabular: „Meisterschalter"
+# steht in 0 Seiten, das Manual sagt „Bedienhebel"/„Kreuz-Bedienhebel". Die Frage
+# wird vor der Suche um die passenden Manual-Begriffe ergänzt — davon profitieren
+# BM25 UND Semantik. Kuratiert & manuell pflegbar in data/search_synonyms.json.
+_SYNONYMS: dict[str, list[str]] | None = None
+
+
+def _load_synonyms() -> dict[str, list[str]]:
+    global _SYNONYMS
+    if _SYNONYMS is not None:
+        return _SYNONYMS
+    try:
+        data = json.loads(SYNONYMS_PATH.read_text(encoding="utf-8"))
+        raw = data.get("synonyms", {}) if isinstance(data, dict) else {}
+        _SYNONYMS = {str(k).lower(): [str(x).lower() for x in v]
+                     for k, v in raw.items() if isinstance(v, list)}
+    except Exception:
+        _SYNONYMS = {}   # Datei optional — ohne sie einfach keine Expansion
+    return _SYNONYMS
+
+
+def _expand_synonyms(query: str) -> str:
+    """Ergänzt die Query um kuratierte Manual-Synonyme, wenn ein Schlüsselwort
+    vorkommt. Additiv (Original bleibt), damit exakte Treffer stark bleiben."""
+    syn = _load_synonyms()
+    if not syn:
+        return query
+    toks = set(_tokenize(query))
+    extra: list[str] = []
+    for key, vals in syn.items():
+        if key in toks:
+            extra.extend(vals)
+    if not extra:
+        return query
+    extra = list(dict.fromkeys(extra))
+    logger.info("Synonym-Expansion: %s", extra)
+    return query + " " + " ".join(extra)
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -528,6 +569,8 @@ def search(
     """
     if not query.strip():
         return []
+
+    query = _expand_synonyms(query)   # Hebel C: Nutzer- → Manual-Vokabular
 
     index = _load_index(metadata_path, content_path)
     index_by_filename = {e["filename"]: e for e in index}
