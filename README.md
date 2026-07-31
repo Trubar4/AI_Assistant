@@ -20,6 +20,13 @@ Built for the **Liebherr LR 1104.03.08** crawler crane (Betriebsanleitung V03.06
 
 ---
 
+## Dokumentation
+
+- [`docs/Konfigurator-Designvorschlag.md`](docs/Konfigurator-Designvorschlag.md) — Kran-Konfigurator: Analyse, Design und Umsetzung inkl. App-Integration (Maschinen-Tab, Dialog, „Konfiguration aktiv").
+- [`docs/Retrieval-Verbesserungen.md`](docs/Retrieval-Verbesserungen.md) — Retrieval-Qualität im Regelbasiert-Modus: Such-Hebel A–F, Rückfragen bei Mehrdeutigkeit, Env-Regler, kuratierte Tabellen und Test-Set.
+
+---
+
 ## Prerequisites
 
 - Python 3.11+
