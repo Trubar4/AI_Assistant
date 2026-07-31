@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>KI Assistent · LR 1104.03.08</title>
+  <title>KI Assistent · LR 1200.1</title>
   <link rel="manifest" href="/frontend/manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -1048,6 +1048,68 @@
       .maint-bar .spacer { flex-basis: 100%; height: 0; }
       .maint-task__det { padding-left: var(--s-4); }
     }
+
+    /* ── Gating: ausgegraute Tabs, solange keine Maschine gewählt ist ─────── */
+    .lds-nav__item[data-gated][disabled] { opacity: 0.4; pointer-events: none; }
+
+    /* ── Maschinen-Ansicht + Kachel ──────────────────────────────────────── */
+    .masch { max-width: 760px; margin: 0 auto; padding: var(--s-6) var(--s-5); }
+    .masch__head h2 { font: 900 24px/30px var(--font-head-b); margin: 0 0 var(--s-2); }
+    .masch__head p { font: 400 14px/20px var(--font-text); color: var(--r-on-surface-muted); margin: 0 0 var(--s-5); max-width: 60ch; }
+    .masch-grid { display: grid; gap: var(--s-4); }
+    .masch-tile { display: grid; grid-template-columns: 132px 1fr auto; gap: var(--s-5); align-items: center;
+      background: var(--r-surface-default); border: 1px solid var(--r-outline-bright); box-shadow: var(--shadow-1);
+      padding: var(--s-4) var(--s-5); cursor: pointer;
+      transition: border-color var(--motion-fast), box-shadow var(--motion-fast); }
+    .masch-tile:hover { border-color: var(--r-outline-default); box-shadow: var(--shadow-2); }
+    .masch-tile:focus-visible { outline: 2px solid var(--r-focus-ring); outline-offset: 2px; }
+    .masch-tile.is-active { border-color: var(--r-brand); box-shadow: 0 0 0 2px var(--r-brand); }
+    .masch-tile__media { width: 132px; height: 88px; display: grid; place-items: center; overflow: hidden;
+      background: var(--r-surface-high); }
+    .masch-tile__media img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .masch-tile__ph { width: 100%; height: 100%; }
+    .masch-tile__name { font: 900 18px/22px var(--font-head-b); }
+    .masch-tile__sn { font: 400 13px/18px var(--font-text); color: var(--r-on-surface-default); margin-top: 2px; }
+    .masch-tile__tag { font: 400 13px/18px var(--font-text); color: var(--r-on-surface-muted); }
+    .masch-tile__status { font: 400 12px/16px var(--font-text); color: var(--r-on-surface-muted); margin-top: var(--s-2); }
+    .masch-tile__side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--s-3); }
+    .masch-tile__badge { display: none; font: 700 11px/14px var(--font-text-b); text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--r-on-success-soft); background: var(--r-success-soft); padding: 3px 8px; }
+    .masch-tile.is-active .masch-tile__badge { display: inline-flex; }
+    .masch-tile__deselect { display: none; cursor: pointer; border: 0; background: transparent;
+      color: var(--r-on-surface-muted); font: 400 12px/16px var(--font-text); text-decoration: underline; padding: 0; }
+    .masch-tile__deselect:hover { color: var(--r-on-surface-default); }
+    .masch-tile.is-active .masch-tile__deselect { display: inline-flex; }
+    .masch-tile__gear { display: inline-flex; align-items: center; gap: var(--s-2); cursor: pointer;
+      border: 1px solid var(--r-outline-default); background: var(--r-surface-default); color: var(--r-on-surface-default);
+      padding: var(--s-2) var(--s-3); font: 500 13px/16px var(--font-text-m);
+      transition: background var(--motion-fast), border-color var(--motion-fast); }
+    .masch-tile__gear:hover { background: var(--r-surface-high); border-color: var(--r-outline-dim); }
+
+    /* ── Konfigurator-Modal (iframe) ─────────────────────────────────────── */
+    .konfig-ov { position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center;
+      padding: var(--s-5); background: color-mix(in srgb, var(--r-on-surface-default) 42%, transparent); }
+    .konfig-ov.is-open { display: flex; }
+    .konfig-box { width: 100%; max-width: 1040px; height: 92vh; background: var(--r-bg-default);
+      box-shadow: var(--shadow-3); border: 1px solid var(--r-outline-bright); overflow: hidden; }
+    .konfig-box iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+    /* ── Betriebsstunden-Popup (Wartungen) ───────────────────────────────── */
+    .maint-bh-pop { max-width: 380px; }
+    .maint-bh-pop h3 { font: 900 18px/24px var(--font-head-b); margin: 0 0 var(--s-2); }
+    .maint-bh-pop p { font: 400 13px/19px var(--font-text); color: var(--r-on-surface-muted); margin: 0 0 var(--s-4); }
+
+    /* Betriebsstunden-Button im dunklen App-Header */
+    .appbar-bh { display: inline-flex; align-items: center; gap: var(--s-2); cursor: pointer;
+      border: 1px solid var(--r-chrome-border); background: transparent; color: var(--r-chrome-on);
+      padding: 6px 12px; font: 500 13px/16px var(--font-text-m);
+      transition: background var(--motion-fast), border-color var(--motion-fast); }
+    .appbar-bh:hover { background: color-mix(in srgb, var(--r-chrome-on) 12%, transparent); }
+    .appbar-bh__val { color: var(--r-brand); font-variant-numeric: tabular-nums; }
+    .appbar-bh__val:empty { display: none; }
+
+    /* Filter-Chip "mit Kommentar/Foto" */
+    .maint-chip--filter { margin-left: var(--s-3); border-color: var(--r-outline-variant); }
   </style>
 </head>
 
@@ -1061,7 +1123,7 @@
   </svg>
   <div class="lds-appbar__product"><strong>KI</strong> Assistent</div>
   <div style="flex:1"></div>
-  <span class="appbar-doc-id" style="font:400 13px/18px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3);border-left:1px solid var(--r-chrome-border)">LR 1104.03.08</span>
+  <span class="appbar-doc-id" id="active-machine-label" style="font:400 13px/18px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3);border-left:1px solid var(--r-chrome-border)">Keine Maschine</span>
   <span id="online-status" style="font:400 12px/16px var(--font-text);color:var(--r-chrome-on-dim);padding:0 var(--s-3)">Offline</span>
   <!-- Mode Toggle -->
   <div class="mode-toggle" id="mode-toggle">
@@ -1086,6 +1148,11 @@
     <button class="mode-toggle__btn" id="cbe-anthropic"
       onclick="setClassicBackend('anthropic')" title="Claude für HyDE + Reranking · benötigt Internet + API-Key">Claude</button>
   </div>
+  <!-- Betriebsstunden – nur im Wartungen-Tab (analog Modus-Umschalter im Assistent) -->
+  <button class="appbar-bh" id="appbar-bh-btn" style="display:none" onclick="maintOpenBh()" title="Betriebsstunden einstellen">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-2.9-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.1-2.9H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.1-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.1V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 2.9 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" stroke-linejoin="round"/></svg>
+    Betriebsstunden <span id="maint-bh-badge" class="appbar-bh__val"></span>
+  </button>
 </header>
 
 <!-- ═══ LAYOUT ════════════════════════════════════════════════════════════ -->
@@ -1094,15 +1161,19 @@
   <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
   <aside class="app-sidebar">
     <nav class="lds-nav" style="padding-top:var(--s-3)">
-      <button class="lds-nav__item lds-nav__item--active" data-view="chat" onclick="switchView('chat')">
+      <button class="lds-nav__item lds-nav__item--active" data-view="maschinen" onclick="switchView('maschinen')">
+        <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="9" height="6" rx="1"/><circle cx="5.5" cy="20.5" r="1.3"/><circle cx="9.5" cy="20.5" r="1.3"/><path d="M12 13 20 5M9 13V9h3"/></svg>
+        Maschinen
+      </button>
+      <button class="lds-nav__item" data-view="chat" data-gated onclick="switchView('chat')">
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z"/></svg>
         Assistent
       </button>
-      <button class="lds-nav__item" data-view="errorcode" onclick="switchView('errorcode')">
+      <button class="lds-nav__item" data-view="errorcode" data-gated onclick="switchView('errorcode')">
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="6" y="8" width="12" height="11" rx="6"/><path d="M9 8a3 3 0 0 1 6 0M2 13h4M18 13h4M3 8l3 2M21 8l-3 2M3 18l3-2M21 18l-3-2M12 8v11"/></svg>
         Meldungen
       </button>
-      <button class="lds-nav__item" data-view="maintenance" onclick="switchView('maintenance')">
+      <button class="lds-nav__item" data-view="maintenance" data-gated onclick="switchView('maintenance')">
         <svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11M3 12h8M3 18h11"/><path d="m15.5 15.5 2 2 4-4"/></svg>
         Wartungen
       </button>
@@ -1115,10 +1186,54 @@
   <!-- ── Main ─────────────────────────────────────────────────────────── -->
   <main class="app-main">
 
+    <!-- Maschinen view -->
+    <div id="view-maschinen" class="view is-active app-scroll">
+      <div class="masch">
+        <div class="masch__head">
+          <h2>Maschine wählen</h2>
+          <p>Wählen Sie die Maschine, für die der Assistent Manual, Meldungen und Wartungen lädt.
+             Erst nach der Auswahl sind die übrigen Bereiche verfügbar.</p>
+        </div>
+        <div class="masch-grid">
+          <div class="masch-tile" id="tile-lr1200" onclick="selectMachine('LR 1200.1')" role="button" tabindex="0">
+            <div class="masch-tile__media">
+              <img src="assets/lr1200-1.png" alt="LR 1200.1"
+                onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+              <svg class="masch-tile__ph" viewBox="0 0 120 90" style="display:none" aria-hidden="true">
+                <g fill="none" stroke="var(--r-brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="10" y="60" width="46" height="14" rx="2"/>
+                  <circle cx="20" cy="80" r="4"/><circle cx="33" cy="80" r="4"/><circle cx="46" cy="80" r="4"/>
+                  <rect x="40" y="46" width="20" height="14"/>
+                  <path d="M52 46 106 12M46 60 52 46M60 52 100 20" stroke-dasharray="0"/>
+                  <path d="M106 12 106 26"/>
+                </g>
+              </svg>
+            </div>
+            <div class="masch-tile__body">
+              <div class="masch-tile__name">LR 1200.1</div>
+              <div class="masch-tile__sn">137187</div>
+              <div class="masch-tile__tag">#Customer days 2026</div>
+              <div class="masch-tile__status">Keine Daten</div>
+            </div>
+            <div class="masch-tile__side">
+              <span class="masch-tile__badge" id="tile-badge">Aktiv</span>
+              <button class="masch-tile__deselect" title="Maschinenauswahl zurücksetzen"
+                onclick="event.stopPropagation();deselectMachine()">Abwählen</button>
+              <button class="masch-tile__gear" title="Konfigurator öffnen"
+                onclick="event.stopPropagation();openConfigurator()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-2.9-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.1-2.9H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.1-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.1V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 2.9 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" stroke-linejoin="round"/></svg>
+                Konfigurator
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Chat view -->
-    <div id="view-chat" class="view is-active app-scroll">
+    <div id="view-chat" class="view app-scroll">
       <div id="hero" class="app-hero">
-        <div class="app-hero__eyebrow">KI Assistent · LR 1104.03.08</div>
+        <div class="app-hero__eyebrow">KI Assistent · LR 1200.1</div>
         <h1 class="app-hero__title">Wie kann ich <em>helfen?</em></h1>
         <p class="app-hero__sub">
           Stellen Sie eine Frage in natürlicher Sprache zu Aufrüsten, Wartung,
@@ -1174,15 +1289,9 @@
         <div class="maint-head">
           <div class="maint-head__intro">
             <h2>Wartungen</h2>
-            <p>Betriebsstunden eingeben — fällige Intervalle werden automatisch aktiviert. Aufgaben abhaken, kommentieren, Anleitung öffnen und einen Schichtbericht erstellen.</p>
+            <p>Aufgaben abhaken, kommentieren, Anleitung öffnen und einen Schichtbericht erstellen.</p>
           </div>
           <div class="maint-bar">
-            <div class="maint-bar__bh">
-              <label class="maint-bar__label" for="maint-bh">Betriebsstunden</label>
-              <input class="lds-input maint-bar__input" id="maint-bh" type="number" min="0" inputmode="numeric"
-                placeholder="0" oninput="maintOnBh()" />
-              <span class="maint-bar__unit">Bh</span>
-            </div>
             <div class="maint-bar__machine">
               Maschine: <strong id="maint-machine">—</strong>
             </div>
@@ -1223,6 +1332,12 @@
       <div class="context-panel" id="context-panel" style="display:none">
         <div class="context-panel__head">
           <span style="font:500 12px/16px var(--font-text-m);color:var(--r-on-surface-default)">Maschinenkonfiguration</span>
+          <span class="spacer" style="flex:1"></span>
+          <button class="lds-btn lds-btn--ghost lds-btn--sm" style="font-size:12px;padding:4px 10px;gap:6px"
+            title="Konfigurator öffnen" onclick="openConfigurator()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-2.9-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.1-2.9H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.1-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.1V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 2.9 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" stroke-linejoin="round"/></svg>
+            Konfigurator
+          </button>
           <button class="lds-btn lds-btn--ghost lds-btn--icon" style="width:24px;height:24px;padding:0"
             title="Kontext entfernen" onclick="clearContext()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -1295,15 +1410,19 @@
 
 <!-- ═══ BOTTOM NAVIGATION (Mobile) ═══════════════════════════════════════ -->
 <nav class="app-bottom-nav" aria-label="Navigation">
-  <button class="lds-nav__item lds-nav__item--active" data-view="chat" onclick="switchView('chat')">
+  <button class="lds-nav__item lds-nav__item--active" data-view="maschinen" onclick="switchView('maschinen')">
+    <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="9" height="6" rx="1"/><circle cx="5.5" cy="20.5" r="1.3"/><circle cx="9.5" cy="20.5" r="1.3"/><path d="M12 13 20 5M9 13V9h3"/></svg>
+    Maschinen
+  </button>
+  <button class="lds-nav__item" data-view="chat" data-gated onclick="switchView('chat')">
     <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z"/></svg>
     Assistent
   </button>
-  <button class="lds-nav__item" data-view="errorcode" onclick="switchView('errorcode')">
+  <button class="lds-nav__item" data-view="errorcode" data-gated onclick="switchView('errorcode')">
     <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="6" y="8" width="12" height="11" rx="6"/><path d="M9 8a3 3 0 0 1 6 0M2 13h4M18 13h4M3 8l3 2M21 8l-3 2M3 18l3-2M21 18l-3-2M12 8v11"/></svg>
     Meldungen
   </button>
-  <button class="lds-nav__item" data-view="maintenance" onclick="switchView('maintenance')">
+  <button class="lds-nav__item" data-view="maintenance" data-gated onclick="switchView('maintenance')">
     <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h11M3 12h8M3 18h11"/><path d="m15.5 15.5 2 2 4-4"/></svg>
     Wartungen
   </button>
@@ -1344,6 +1463,27 @@
 <!-- ═══ WARTUNGEN: SCHICHTBERICHT-MODAL ══════════════════════════════════════ -->
 <div class="maint-modal-ov" id="maint-report-ov" onclick="if(event.target===this)maintCloseReport()">
   <div class="maint-modal" id="maint-report-content" role="dialog" aria-modal="true"></div>
+</div>
+
+<!-- ═══ WARTUNGEN: BETRIEBSSTUNDEN-POPUP ═════════════════════════════════════ -->
+<div class="maint-modal-ov" id="maint-bh-ov" onclick="if(event.target===this)maintCloseBh()">
+  <div class="maint-modal maint-bh-pop" role="dialog" aria-modal="true">
+    <h3>Betriebsstunden</h3>
+    <p>Betriebsstunden eingeben — fällige Intervalle werden automatisch aktiviert.</p>
+    <div class="maint-bar__bh">
+      <input class="lds-input maint-bar__input" id="maint-bh" type="number" min="0" inputmode="numeric"
+        placeholder="0" oninput="maintOnBh()" style="width:140px" />
+      <span class="maint-bar__unit">Bh</span>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:var(--s-5)">
+      <button class="lds-btn lds-btn--primary lds-btn--sm" onclick="maintCloseBh()">Fertig</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ KONFIGURATOR-MODAL (iframe) ══════════════════════════════════════════ -->
+<div class="konfig-ov" id="konfig-ov">
+  <div class="konfig-box"><iframe id="konfig-frame" title="Kran-Konfigurator"></iframe></div>
 </div>
 
 <!-- ═══ SCRIPT ════════════════════════════════════════════════════════════ -->
@@ -1450,6 +1590,8 @@ function clearChat() {
 }
 
 function switchView(id) {
+  // Gating: ohne gewählte Maschine sind alle Bereiche außer "Maschinen" gesperrt.
+  if (id !== 'maschinen' && !machineSelected) { id = 'maschinen'; }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('is-active'));
   document.getElementById('view-' + id).classList.add('is-active');
   document.querySelectorAll('.lds-nav__item').forEach(b => {
@@ -1460,6 +1602,77 @@ function switchView(id) {
   updateToolbarVisibility();
   if (id === 'maintenance') maintEnsureLoaded();
 }
+
+// ── Maschinen-Auswahl & Gating ─────────────────────────────────────────────
+const MACHINE_KEY = 'ma_machine_selected';
+let machineSelected = false;
+try { machineSelected = localStorage.getItem(MACHINE_KEY) === '1'; } catch {}
+
+function applyGating() {
+  document.querySelectorAll('.lds-nav__item[data-gated]').forEach(b => {
+    if (machineSelected) b.removeAttribute('disabled');
+    else b.setAttribute('disabled', '');
+  });
+  const label = document.getElementById('active-machine-label');
+  if (label) label.textContent = machineSelected ? 'LR 1200.1' : 'Keine Maschine';
+  const tile = document.getElementById('tile-lr1200');
+  if (tile) tile.classList.toggle('is-active', machineSelected);
+  const mm = document.getElementById('maint-machine');
+  if (mm && machineSelected) mm.textContent = 'LR 1200.1';
+}
+
+function selectMachine(name) {
+  machineSelected = true;
+  try { localStorage.setItem(MACHINE_KEY, '1'); } catch {}
+  applyGating();
+  switchView('chat');
+}
+
+function deselectMachine() {
+  machineSelected = false;
+  try { localStorage.removeItem(MACHINE_KEY); } catch {}
+  applyGating();
+  switchView('maschinen');
+}
+
+// ── Konfigurator-Dialog (eingebettet per iframe) ───────────────────────────
+function openConfigurator() {
+  const f = document.getElementById('konfig-frame');
+  if (f.src.indexOf('Konfigurator.html') === -1) f.src = 'Konfigurator.html?embed=1';
+  document.getElementById('konfig-ov').classList.add('is-open');
+}
+function closeConfigurator() {
+  document.getElementById('konfig-ov').classList.remove('is-open');
+}
+// Ergebnis des Konfigurators in das "Maschinenkonfiguration"-Kontextpanel übernehmen.
+function applyKonfigContext(fields) {
+  if (!fields || !fields.length) return;
+  _ctxFields = fields.map(f => ({ key: f.key, value: f.value, hits: 1, valid: true, enabled: true }));
+  const raw = fields.map(f => `${f.key} ${f.value}`).join(' / ');
+  const canonical = _ctxFields.map(f => `${f.key}: ${f.value}`).join(' / ');
+  try {
+    localStorage.setItem(CONTEXT_RAW_KEY, raw);
+    localStorage.setItem(CONTEXT_KEY, canonical);
+  } catch {}
+  _saveCtxFields();
+  document.getElementById('context-active-badge').style.display = 'inline-flex';
+  // Falls das Panel offen ist, direkt die Chip-Ansicht zeigen.
+  const panel = document.getElementById('context-panel');
+  if (panel && panel.style.display !== 'none' && typeof _showParsedView === 'function') _showParsedView();
+}
+window.addEventListener('message', (e) => {
+  const d = e.data || {};
+  if (d.type === 'konfig:close') closeConfigurator();
+  else if (d.type === 'konfig:commit') { applyKonfigContext(d.fields); closeConfigurator(); }
+});
+
+// ── Betriebsstunden-Popup (nur im Wartungen-Tab) ───────────────────────────
+function maintOpenBh() {
+  document.getElementById('maint-bh-ov').classList.add('open');
+  const inp = document.getElementById('maint-bh');
+  if (inp) inp.focus();
+}
+function maintCloseBh() { document.getElementById('maint-bh-ov').classList.remove('open'); }
 
 let _manualReturnView = 'chat';
 
@@ -1738,6 +1951,8 @@ function updateToolbarVisibility() {
   document.getElementById('mode-toggle').style.display = isChat ? '' : 'none';
   document.getElementById('backend-toggle').style.display = (isChat && _mode === 'agent') ? '' : 'none';
   document.getElementById('classic-backend-toggle').style.display = (isChat && _mode === 'classic') ? '' : 'none';
+  const isMaint = active ? active.id === 'view-maintenance' : false;
+  document.getElementById('appbar-bh-btn').style.display = isMaint ? 'inline-flex' : 'none';
 }
 
 // Assistent-Backend: "rule" (Regelbasiert, kein LLM), "qwen" (lokales Modell nur
@@ -2446,7 +2661,7 @@ let MAINT = null;               // { tasks, instr, machine, buckets }
 let _maintLoading = false;
 
 // Persistenter Zustand
-let maintState = { bh: 0, active: [], tasks: {}, collapsed: [] };
+let maintState = { bh: 0, active: [], tasks: {}, collapsed: [], annotated: false };
 // UI-Zustand (nicht persistiert)
 const maintOpen = new Set();    // aufgeklappte Task-Details
 
@@ -2460,6 +2675,7 @@ function maintLoadState() {
         active: Array.isArray(s.active) ? s.active : [],
         tasks: s.tasks || {},
         collapsed: Array.isArray(s.collapsed) ? s.collapsed : [],
+        annotated: !!s.annotated,
       };
     }
   } catch { /* defekter Zustand → Defaults */ }
@@ -2514,6 +2730,7 @@ async function maintLoad() {
     document.getElementById('maint-content').style.display = 'block';
     const bhInput = document.getElementById('maint-bh');
     if (maintState.bh) bhInput.value = maintState.bh;
+    maintUpdateBhBadge();
     maintRender();
   } catch (e) {
     _maintLoading = false;
@@ -2563,8 +2780,8 @@ function maintBuildModel(tData, iData) {
   const specialB = all.filter(b => !b.hours).sort((a, b) => (b.count || 0) - (a.count || 0));
   const buckets = [...hourB, ...specialB];
 
-  const m = tData.machine || {};
-  const machine = [m.document_title, m.description].filter(Boolean).join(' · ') || 'Unbekannt';
+  // Aktive Maschine ist LR 1200.1 (siehe Maschinen-Tab) – überall konsistent anzeigen.
+  const machine = 'LR 1200.1';
 
   MAINT = { tasks, instr: (iData.instructions || {}), machine, buckets };
   document.getElementById('maint-machine').textContent = machine;
@@ -2587,7 +2804,13 @@ function maintOnBh() {
   maintState.bh = bh;
   maintApplyBh(bh, true);
   maintSaveState();
+  maintUpdateBhBadge();
   maintRender();
+}
+
+function maintUpdateBhBadge() {
+  const badge = document.getElementById('maint-bh-badge');
+  if (badge) badge.textContent = maintState.bh ? (maintState.bh + ' Bh') : '';
 }
 
 function maintToggleChip(key) {
@@ -2604,9 +2827,22 @@ function maintSelectAll() {
   maintRender();
 }
 
+function maintToggleAnnotated() {
+  maintState.annotated = !maintState.annotated;
+  maintSaveState();
+  maintRender();
+}
+
+function maintTaskAnnotated(t) {
+  const s = maintTaskState(t.id);
+  return s.comments.length > 0 || s.photos.length > 0;
+}
+
 function maintVisibleTasks() {
   const active = new Set(maintState.active);
-  return MAINT.tasks.filter(t => active.has(t.bucketKey));
+  let tasks = MAINT.tasks.filter(t => active.has(t.bucketKey));
+  if (maintState.annotated) tasks = tasks.filter(maintTaskAnnotated);
+  return tasks;
 }
 
 // ── Rendern ─────────────────────────────────────────────────────────────────
@@ -2627,8 +2863,10 @@ function maintRenderChips() {
     const cls = 'maint-chip' + (isActive ? ' maint-chip--active' : (due ? ' maint-chip--due' : ''));
     return `<button class="${cls}" onclick="maintToggleChip('${escHtml(b.key)}')">${escHtml(b.label)}<span class="cnt">${b.count || 0}</span></button>`;
   }).join('');
+  const annoCount = MAINT.tasks.filter(t => active.has(t.bucketKey) && maintTaskAnnotated(t)).length;
+  const annoChip = `<button class="maint-chip maint-chip--filter${maintState.annotated ? ' maint-chip--active' : ''}" onclick="maintToggleAnnotated()">${maintIcon('cmt')} mit Kommentar/Foto<span class="cnt">${annoCount}</span></button>`;
   el.innerHTML = `<span class="maint-chips__label">Intervalle</span>${chips}` +
-    `<button class="maint-chips__link" onclick="maintSelectAll()">Alle</button>`;
+    `<button class="maint-chips__link" onclick="maintSelectAll()">Alle</button>` + annoChip;
 }
 
 function maintRenderProgress() {
@@ -2967,6 +3205,10 @@ function maintIcon(name) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
+
+applyGating();
+// Ohne gewählte Maschine im Maschinen-Tab starten, sonst zuletzt sinnvolle Ansicht.
+switchView(machineSelected ? 'chat' : 'maschinen');
 
 checkHealth();
 loadServerConfig();

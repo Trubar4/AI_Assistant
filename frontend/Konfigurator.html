@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="co-light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kran-Konfigurator · LR 1200.1</title>
+  <link rel="stylesheet" href="../design-system/lds.css" />
+  <script src="konfig-data.js"></script>
+  <style>
+    /* Prototyp-Styling – ausschließlich über LDS-Tokens. Diese cfg-* Regeln
+       entsprechen den vorgeschlagenen neuen Komponenten (Stepper, Option-Card,
+       Length-Picker, Summary-Rail) und würden bei Umsetzung nach
+       design-system/components/ überführt. */
+    body { background: var(--r-bg-dim); }
+    #app { min-height: 100vh; }
+
+    /* ---- Appbar ---- */
+    .cfg-bar__brand { font: 900 18px/22px var(--font-head-b); }
+    .cfg-bar__brand span { color: var(--r-brand); }
+    .cfg-bar__machine { margin-left:auto; display:flex; align-items:center; gap: var(--s-3);
+      font: 400 13px/16px var(--font-text); color: var(--r-chrome-on, var(--r-on-surface-default)); opacity:.85; }
+
+    /* ---- Host (Assistent-Kontext) ---- */
+    .cfg-host { min-height:100vh; display:flex; flex-direction:column; }
+    .cfg-host__body { flex:1; padding: var(--s-8) var(--s-7); display:flex; justify-content:center; }
+    .cfg-host__inner { width:100%; max-width: 860px; }
+    .cfg-host__eyebrow { font: 700 12px/16px var(--font-text-b); text-transform:uppercase; letter-spacing:.08em; color: var(--r-accent-3); }
+    .cfg-host__title { font: 900 28px/34px var(--font-head-b); margin: var(--s-2) 0 var(--s-6); letter-spacing:-.01em; }
+
+    /* "Konfiguration aktiv" Panel */
+    .cfg-active { background: var(--r-surface-default); border:1px solid var(--r-outline-bright); box-shadow: var(--shadow-1); }
+    .cfg-active__head { display:flex; align-items:center; gap: var(--s-3); padding: var(--s-4) var(--s-5); border-bottom:1px solid var(--r-outline-bright); }
+    .cfg-active__title { font: 700 12px/16px var(--font-text-b); text-transform:uppercase; letter-spacing:.06em; color: var(--r-on-surface-muted); }
+    .cfg-active__body { padding: var(--s-5); }
+    .cfg-gear { margin-left:auto; display:inline-flex; align-items:center; gap: var(--s-2);
+      padding: var(--s-2) var(--s-3); border:1px solid var(--r-outline-default); background: var(--r-surface-default);
+      font: 500 13px/16px var(--font-text-m); color: var(--r-on-surface-default); cursor:pointer;
+      transition: background var(--motion-fast), border-color var(--motion-fast); }
+    .cfg-gear:hover { background: var(--r-surface-high); border-color: var(--r-outline-dim); }
+    .cfg-gear svg { width:16px; height:16px; }
+    .cfg-kv { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--s-3) var(--s-6); }
+    .cfg-kv__k { font: 400 12px/16px var(--font-text); color: var(--r-on-surface-muted); }
+    .cfg-kv__v { font: 500 14px/18px var(--font-text-m); }
+    .cfg-kv__v em { font-style:normal; font: 400 11px/14px var(--font-text); color: var(--r-accent-3); }
+    .cfg-empty { display:flex; flex-direction:column; align-items:flex-start; gap: var(--s-4);
+      color: var(--r-on-surface-muted); font: 400 14px/20px var(--font-text); }
+
+    /* ---- Dialog (Modal) ---- */
+    .cfg-modal { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center;
+      padding: var(--s-5); background: color-mix(in srgb, var(--r-on-surface-default) 42%, transparent); }
+    .cfg-dialog { background: var(--r-bg-default); width:100%; max-width: 1040px; max-height: 92vh;
+      display:flex; flex-direction:column; box-shadow: var(--shadow-3); border:1px solid var(--r-outline-bright); }
+    .cfg-dialog__head { display:flex; align-items:center; gap: var(--s-3); padding: var(--s-4) var(--s-5);
+      border-bottom:1px solid var(--r-outline-bright); background: var(--r-bg-bright); }
+    .cfg-dialog__title { font: 700 15px/20px var(--font-text-b); }
+    .cfg-dialog__title span { color: var(--r-on-surface-muted); font-family: var(--font-text); font-weight:400; }
+    .cfg-reset { margin-left:auto; cursor:pointer; border:1px solid var(--r-outline-default); background: var(--r-surface-default);
+      color: var(--r-on-surface-default); font: 500 12px/16px var(--font-text-m); padding: var(--s-2) var(--s-3); }
+    .cfg-reset:hover { background: var(--r-surface-high); border-color: var(--r-outline-dim); }
+    .cfg-x { width:34px; height:34px; display:grid; place-items:center; cursor:pointer;
+      border:0; background:transparent; color: var(--r-on-surface-muted); }
+    .cfg-x:hover { background: var(--r-surface-high); color: var(--r-on-surface-default); }
+    .cfg-dialog__grid { display:grid; grid-template-columns: 220px 1fr; flex:1; min-height:0; }
+    @media (max-width: 820px){ .cfg-dialog__grid{ grid-template-columns: 1fr; } }
+
+    /* ---- Embed-Modus (iframe in der App): nur der Dialog, füllt das iframe ---- */
+    html.cfg-embed body { background: var(--r-bg-default); }
+    html.cfg-embed .cfg-modal { position:static; padding:0; background:transparent; height:100vh; }
+    html.cfg-embed .cfg-dialog { max-width:none; max-height:none; width:100%; height:100vh; border:0; box-shadow:none; }
+
+    /* ---- Stepper ---- */
+    .cfg-steps { background: var(--r-bg-bright); border-right: 1px solid var(--r-outline-bright);
+      padding: var(--s-5) var(--s-3); display:flex; flex-direction:column; gap: var(--s-1); overflow-y:auto; }
+    .cfg-steps__label { font: 700 11px/14px var(--font-text-b); text-transform:uppercase; letter-spacing:.08em;
+      color: var(--r-on-surface-muted); padding: 0 var(--s-3) var(--s-3); }
+    .cfg-step { display:flex; align-items:center; gap: var(--s-3); padding: var(--s-3);
+      border:0; background:transparent; width:100%; text-align:left; cursor:pointer;
+      color: var(--r-on-surface-muted); font: 400 14px/18px var(--font-text); border-radius: var(--radius-2);
+      transition: background var(--motion-fast) var(--easing); }
+    .cfg-step:hover:not(:disabled){ background: var(--r-surface-high); }
+    .cfg-step:disabled{ opacity:.4; cursor:not-allowed; }
+    .cfg-step.is-active{ background: var(--r-surface-high); color: var(--r-on-surface-default); font-family: var(--font-text-m); }
+    .cfg-step__num { flex:0 0 24px; height:24px; display:grid; place-items:center; border-radius:var(--radius-pill);
+      border:1px solid var(--r-outline-default); font: 700 12px/1 var(--font-text-b); color: var(--r-on-surface-muted); }
+    .cfg-step.is-active .cfg-step__num { background: var(--r-brand); color: var(--r-on-brand); border-color: var(--r-brand); }
+    .cfg-step.is-done .cfg-step__num { background: var(--r-success); color: var(--r-on-success); border-color: var(--r-success); }
+    .cfg-step__sub { display:block; font-size:11px; opacity:.7; }
+
+    /* ---- Work area ---- */
+    .cfg-main { padding: var(--s-6) var(--s-7); overflow-y:auto; }
+    .cfg-main__inner { max-width: 720px; }
+    .cfg-eyebrow { font: 700 12px/16px var(--font-text-b); text-transform:uppercase; letter-spacing:.08em; color: var(--r-accent-3); }
+    .cfg-title { font: 900 30px/36px var(--font-head-b); margin: var(--s-2) 0 var(--s-2); letter-spacing:-.01em; }
+    .cfg-lead { font: 400 15px/22px var(--font-text); color: var(--r-on-surface-muted); margin-bottom: var(--s-6); max-width: 60ch; }
+    .cfg-src { font: 400 12px/16px var(--font-text); color: var(--r-on-surface-muted); }
+    .cfg-src b { font-family: var(--font-text-m); color: var(--r-accent-3); }
+
+    /* Option cards (Step 1) */
+    .cfg-opts { display:grid; gap: var(--s-4); }
+    .cfg-opt { display:grid; grid-template-columns: 1fr; gap: var(--s-4); align-items:center;
+      padding: var(--s-4) var(--s-5); background: var(--r-surface-default); cursor:pointer;
+      border:1px solid var(--r-outline-bright); box-shadow: var(--shadow-1);
+      transition: border-color var(--motion-fast), box-shadow var(--motion-fast); }
+    .cfg-opt:hover{ border-color: var(--r-outline-default); box-shadow: var(--shadow-2); }
+    .cfg-opt.is-sel{ border-color: var(--r-brand); box-shadow: 0 0 0 2px var(--r-brand); }
+    .cfg-opt__name { font: 700 16px/20px var(--font-text-b); }
+    .cfg-opt__desc { font: 400 13px/18px var(--font-text); color: var(--r-on-surface-muted); margin-top: 2px; }
+    /* Length picker (Step 2/3) */
+    .cfg-pick { display:flex; flex-wrap:wrap; gap: var(--s-2); }
+    .cfg-chip { min-width:64px; padding: var(--s-3) var(--s-3); text-align:center; cursor:pointer;
+      background: var(--r-surface-default); border:1px solid var(--r-outline-bright);
+      font: 500 14px/18px var(--font-text-m); transition: all var(--motion-fast); }
+    .cfg-chip small { display:block; font:400 10px/12px var(--font-text); color: var(--r-on-surface-muted); }
+    .cfg-chip:hover{ border-color: var(--r-outline-default); }
+    .cfg-chip.is-sel{ background: var(--r-brand); color: var(--r-on-brand); border-color: var(--r-brand); }
+    .cfg-chip.is-sel small { color: var(--r-on-brand); opacity:.75; }
+
+    /* Segment preview */
+    .cfg-segbar { display:flex; align-items:stretch; gap:3px; margin: var(--s-4) 0; height:38px; }
+    .cfg-seg { display:grid; place-items:center; color: var(--r-on-brand); background: var(--r-accent-3);
+      font: 700 11px/1 var(--font-text-b); border-radius: var(--radius-1); min-width: 26px; padding: 0 var(--s-2); }
+    .cfg-seg:first-child, .cfg-seg:last-child { background: var(--r-on-surface-default); }
+
+    /* Ballast radial */
+    .cfg-ballast { display:grid; grid-template-columns: 1fr 200px; gap: var(--s-6); align-items:center; }
+    .cfg-dial { display:grid; place-items:center; }
+    .cfg-dial__val { font: 900 26px/1 var(--font-head-b); }
+    .cfg-stufen { display:flex; flex-direction:column; gap: var(--s-1); }
+    .cfg-stufe { display:flex; align-items:center; gap: var(--s-3); padding: var(--s-2) var(--s-3);
+      cursor:pointer; border:1px solid transparent; background: var(--r-surface-default);
+      font: 400 13px/18px var(--font-text); }
+    .cfg-stufe:hover{ background: var(--r-surface-high); }
+    .cfg-stufe.is-sel{ border-color: var(--r-brand); background: var(--r-surface-high); }
+    .cfg-stufe__v { font-family: var(--font-text-m); }
+    .cfg-stufe__hint { margin-left:auto; font:700 10px/1 var(--font-text-b); color: var(--r-on-warning-soft);
+      background: var(--r-warning-soft); padding: 3px 6px; border-radius: var(--radius-1); }
+
+    /* Reeving */
+    .cfg-tabs { display:inline-flex; border:1px solid var(--r-outline-default); margin-bottom: var(--s-5); }
+    .cfg-tab { padding: var(--s-3) var(--s-5); border:0; background: var(--r-surface-default); cursor:pointer;
+      font: 500 13px/18px var(--font-text-m); color: var(--r-on-surface-muted); }
+    .cfg-tab.is-sel{ background: var(--r-on-surface-default); color: var(--r-surface-default); }
+    .cfg-tab:disabled{ opacity:.4; cursor:not-allowed; }
+    .cfg-stepper { display:flex; align-items:center; gap: var(--s-4); margin: var(--s-4) 0; }
+    .cfg-stepper button { width:44px; height:44px; font: 700 22px/1 var(--font-text-b);
+      border:1px solid var(--r-outline-default); background: var(--r-surface-default); cursor:pointer; }
+    .cfg-stepper button:disabled{ opacity:.35; cursor:not-allowed; }
+    .cfg-stepper__val { font: 900 32px/1 var(--font-head-b); min-width: 90px; text-align:center; }
+    .cfg-stepper__val small { font: 400 13px/1 var(--font-text); color: var(--r-on-surface-muted); }
+    .cfg-falls { display:flex; gap:4px; align-items:flex-end; height:44px; }
+    .cfg-falls i { width:4px; background: var(--r-accent-3); border-radius: var(--radius-1); }
+
+    /* Summary (Ergebnis-Schritt) */
+    .cfg-sum { display:flex; flex-direction:column; }
+    .cfg-sum__row { display:flex; justify-content:space-between; gap: var(--s-3); padding: var(--s-3) 0;
+      border-bottom:1px solid var(--r-outline-bright); }
+    .cfg-sum__k { font: 400 12px/16px var(--font-text); color: var(--r-on-surface-muted); }
+    .cfg-sum__v { font: 500 13px/17px var(--font-text-m); text-align:right; }
+    .cfg-sum__v em { display:block; font: 400 11px/14px var(--font-text); color: var(--r-accent-3); font-style:normal; }
+    .cfg-sum__v.is-empty { color: var(--r-on-surface-disabled); font-style:italic; }
+
+    .cfg-nav { display:flex; gap: var(--s-3); margin-top: var(--s-7); }
+    .cfg-footnotes { margin-top: var(--s-4); font: 400 12px/18px var(--font-text); color: var(--r-on-surface-muted); }
+    .cfg-footnotes b { font-family: var(--font-text-m); color: var(--r-on-surface-default); }
+    .cfg-result__grid { display:grid; grid-template-columns: 1fr 1fr; gap: var(--s-3) var(--s-6); }
+  </style>
+</head>
+<body>
+  <div class="cfg-app" id="app"></div>
+
+<script>
+const D = window.KONFIG_DATA;
+const ICON = {
+  gear:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-2.9-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.1-2.9H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.1-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.1V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 2.9 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1z" stroke-linejoin="round"/></svg>`,
+  x:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+};
+
+// Arbeits-Felder (Working-Copy im Dialog) + Meta (open, saved).
+function freshWork(){ return { konfig:null, haLen:null, naLen:null, ballastIdx:null, lastort:null,
+  einscherHA:1, einscherNA:1 }; }
+const S = Object.assign({ open:false, saved:null, step:0 }, freshWork());
+function workSnapshot(){ const {open,saved,step,...w}=S; return {...w}; }
+
+// Embed-Modus: als iframe in der App eingebettet (?embed=1). Dann wird nur der
+// Dialog gezeigt und Ergebnis/Schließen per postMessage an die App gemeldet.
+const EMBED = new URLSearchParams(location.search).get('embed')==='1';
+
+function openDialog(){ Object.assign(S, S.saved ? S.saved : freshWork(), { step:0, open:true }); render(); }
+function resetDialog(){ Object.assign(S, freshWork(), { step:0, open:true }); render(); }
+function closeDialog(){ if(EMBED){ parent.postMessage({type:'konfig:close'},'*'); return; } S.open=false; render(); }
+function commitDialog(){
+  if(!isComplete()) return;
+  S.saved = workSnapshot();
+  if(EMBED){ parent.postMessage({type:'konfig:commit', config:workSnapshot(), fields:buildFields()},'*'); return; }
+  S.open=false; render();
+}
+
+// Felder für das "Maschinenkonfiguration"-Kontextpanel der App
+function buildFields(){
+  const konf=D.konfigurationen.find(x=>x.id===S.konfig); const f=[];
+  if(konf) f.push({key:'Auslegerkonfiguration', value:konf.lang});
+  if(S.haLen) f.push({key:'Hauptausleger', value:S.haLen+' m'});
+  if(hasNadel()&&S.naLen) f.push({key:'Nadelausleger', value:S.naLen+' m ('+nadelTyp()+')'});
+  if(S.ballastIdx!=null){ const b=D.ballast.stufen[S.ballastIdx];
+    f.push({key:'Heckballast', value:b.heck+' t'});
+    if(b.zentral) f.push({key:'Zentralballast', value:b.zentral+' t'}); }
+  if(S.lastort){ const c=S.lastort==='HA'?S.einscherHA:S.einscherNA; f.push({key:'Einscherung', value:c+'x'}); }
+  return f;
+}
+
+// welche Schritte sind aktiv (Progressive Disclosure)
+function hasNadel(){ const k = D.konfigurationen.find(x=>x.id===S.konfig); return k && k.nadel; }
+function nadelTyp(){ const k = D.konfigurationen.find(x=>x.id===S.konfig); return k ? k.nadel : null; }
+
+const STEPS = [
+  { key:'konfig', num:'①', label:'Auslegerkonfiguration', sub:()=>S.konfig || '3 Varianten', done:()=>!!S.konfig, show:()=>true },
+  { key:'ha',     num:'②', label:'Hauptausleger',        sub:()=>S.haLen?S.haLen+' m':'Tab. 317', done:()=>!!S.haLen, show:()=>true },
+  { key:'na',     num:'③', label:'Nadelausleger',        sub:()=>S.naLen?S.naLen+' m':(nadelTyp()==='fest'?'Tab. 326':'Tab. 1916'), done:()=>!hasNadel()||!!S.naLen, show:()=>hasNadel() },
+  { key:'ballast',num:'④', label:'Ballast',              sub:()=>S.ballastIdx!=null?ballastLabel(S.ballastIdx):'Tab. 316', done:()=>S.ballastIdx!=null, show:()=>true },
+  { key:'einsch', num:'⑤', label:'Einscherung',          sub:()=>S.lastort?einscherVal():'Tab. 353 / 351', done:()=>!!S.lastort, show:()=>true },
+  { key:'result', num:'✓', label:'Zusammenstellung',     sub:()=>'Prüfen & übernehmen', done:()=>false, show:()=>true },
+];
+function visibleSteps(){ return STEPS.filter(s=>s.show()); }
+function ballastLabel(i){ const b=D.ballast.stufen[i]; return `${b.heck} t / ${b.zentral} t`; }
+function einscherVal(){ return S.lastort==='HA' ? S.einscherHA+'-fach' : S.einscherNA+'-fach'; }
+function isComplete(){ return !!(S.konfig && S.haLen && (!hasNadel()||S.naLen) && S.ballastIdx!=null && S.lastort); }
+
+// ---------- Render ----------
+function render(){
+  const app = document.getElementById('app');
+  if(EMBED){ app.innerHTML = dialogView(); bind(); return; }
+  app.innerHTML = hostView() + (S.open ? dialogView() : '');
+  bind();
+}
+
+function bar(){
+  return `<header class="lds-appbar cfg-bar">
+    <div class="cfg-bar__brand">Maschinen<span>Assistent</span></div>
+    <div class="cfg-bar__machine"><span>Aktive Maschine</span>
+      <strong>${D.machine.series}</strong><span>Manual ${D.machine.manualVersion}</span></div>
+  </header>`;
+}
+
+// ---------- Host: "Konfiguration aktiv" ----------
+function hostView(){
+  return `<div class="cfg-host">${bar()}
+    <div class="cfg-host__body"><div class="cfg-host__inner">
+      <div class="cfg-host__eyebrow">Maschinen-Assistent · ${D.machine.series}</div>
+      <h1 class="cfg-host__title">Aktive Maschine.</h1>
+      <div class="cfg-active">
+        <div class="cfg-active__head">
+          <span class="cfg-active__title">Konfiguration aktiv</span>
+          ${S.saved?`<span class="lds-badge lds-badge--success">Konfiguriert</span>`
+                   :`<span class="lds-badge">Nicht konfiguriert</span>`}
+          <button class="cfg-gear" data-open>${ICON.gear}<span>Konfigurator</span></button>
+        </div>
+        <div class="cfg-active__body">${activeBody()}</div>
+      </div>
+    </div></div>
+  </div>`;
+}
+
+function activeBody(){
+  const c = S.saved;
+  if(!c){
+    return `<div class="cfg-empty">
+      <div>Für diese Maschine ist noch keine Auslegerkonfiguration hinterlegt.
+        Der Assistent bezieht Antworten sonst auf die Maschine allgemein.</div>
+      <button class="lds-btn lds-btn--primary" data-open>Konfiguration festlegen</button>
+    </div>`;
+  }
+  const konf = D.konfigurationen.find(x=>x.id===c.konfig);
+  const nadel = konf && konf.nadel;
+  const kv=(k,v,src)=>`<div><div class="cfg-kv__k">${k}</div>
+    <div class="cfg-kv__v">${v}${src?` <em>· ${src}</em>`:''}</div></div>`;
+  const system = (c.haLen||0)+(c.naLen||0);
+  return `<div class="cfg-kv">
+    ${kv('Auslegerkonfiguration', konf?konf.lang:'–')}
+    ${kv('Hauptausleger', c.haLen?`${c.haLen} m`:'–','Tab. 317')}
+    ${nadel?kv('Nadelausleger', c.naLen?`${c.naLen} m (${konf.nadel})`:'–', konf.nadelTabelle):kv('Nadelausleger','—')}
+    ${kv('Systemlänge', system?`${system} m`:'–')}
+    ${kv('Ballastierung', c.ballastIdx!=null?`Heck ${D.ballast.stufen[c.ballastIdx].heck} t · Zentral ${D.ballast.stufen[c.ballastIdx].zentral} t`:'–','Tab. 316')}
+    ${kv('Einscherung', c.lastort?(c.lastort==='HA'?c.einscherHA:c.einscherNA)+'-fach':'–', c.lastort?(c.lastort==='HA'?'Tab. 353':'Tab. 351'):'')}
+  </div>`;
+}
+
+// ---------- Dialog-Rahmen ----------
+function dialogView(){
+  return `<div class="cfg-modal" data-scrim>
+    <div class="cfg-dialog" role="dialog" aria-modal="true">
+      <div class="cfg-dialog__head">
+        <div class="cfg-dialog__title">Konfigurator <span>· ${D.machine.series}</span></div>
+        <button class="cfg-reset" data-reset title="Alle Eingaben zurücksetzen">Zurücksetzen</button>
+        <button class="cfg-x" data-close aria-label="Schließen">${ICON.x}</button>
+      </div>
+      <div class="cfg-dialog__grid">
+        ${stepper()}
+        <div class="cfg-main"><div class="cfg-main__inner">${panel()}</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function stepper(){
+  const cur = STEPS[S.step].key;
+  const items = visibleSteps().map(s=>{
+    const active = s.key===cur;
+    const done = s.done() && !active;
+    const idx = STEPS.indexOf(s);
+    const reachable = idx===0 || STEPS.slice(0,idx).every(p=>!p.show()||p.done());
+    return `<button class="cfg-step ${active?'is-active':''} ${done?'is-done':''}" data-goto="${idx}" ${reachable?'':'disabled'}>
+      <span class="cfg-step__num">${done?'✓':s.num}</span>
+      <span>${s.label}<span class="cfg-step__sub">${s.sub()}</span></span>
+    </button>`;
+  }).join('');
+  return `<nav class="cfg-steps"><div class="cfg-steps__label">Konfiguration</div>${items}</nav>`;
+}
+
+function panel(){
+  switch(STEPS[S.step].key){
+    case 'konfig':  return pKonfig();
+    case 'ha':      return pLength('ha');
+    case 'na':      return pLength('na');
+    case 'ballast': return pBallast();
+    case 'einsch':  return pEinsch();
+    case 'result':  return pResult();
+  }
+}
+
+function head(eye,title,lead,src){
+  return `<div class="cfg-eyebrow">${eye}</div><h1 class="cfg-title">${title}</h1>
+    <p class="cfg-lead">${lead}</p>${src?`<p class="cfg-src">Quelle im Manual: <b>${src}</b></p>`:''}`;
+}
+
+function pKonfig(){
+  const opts = D.konfigurationen.map(k=>`
+    <div class="cfg-opt ${S.konfig===k.id?'is-sel':''}" data-konfig="${k.id}">
+      <div><div class="cfg-opt__name">${k.lang}</div>
+        <div class="cfg-opt__desc">${k.nadel?('Nadelausleger '+k.nadel+' · '+k.nadelTabelle):'Ohne Nadelausleger'} · ${k.quelle}</div></div>
+    </div>`).join('');
+  return head('Schritt ① · Grundaufbau','Auslegerkonfiguration wählen.',
+    'Der Grundaufbau bestimmt, welche weiteren Schritte erscheinen. Bei einem Nadelausleger kommen Auswahl des Nadelauslegers und ein zweiter Lastort hinzu.','')
+    + `<div class="cfg-opts">${opts}</div>` + nav();
+}
+
+function pLength(which){
+  const isHA = which==='ha';
+  const set = isHA ? D.hauptausleger : D.nadelausleger[nadelTyp()];
+  const cur = isHA ? S.haLen : S.naLen;
+  const chips = set.laengen.map(l=>`
+    <div class="cfg-chip ${cur===l.m?'is-sel':''}" data-len="${l.m}" data-which="${which}">
+      ${l.m}<small>m</small></div>`).join('');
+  const sel = set.laengen.find(l=>l.m===cur);
+  let preview = '';
+  if(sel){
+    const segs = sel.segmente.map(s=>`<span class="cfg-seg" style="flex:${s}">${s}</span>`).join('');
+    preview = `<div class="cfg-src" style="margin-top:var(--s-5)">Zusammenstellung ${sel.m} m
+      = ${sel.segmente.join(' + ')} m (${sel.segmente.length} Segmente)</div>
+      <div class="cfg-segbar">${segs}</div>`;
+  }
+  const eye = isHA ? 'Schritt ② · Hauptausleger' : 'Schritt ③ · Nadelausleger';
+  const title = isHA ? 'Hauptausleger-Länge.' : `Nadelausleger (${nadelTyp()}).`;
+  const lead = isHA
+    ? 'Nur die für den Hauptausleger 2320 zulässigen Längen sind wählbar. Die Segment-Zusammenstellung wird direkt aus der Zusammenstellungstabelle abgeleitet.'
+    : `Längen laut ${set.tabelle}. Die resultierende Systemlänge ergibt sich aus Haupt- und Nadelausleger.`;
+  return head(eye,title,lead, isHA?'Tab. 317 · Zusammenstellung des Hauptauslegers 2320':set.tabelle+' · Zusammenstellung des Nadelauslegers')
+    + `<div class="cfg-pick">${chips}</div>${preview}` + nav();
+}
+
+function pBallast(){
+  const stufen = D.ballast.stufen.map((b,i)=>`
+    <div class="cfg-stufe ${S.ballastIdx===i?'is-sel':''}" data-ballast="${i}">
+      <span class="cfg-stufe__v">${b.heck} t</span>
+      <span class="cfg-src">Heck · Zentral ${b.zentral} t → ${b.drehung}</span>
+      ${b.hinweis?`<span class="cfg-stufe__hint">${b.hinweis}</span>`:''}
+    </div>`).join('');
+  const sel = S.ballastIdx!=null ? D.ballast.stufen[S.ballastIdx] : null;
+  const dial = `<svg viewBox="0 0 120 120" width="180" height="180">
+      <circle cx="60" cy="60" r="52" fill="none" stroke="var(--r-outline-bright)" stroke-width="10"/>
+      <circle cx="60" cy="60" r="52" fill="none" stroke="var(--r-success)" stroke-width="10"
+        stroke-dasharray="${2*Math.PI*52}" stroke-dashoffset="0" transform="rotate(-90 60 60)"/>
+      <text x="60" y="58" text-anchor="middle" class="cfg-dial__val" fill="var(--r-on-surface-default)">${sel?sel.drehung:'–'}</text>
+      <text x="60" y="76" text-anchor="middle" font-size="9" fill="var(--r-on-surface-muted)">Schwenkbereich</text>
+    </svg>`;
+  const notes = sel && sel.hinweis ? sel.hinweis.split(',').map(h=>`<div><b>${h}</b>  ${D.ballast.hinweise[h]}</div>`).join('') : '';
+  return head('Schritt ④ · Ballastierung','Ballast & zulässige Drehung.',
+    'Die Ballastierung bestimmt laut Tab. 316 die zulässige Drehung des Oberwagens. Voraussetzung: '+D.ballast.voraussetzung+'.',
+    'Tab. 316 · Zulässige Drehung des Oberwagens in Abhängigkeit der Ballastierung')
+    + `<div class="cfg-ballast"><div class="cfg-stufen">${stufen}</div>
+       <div class="cfg-dial">${dial}</div></div>`
+    + (notes?`<div class="lds-alert lds-alert--warning" style="margin-top:var(--s-5)"><div>
+        <div class="lds-alert__title">Hinweise zur gewählten Ballastierung</div>
+        <div class="cfg-footnotes">${notes}</div></div></div>`:'')
+    + nav();
+}
+
+function pEinsch(){
+  const naOK = hasNadel();
+  const e = S.lastort==='HA' ? D.einscherung.HA : D.einscherung.NA;
+  const val = S.lastort==='HA' ? S.einscherHA : (S.lastort==='NA'? S.einscherNA : null);
+  const falls = val ? Array.from({length:val}).map((_,i)=>`<i style="height:${20+ (i%2)*20}px"></i>`).join('') : '';
+  const stepperUI = S.lastort ? `
+    <div class="cfg-stepper">
+      <button data-einsch="-1" ${val<=e.min?'disabled':''}>−</button>
+      <div class="cfg-stepper__val">${val}×<br><small>${e.min}–${e.max}-fach zulässig</small></div>
+      <button data-einsch="1" ${val>=e.max?'disabled':''}>+</button>
+      <div class="cfg-falls">${falls}</div>
+    </div>
+    <p class="cfg-src">${e.kopf} · ${e.lastort} · zulässige Anzahl laut Traglasttabelle · Quelle <b>${e.tabelle}</b></p>` : '';
+  return head('Schritt ⑤ · Einscherung','Lastort & Einscherung.',
+    'Zuerst den Lastort wählen, dann die Anzahl der Einscherungen. Die zulässige Maximalzahl ergibt sich aus dem Auslegerkopf.','')
+    + `<div class="cfg-tabs">
+        <button class="cfg-tab ${S.lastort==='HA'?'is-sel':''}" data-lastort="HA">Hauptausleger-Kopf 2320<br><small>Lastort 2 · 1–20-fach · Tab. 353</small></button>
+        <button class="cfg-tab ${S.lastort==='NA'?'is-sel':''}" data-lastort="NA" ${naOK?'':'disabled'}>Nadelausleger-Kopf 1916<br><small>1–6-fach · Tab. 351</small></button>
+       </div>${stepperUI}` + nav();
+}
+
+function pResult(){
+  const k = D.konfigurationen.find(x=>x.id===S.konfig);
+  const haSel = S.haLen && D.hauptausleger.laengen.find(l=>l.m===S.haLen);
+  const naSel = S.naLen && D.nadelausleger[nadelTyp()].laengen.find(l=>l.m===S.naLen);
+  const bal = S.ballastIdx!=null ? D.ballast.stufen[S.ballastIdx] : null;
+  const system = (S.haLen||0) + (S.naLen||0);
+  const row=(k,v,src)=>`<div class="cfg-sum__k">${k}</div><div class="cfg-sum__v">${v}${src?`<em>${src}</em>`:''}</div>`;
+  const complete = isComplete();
+  return head('Zusammenstellung','Konfiguration prüfen & übernehmen.',
+    'Alle Entscheidungen sind mit der jeweiligen Manual-Tabelle belegt. „Übernehmen" speichert diese Werte als aktive Konfiguration der Maschine – der Assistent bezieht seine Antworten anschließend darauf.','')
+    + `<div class="${complete?'lds-alert lds-alert--success':'lds-alert lds-alert--warning'}" style="margin-bottom:var(--s-6)"><div>
+        <div class="lds-alert__title">${complete?'Kombination laut Manual zulässig':'Konfiguration unvollständig'}</div>
+        <div class="lds-alert__text">${complete?'Alle Pflichtangaben liegen vor und sind belegt.':'Bitte offene Schritte im Stepper vervollständigen.'}</div></div></div>`
+    + `<div class="lds-card"><div class="lds-card__body"><div class="cfg-result__grid cfg-sum" style="border:0">
+        ${row('Maschine', D.machine.series)}
+        ${row('Auslegerkonfiguration', k?k.lang:'–', k?k.quelle:'')}
+        ${row('Hauptausleger', haSel?`${haSel.m} m`:'–', haSel?`${haSel.segmente.join(' + ')} m · Tab. 317`:'')}
+        ${hasNadel()?row('Nadelausleger', naSel?`${naSel.m} m (${nadelTyp()})`:'–', naSel?D.nadelausleger[nadelTyp()].tabelle:''):''}
+        ${row('Systemlänge', system?`${system} m`:'–')}
+        ${row('Ballastierung', bal?`Heck ${bal.heck} t · Zentral ${bal.zentral} t`:'–', bal?`Drehung ${bal.drehung} · Tab. 316`:'')}
+        ${row('Einscherung', S.lastort?einscherVal():'–', S.lastort?(S.lastort==='HA'?'HA-Kopf 2320 · Tab. 353':'NA-Kopf 1916 · Tab. 351'):'')}
+       </div></div>
+       <div class="lds-card__footer">
+        <button class="lds-btn lds-btn--primary" data-commit ${complete?'':'disabled'}>Konfiguration übernehmen</button>
+        <button class="lds-btn lds-btn--ghost" data-close>Abbrechen</button>
+        <span class="spacer" style="flex:1"></span>
+        <button class="lds-btn lds-btn--ghost" data-prev>Zurück</button>
+       </div></div>`;
+}
+
+function nav(){
+  const first = S.step===0;
+  return `<div class="cfg-nav">
+    ${first?'':'<button class="lds-btn lds-btn--ghost" data-prev>Zurück</button>'}
+    <button class="lds-btn lds-btn--primary" data-next>Weiter</button></div>`;
+}
+
+// ---------- Events ----------
+function bind(){
+  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=openDialog);
+  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDialog);
+  document.querySelectorAll('[data-reset]').forEach(b=>b.onclick=resetDialog);
+  document.querySelectorAll('[data-commit]').forEach(b=>b.onclick=()=>{ if(!b.disabled) commitDialog(); });
+  const scrim=document.querySelector('[data-scrim]');
+  if(scrim) scrim.onclick=(e)=>{ if(e.target===scrim) closeDialog(); };
+  document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>{ if(!b.disabled){ S.step=+b.dataset.goto; render(); }});
+  const next=document.querySelector('[data-next]'); if(next) next.onclick=goNext;
+  const prev=document.querySelector('[data-prev]'); if(prev) prev.onclick=goPrev;
+  document.querySelectorAll('[data-konfig]').forEach(el=>el.onclick=()=>{ S.konfig=el.dataset.konfig; if(!hasNadel())S.naLen=null; render(); });
+  document.querySelectorAll('[data-len]').forEach(el=>el.onclick=()=>{ const v=+el.dataset.len;
+    if(el.dataset.which==='ha')S.haLen=v; else S.naLen=v; render(); });
+  document.querySelectorAll('[data-ballast]').forEach(el=>el.onclick=()=>{ S.ballastIdx=+el.dataset.ballast; render(); });
+  document.querySelectorAll('[data-lastort]').forEach(el=>el.onclick=()=>{ if(!el.disabled){ S.lastort=el.dataset.lastort; render(); }});
+  document.querySelectorAll('[data-einsch]').forEach(el=>el.onclick=()=>{ const d=+el.dataset.einsch;
+    if(S.lastort==='HA')S.einscherHA=Math.max(D.einscherung.HA.min,Math.min(D.einscherung.HA.max,S.einscherHA+d));
+    else S.einscherNA=Math.max(D.einscherung.NA.min,Math.min(D.einscherung.NA.max,S.einscherNA+d)); render(); });
+}
+function goNext(){ let i=S.step+1; while(i<STEPS.length && !STEPS[i].show()) i++; S.step=Math.min(i,STEPS.length-1); render(); }
+function goPrev(){ let i=S.step-1; while(i>0 && !STEPS[i].show()) i--; S.step=Math.max(i,0); render(); }
+
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && (S.open||EMBED)) closeDialog(); });
+
+// Embed: App kann eine bestehende Konfiguration zum Vorbelegen schicken.
+window.addEventListener('message', e=>{
+  if(e.data && e.data.type==='konfig:init'){
+    Object.assign(S, freshWork(), e.data.config||{}, {step:0, open:true}); render();
+  }
+});
+
+if(EMBED){ document.documentElement.classList.add('cfg-embed'); Object.assign(S,{step:0,open:true}); }
+render();
+</script>
+</body>
+</html>

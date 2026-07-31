@@ -1,0 +1,932 @@
+{
+  "_note": "Statisch aus compositions.json + Manual-Tabellen 316/317/326/351/353/1916 extrahiert. Demo: LR 1200.1.",
+  "machine": {
+    "series": "LR 1200.1",
+    "manualVersion": "DE 04/2025"
+  },
+  "konfigurationen": [
+    {
+      "id": "K1",
+      "kurz": "Hauptausleger",
+      "lang": "Nur Hauptausleger",
+      "schema": "HA",
+      "nadel": null,
+      "quelle": "Auslegerkonfiguration 1"
+    },
+    {
+      "id": "K3",
+      "kurz": "HA + fester Nadelausleger",
+      "lang": "Hauptausleger + feststehender Nadelausleger",
+      "schema": "HA+NF",
+      "nadel": "fest",
+      "nadelTabelle": "Tab. 326",
+      "quelle": "Auslegerkonfiguration 3"
+    },
+    {
+      "id": "K5",
+      "kurz": "HA + verstellbarer Nadelausleger",
+      "lang": "Hauptausleger + verstellbarer Nadelausleger",
+      "schema": "HA+NV",
+      "nadel": "verstellbar",
+      "nadelTabelle": "Tab. 1916",
+      "quelle": "Auslegerkonfiguration 5"
+    }
+  ],
+  "hauptausleger": {
+    "tabelle": "Tab. 317",
+    "kopf": "2320",
+    "quelle": "ID_b5716b5ce6e944e38c482963a52291e4-a422b6dbc30f469e887cd80036c20b00-de-DE.html",
+    "laengen": [
+      {
+        "m": 20,
+        "segmente": [
+          10,
+          3,
+          7
+        ]
+      },
+      {
+        "m": 23,
+        "segmente": [
+          10,
+          6,
+          7
+        ]
+      },
+      {
+        "m": 26,
+        "segmente": [
+          10,
+          3,
+          6,
+          7
+        ]
+      },
+      {
+        "m": 29,
+        "segmente": [
+          10,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 32,
+        "segmente": [
+          10,
+          3,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 35,
+        "segmente": [
+          10,
+          6,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 38,
+        "segmente": [
+          10,
+          3,
+          6,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 41,
+        "segmente": [
+          10,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 44,
+        "segmente": [
+          10,
+          3,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 47,
+        "segmente": [
+          10,
+          6,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 50,
+        "segmente": [
+          10,
+          3,
+          6,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 53,
+        "segmente": [
+          10,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 56,
+        "segmente": [
+          10,
+          3,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 59,
+        "segmente": [
+          10,
+          6,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 62,
+        "segmente": [
+          10,
+          3,
+          6,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 65,
+        "segmente": [
+          10,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 68,
+        "segmente": [
+          10,
+          3,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 71,
+        "segmente": [
+          10,
+          6,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 74,
+        "segmente": [
+          10,
+          3,
+          6,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 77,
+        "segmente": [
+          10,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 80,
+        "segmente": [
+          10,
+          3,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 83,
+        "segmente": [
+          10,
+          6,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 86,
+        "segmente": [
+          10,
+          3,
+          6,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      },
+      {
+        "m": 89,
+        "segmente": [
+          10,
+          12,
+          12,
+          12,
+          12,
+          12,
+          12,
+          7
+        ]
+      }
+    ]
+  },
+  "nadelausleger": {
+    "fest": {
+      "tabelle": "Tab. 326",
+      "quelle": "ID_cc614935c8e84afd9900d42bfa41e3ef-394c0977c6c34d009157871728fa228f-de-DE.html",
+      "laengen": [
+        {
+          "m": 20,
+          "segmente": [
+            7,
+            6,
+            7
+          ]
+        },
+        {
+          "m": 23,
+          "segmente": [
+            7,
+            3,
+            6,
+            7
+          ]
+        },
+        {
+          "m": 26,
+          "segmente": [
+            7,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 29,
+          "segmente": [
+            7,
+            3,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 32,
+          "segmente": [
+            7,
+            6,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 35,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 38,
+          "segmente": [
+            7,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 41,
+          "segmente": [
+            7,
+            3,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 44,
+          "segmente": [
+            7,
+            6,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 47,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 50,
+          "segmente": [
+            7,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 53,
+          "segmente": [
+            7,
+            3,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 56,
+          "segmente": [
+            7,
+            6,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 59,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 62,
+          "segmente": [
+            7,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 65,
+          "segmente": [
+            7,
+            3,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 68,
+          "segmente": [
+            7,
+            6,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 71,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 74,
+          "segmente": [
+            7,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 77,
+          "segmente": [
+            7,
+            3,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 80,
+          "segmente": [
+            7,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 83,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        }
+      ]
+    },
+    "verstellbar": {
+      "tabelle": "Tab. 1916",
+      "quelle": "ID_87859235907d440bb8d445d3bc517207-d10cf8fc70314f35a313c6e5c7939931-de-DE.html",
+      "laengen": [
+        {
+          "m": 20,
+          "segmente": [
+            7,
+            6,
+            7
+          ]
+        },
+        {
+          "m": 23,
+          "segmente": [
+            7,
+            3,
+            6,
+            7
+          ]
+        },
+        {
+          "m": 26,
+          "segmente": [
+            7,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 29,
+          "segmente": [
+            7,
+            3,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 32,
+          "segmente": [
+            7,
+            6,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 35,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 38,
+          "segmente": [
+            7,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 41,
+          "segmente": [
+            7,
+            3,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 44,
+          "segmente": [
+            7,
+            6,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 47,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 50,
+          "segmente": [
+            7,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 53,
+          "segmente": [
+            7,
+            3,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 56,
+          "segmente": [
+            7,
+            6,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 59,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 62,
+          "segmente": [
+            7,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 65,
+          "segmente": [
+            7,
+            3,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 68,
+          "segmente": [
+            7,
+            6,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 71,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 74,
+          "segmente": [
+            7,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 77,
+          "segmente": [
+            7,
+            3,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 80,
+          "segmente": [
+            7,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 83,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 86,
+          "segmente": [
+            7,
+            12,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 89,
+          "segmente": [
+            7,
+            3,
+            12,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 92,
+          "segmente": [
+            7,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        },
+        {
+          "m": 95,
+          "segmente": [
+            7,
+            3,
+            6,
+            12,
+            12,
+            12,
+            12,
+            12,
+            12,
+            7
+          ]
+        }
+      ]
+    }
+  },
+  "ballast": {
+    "tabelle": "Tab. 316",
+    "quelle": "ID_81b6769fff66438bac93810871f4d601-06664b48d07c24140a1e9aa5133f1e37-de-DE.html",
+    "voraussetzung": "Breite Spur · Oberwagen parallel zu Raupenträgern",
+    "stufen": [
+      {
+        "heck": 0,
+        "zentral": 0,
+        "drehung": "360°"
+      },
+      {
+        "heck": 0,
+        "zentral": 20,
+        "drehung": "360°"
+      },
+      {
+        "heck": 12,
+        "zentral": 0,
+        "drehung": "360°",
+        "hinweis": "A"
+      },
+      {
+        "heck": 22.3,
+        "zentral": 0,
+        "drehung": "360°",
+        "hinweis": "B,C"
+      },
+      {
+        "heck": 32.3,
+        "zentral": 0,
+        "drehung": "360°",
+        "hinweis": "B,C"
+      },
+      {
+        "heck": 42.3,
+        "zentral": 0,
+        "drehung": "360°",
+        "hinweis": "B"
+      },
+      {
+        "heck": 52.3,
+        "zentral": 0,
+        "drehung": "360°",
+        "hinweis": "B"
+      },
+      {
+        "heck": 62.3,
+        "zentral": 0,
+        "drehung": "360°",
+        "hinweis": "B"
+      },
+      {
+        "heck": 72.3,
+        "zentral": 0,
+        "drehung": "360°",
+        "hinweis": "B"
+      },
+      {
+        "heck": 82.3,
+        "zentral": 0,
+        "drehung": "360°",
+        "hinweis": "B"
+      }
+    ],
+    "hinweise": {
+      "A": "Kann während des Aufbaus des Grundgerätes auftreten – kein zulässiger Rüstzustand.",
+      "B": "Montagematerial wird mit 300 kg (661 lb) mitgerechnet.",
+      "C": "Nur zulässig, wenn der A-Bock1 so weit vorne ist, dass die Platten der A-Bock1-Zylinder abheben."
+    }
+  },
+  "einscherung": {
+    "HA": {
+      "lastort": "Lastort 2",
+      "kopf": "Hauptausleger-Kopf 2320",
+      "min": 1,
+      "max": 20,
+      "tabelle": "Tab. 353",
+      "quelle": "ID_d338030051fc4424b374226a935e8621-42bd62f26ea495440a1e9aa5130bd5d8-de-DE.html"
+    },
+    "NA": {
+      "lastort": "Nadelausleger-Kopf",
+      "kopf": "Nadelausleger-Kopf 1916",
+      "min": 1,
+      "max": 6,
+      "tabelle": "Tab. 351",
+      "quelle": "ID_7fca8ef227824be1a744a22bab06ff3a-5f3c1c8b6a11a9630a1e9aa5.html"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "_info": "Such-Synonyme (Hebel C): Nutzer-Vokabular -> Manual-Vokabular. Wird in backend/search.py als Query-Expansion genutzt (BM25 + Semantik). Manuell pflegbar.",
+  "_regeln": [
+    "Schluessel = Wort, das Nutzer sagen (kleingeschrieben, Einzelwort).",
+    "Werte = Begriffe, die im Manual tatsaechlich vorkommen (mit 'python -m backend.validate_vocab' oder Grep pruefen).",
+    "Additiv: das Originalwort bleibt in der Query, die Synonyme kommen dazu.",
+    "Nur echte Wortschatz-Luecken pflegen (Nutzerwort steht NICHT im Manual), sonst verwaessert es die Suche."
+  ],
+  "synonyms": {
+    "meisterschalter": ["bedienhebel", "kreuz-bedienhebel"],
+    "steuerhebel": ["bedienhebel", "kreuz-bedienhebel"],
+    "steuerknüppel": ["bedienhebel", "kreuz-bedienhebel"],
+    "joystick": ["bedienhebel", "kreuz-bedienhebel"],
+    "vorwählen": ["einschalten"],
+    "vorwahl": ["einschalten"],
+    "aktivieren": ["einschalten"]
+  }
+}

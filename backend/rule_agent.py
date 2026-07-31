@@ -94,7 +94,7 @@ _CLARIFICATION_RULES: list[tuple[list[str], list[str], str]] = [
         "Welche Gesamt-Auslegerlänge und welche Auslegervariante (Hauptausleger / Nadelausleger) benötigen Sie?",
     ),
     (
-        ["einscherplan", "einscherpläne", "einscheren", "einscherung wählen"],
+        ["einscheren", "einscherung wählen"],
         ["einscherung", "fach", "winde", "lastort"],
         "Wie viele Einscherungen (z. B. 4-fach) und welcher Lastort (Hauptausleger-Kopf / Nadelausleger-Kopf)?",
     ),
@@ -114,6 +114,22 @@ def _needs_clarification(question: str, context: str) -> str | None:
     q_low = question.lower()
     has_length = bool(re.search(r"\d+\s*m\b", combined))
     has_einsch = bool(re.search(r"\d+\s*-?\s*fach|\b\d+\s*x\b", combined))
+
+    # Einscherplan-Disambiguierung: mehrere gültige Seiten unterscheiden sich nach
+    # Auslegerkomponente (Haupt-/Nadelausleger-Sektion) und Lastort (1 = nur
+    # Hauptausleger-Kopf, 2 = Hauptausleger-Kopf bei angebautem Nadelausleger).
+    # Fehlt die Angabe, ist die Rückfrage das richtige Verhalten (nicht raten).
+    # Bewusst FRAGE-basiert (nicht Kontext), damit ein aktives Konfig-Feld die
+    # Rückfrage nicht verdeckt. Erst Ausleger, dann Lastort.
+    if re.search(r"einscherpl[aä]n", q_low):
+        q_component = "hauptausleger" in q_low or "nadelausleger" in q_low
+        q_lastort = bool(re.search(r"lastort\s*[12]\b", q_low))
+        if not q_component:
+            return ("Für welchen Ausleger ist der Einscherplan gemeint — "
+                    "Hauptausleger oder Nadelausleger?")
+        if "hauptausleger" in q_low and not q_lastort:
+            return ("Für welchen Lastort — Lastort 1 (Last nur über den Hauptausleger-Kopf) "
+                    "oder Lastort 2 (Hauptausleger-Kopf bei angebautem Nadelausleger)?")
 
     # Wert-/Tabellenfrage → Auslegerlänge UND Einscherung nötig (Zeile × Spalte).
     if any(t in q_low for t in _VALUE_TABLE_TRIGGERS):

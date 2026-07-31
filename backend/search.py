@@ -36,6 +36,7 @@ COMPOSITIONS   = _ROOT / "data" / "compositions.json"
 
 _EMB_NPY = _ROOT / "data" / "embeddings.npy"
 _EMB_IDS = _ROOT / "data" / "embedding_ids.json"
+SYNONYMS_PATH  = _ROOT / "data" / "search_synonyms.json"
 
 # ---------------------------------------------------------------------------
 # Tokenization
@@ -48,6 +49,18 @@ _STOPWORDS_DE = {
     "nicht", "kein", "keine", "bei", "mit", "von", "aus", "nach", "vor",
     "über", "unter", "durch", "für", "ohne", "gegen", "bis", "seit",
     "noch", "auch", "schon", "nur", "sehr", "mehr", "alle", "hier",
+}
+
+# Generische Aktions-/Bedienverben: sehr hohe Dokumentfrequenz (>7 % der Seiten),
+# praktisch kein Unterscheidungswert. Sie erzeugen Fehltreffer, wenn eine Frage
+# nur über das Verb matcht — z. B. „Seile *wählen*" bei „Wie *wähle* ich …?" oder
+# „*Fahren* über Geländekuppe" bei „Mit welchem Schalter *fahre* ich …?".
+# Werden – wie Stoppwörter – aus Query UND Index-Tokens gefiltert. Kuratiert &
+# erweiterbar; enthält die Flexionsformen UND die vom leichten Stemmer erzeugten
+# Stämme ("wahl"/"fahr"), sonst bliebe die Stamm-Brücke bestehen.
+_GENERIC_VERBS = {
+    "wählen", "wähle", "wählt", "wählst", "gewählt", "wahl",   # wählen (+ Stamm)
+    "fahren", "fahre", "fahrst", "gefahren", "fahr",           # fahren (+ Stamm)
 }
 
 
@@ -91,13 +104,15 @@ def _tokenize(text: str) -> list[str]:
     def _add(tok: str) -> None:
         result.append(tok)
         # Stammform nur für alphabetische Tokens (keine Zahlen/Einheiten), additiv.
+        # Generische-Verb-Stämme (wahl/fahr) werden NICHT emittiert, sonst würde
+        # z. B. „Fahrer" über den Stamm „fahr" doch wieder als Verb matchen.
         if tok.isalpha():
             stem = _stem_de(tok)
-            if stem != tok:
+            if stem != tok and stem not in _GENERIC_VERBS:
                 result.append(stem)
 
     for t in raw:
-        if len(t) <= 1 or t in _STOPWORDS_DE:
+        if len(t) <= 1 or t in _STOPWORDS_DE or t in _GENERIC_VERBS:
             continue
         _add(t)
         m = _UNIT_RE.match(t)
@@ -446,6 +461,166 @@ def _rrf(rankings: list[list[tuple[str, float]]]) -> dict[str, float]:
     return scores
 
 
+# ── Seltene-Wort-Bonus (Hebel A) ─────────────────────────────────────────────
+# Kandidaten, die ein SELTENES (distinktives) Frage-Wort wörtlich enthalten,
+# werden angehoben. Fängt den Fall ab, dass ein klarer Schlüsselbegriff (z. B.
+# „Lastort", ~2,5 % der Seiten) in der flachen RRF-Fusion gegen semantische
+# Fast-Duplikate untergeht. RRF verwirft die Trefferstärke — dieser Bonus holt
+# sie gezielt für seltene Begriffe zurück. Alles per Env kalibrierbar (1.0 = aus).
+_RARE_TERM_BOOST   = float(os.environ.get("SEARCH_RARE_TERM_BOOST", "1.6"))
+_RARE_TERM_IDF_MIN = float(os.environ.get("SEARCH_RARE_TERM_IDF_MIN", "3.0"))  # ~ df ≤ 5 %
+# Obergrenze: Wörter in nur 1–2 Seiten (IDF > ~6) sind meist OCR-/Frageartefakte
+# („welches", „konfigurieren"), keine distinktiven Sachbegriffe → nicht boosten.
+_RARE_TERM_IDF_MAX = float(os.environ.get("SEARCH_RARE_TERM_IDF_MAX", "6.0"))  # ~ df ≥ 4
+_RARE_TERM_MAX     = int(os.environ.get("SEARCH_RARE_TERM_MAX", "3"))          # nur die K seltensten
+
+# Frage-/Funktionswörter, die im TECHNISCHEN Korpus selten sind (Interrogativa,
+# generische Verben/Adverbien), aber keinen Sachbezug tragen — sonst würden sie
+# als „seltenes Wort" Seiten anheben, die zufällig „welcher"/„konfigurieren"
+# enthalten. Nur für den Seltene-Wort-Picker (kein globaler BM25-Eingriff).
+_RARE_TERM_STOP = {
+    "welch", "welche", "welcher", "welches", "welchem", "welchen",
+    "wo", "wohin", "woher", "womit", "wodurch", "warum", "wann", "wieso", "weshalb",
+    "konfigurieren", "konfiguriere", "einstellen", "einstelle", "vorwählen",
+    "mindestens", "höchstens", "maximal", "minimal", "benötige", "brauche",
+}
+
+
+def _rare_query_terms(query: str) -> list[str]:
+    """Distinktive (seltene) Sachwörter der Frage — Seltenheit aus der BM25-IDF
+    des Index (kein Themen-Hardcoding, sprachunabhängige Mechanik).
+
+    Alphabetische Tokens ≥4 Zeichen im IDF-Fenster [MIN, MAX]; die K seltensten.
+    Ausgeschlossen: Interrogativa/generische Frage-Verben (_RARE_TERM_STOP) sowie
+    – über die Fenster-Obergrenze – 1–2-Seiten-Artefakte. Wörter außerhalb des
+    Korpus (IDF 0, z. B. „Meisterschalter") sind KEINE seltenen Treffer → Hebel C.
+
+    Bewusst KEINE Großschreibungs-Heuristik: die Manuals (und damit Fragen) können
+    in Sprachen ohne Substantiv-Großschreibung vorliegen. Ein gelegentlich
+    mitgezogenes generisches Wort ist unkritisch, weil der Bonus binär ist und nur
+    bereits gefundene Kandidaten anhebt (die Basis-Relevanz rankt darunter weiter)."""
+    if _bm25 is None:
+        return []
+    idf = getattr(_bm25, "idf", {})
+    toks = {t for t in _tokenize(query)
+            if t.isalpha() and len(t) >= 4 and t not in _RARE_TERM_STOP}
+    rare = [t for t in toks if _RARE_TERM_IDF_MIN <= idf.get(t, 0.0) <= _RARE_TERM_IDF_MAX]
+    rare.sort(key=lambda t: idf.get(t, 0.0), reverse=True)
+    return rare[:_RARE_TERM_MAX]
+
+
+# ── Synonym-/Query-Expansion (Hebel C) ───────────────────────────────────────
+# Schließt Wortschatz-Lücken zwischen Nutzer- und Manual-Vokabular: „Meisterschalter"
+# steht in 0 Seiten, das Manual sagt „Bedienhebel"/„Kreuz-Bedienhebel". Die Frage
+# wird vor der Suche um die passenden Manual-Begriffe ergänzt — davon profitieren
+# BM25 UND Semantik. Kuratiert & manuell pflegbar in data/search_synonyms.json.
+_SYNONYMS: dict[str, list[str]] | None = None
+
+
+def _load_synonyms() -> dict[str, list[str]]:
+    global _SYNONYMS
+    if _SYNONYMS is not None:
+        return _SYNONYMS
+    try:
+        data = json.loads(SYNONYMS_PATH.read_text(encoding="utf-8"))
+        raw = data.get("synonyms", {}) if isinstance(data, dict) else {}
+        _SYNONYMS = {str(k).lower(): [str(x).lower() for x in v]
+                     for k, v in raw.items() if isinstance(v, list)}
+    except Exception:
+        _SYNONYMS = {}   # Datei optional — ohne sie einfach keine Expansion
+    return _SYNONYMS
+
+
+def _expand_synonyms(query: str) -> str:
+    """Ergänzt die Query um kuratierte Manual-Synonyme, wenn ein Schlüsselwort
+    vorkommt. Additiv (Original bleibt), damit exakte Treffer stark bleiben."""
+    syn = _load_synonyms()
+    if not syn:
+        return query
+    toks = set(_tokenize(query))
+    extra: list[str] = []
+    for key, vals in syn.items():
+        if key in toks:
+            extra.extend(vals)
+    if not extra:
+        return query
+    extra = list(dict.fromkeys(extra))
+    logger.info("Synonym-Expansion: %s", extra)
+    return query + " " + " ".join(extra)
+
+
+# ── Stub-/Kanonik-Unterscheidung (Hebel D) ───────────────────────────────────
+# Kurze Verweis-Seiten („… Weitere Informationen siehe: …") sind fast reine
+# Pointer ohne Sachinhalt. BM25 bevorzugt sie (kurzes Dokument → hoher Score pro
+# Term), sodass bei GLEICHNAMIGEN Seiten der Stub die inhaltliche Kanonik-Seite
+# aus der Titel-Deduplizierung verdrängt. Solche Seiten werden abgewertet, damit
+# die substanzielle Seite gewinnt. Signal: wenig Inhalt UND Verweismuster
+# (sprachrobust: primär die Wortzahl, das Verweiswort als Bestätigung). 1.0 = aus.
+_STUB_PENALTY   = float(os.environ.get("SEARCH_STUB_PENALTY", "0.5"))
+_STUB_MAX_WORDS = int(os.environ.get("SEARCH_STUB_MAX_WORDS", "18"))
+_STUB_REF_RE = re.compile(
+    r"weitere informationen siehe|\(siehe|siehe:|→\s*siehe|\bsee also\b|voir aussi|véase|vedi",
+    re.I,
+)
+
+
+def _is_stub(entry: dict) -> bool:
+    """Kurze Verweis-/Pointer-Seite: wenig Inhalt (≤ _STUB_MAX_WORDS Wörter) UND
+    ein „siehe …"-Verweismuster."""
+    wc = entry.get("word_count")
+    if not isinstance(wc, int) or wc <= 0:
+        wc = len((entry.get("text") or "").split())
+    if wc > _STUB_MAX_WORDS:
+        return False
+    return bool(_STUB_REF_RE.search(entry.get("text", "") or ""))
+
+
+# ── Komponenten-Scope-Abgleich (Hebel E) ─────────────────────────────────────
+# Nennt die Frage genau EINE Auslegerkomponente (Hauptausleger XOR Nadelausleger),
+# werden Kandidaten abgewertet, deren Breadcrumb-SEKTION (ohne den Seitentitel)
+# unter der NICHT genannten Komponente liegt. Beispiel: „Einscherplan am
+# Hauptausleger" → die (Lastort-2-)Kopien unter „… Nadelausleger …" werden
+# zurückgestuft, die HA-Sektion-Seite (Lastort 1) steigt. Generisch. 1.0 = aus.
+_COMPONENT_PENALTY = float(os.environ.get("SEARCH_COMPONENT_PENALTY", "0.6"))
+
+
+def _query_component(query: str) -> str | None:
+    ql = query.lower()
+    ha = "hauptausleger" in ql
+    na = "nadelausleger" in ql
+    if ha and not na:
+        return "hauptausleger"
+    if na and not ha:
+        return "nadelausleger"
+    return None
+
+
+def _under_other_component(entry: dict, comp: str) -> bool:
+    """True, wenn die Seite unter der ANDEREN Komponente liegt UND selbst nicht von
+    der gefragten handelt. Titel-bewusst: eine Seite „…Hauptausleger-Kopf … (Lastort 2)"
+    handelt vom Hauptausleger, auch wenn sie unter einer Nadelausleger-Sektion
+    abgelegt ist — sie darf bei einer Hauptausleger-Frage NICHT abgewertet werden."""
+    if comp in (entry.get("title") or "").lower():
+        return False
+    other = "nadelausleger" if comp == "hauptausleger" else "hauptausleger"
+    ancestors = " ".join((entry.get("breadcrumb") or [])[:-1]).lower()
+    return other in ancestors and comp not in ancestors
+
+
+# ── Lastort-Varianten-Scope (Hebel F) ────────────────────────────────────────
+# Nennt die Frage einen konkreten Lastort (z. B. Followup „Lastort 2"), werden
+# Kandidaten mit einem ANDEREN „Lastort M" im Titel abgewertet. Nötig, weil die
+# reine Ziffer (1/2) als 1-Zeichen-Token wegfällt und BM25 „Lastort 1" und
+# „Lastort 2" sonst nicht unterscheiden kann. 1.0 = aus.
+_LASTORT_PENALTY = float(os.environ.get("SEARCH_LASTORT_PENALTY", "0.4"))
+_LASTORT_RE = re.compile(r"lastort\s*(\d+)", re.I)
+
+
+def _query_lastort(query: str) -> str | None:
+    m = _LASTORT_RE.search(query)
+    return m.group(1) if m else None
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -466,6 +641,8 @@ def search(
     """
     if not query.strip():
         return []
+
+    query = _expand_synonyms(query)   # Hebel C: Nutzer- → Manual-Vokabular
 
     index = _load_index(metadata_path, content_path)
     index_by_filename = {e["filename"]: e for e in index}
@@ -497,6 +674,70 @@ def search(
                 entry = index_by_filename.get(fname)
                 if entry and _page_matches_query_doctype(entry.get("title", ""), q_terms):
                     rrf_scores[fname] *= _DOCTYPE_BOOST
+
+    # Seltene-Wort-Bonus (Hebel A): Kandidaten, die ein seltenes Frage-Wort
+    # WÖRTLICH enthalten, bekommen einen festen Boost. Bewusst binär (nicht nach
+    # Trefferstärke gewichtet), damit eine themenfremde Seite mit dem Wort im Titel
+    # (z. B. „Einscherpläne … (Lastort 2)") nicht stärker angehoben wird als die
+    # eigentlich passende Seite — unter den geboosteten Seiten entscheidet weiter
+    # die Basis-Relevanz (RRF). Wirkt nur auf bereits gefundene Kandidaten.
+    rare_terms = _rare_query_terms(query) if _RARE_TERM_BOOST != 1.0 else []
+    if rare_terms:
+        boosted: set[str] = set()
+        for t in rare_terms:
+            scores = _bm25.get_scores([t])
+            for i, s in enumerate(scores):
+                if s > 0:
+                    fname = _bm25_filenames[i]
+                    if fname in rrf_scores:
+                        boosted.add(fname)
+        for fname in boosted:
+            rrf_scores[fname] *= _RARE_TERM_BOOST
+        logger.info("Seltene-Wort-Bonus (×%.2f) für %s → %d Kandidat(en) angehoben",
+                    _RARE_TERM_BOOST, rare_terms, len(boosted))
+
+    # Stub-Abwertung (Hebel D): kurze Verweis-Seiten zurückstufen, damit bei
+    # gleichnamigen Seiten die inhaltliche Kanonik-Seite die Titel-Dedup gewinnt.
+    if _STUB_PENALTY != 1.0:
+        n_stub = 0
+        for fname in rrf_scores:
+            entry = index_by_filename.get(fname)
+            if entry and _is_stub(entry):
+                rrf_scores[fname] *= _STUB_PENALTY
+                n_stub += 1
+        if n_stub:
+            logger.info("Stub-Abwertung (×%.2f) für %d Verweis-Seite(n)", _STUB_PENALTY, n_stub)
+
+    # Komponenten-Scope (Hebel E): Seiten unter der nicht gefragten Auslegerkomponente
+    # zurückstufen (z. B. Nadelausleger-Sektion bei einer Hauptausleger-Frage).
+    if _COMPONENT_PENALTY != 1.0:
+        comp = _query_component(query)
+        if comp:
+            n_comp = 0
+            for fname in rrf_scores:
+                entry = index_by_filename.get(fname)
+                if entry and _under_other_component(entry, comp):
+                    rrf_scores[fname] *= _COMPONENT_PENALTY
+                    n_comp += 1
+            if n_comp:
+                logger.info("Komponenten-Scope (%s): %d Seite(n) unter anderer Komponente abgewertet",
+                            comp, n_comp)
+
+    # Lastort-Varianten-Scope (Hebel F): bei explizitem „Lastort N" die Seiten mit
+    # abweichendem Lastort im Titel zurückstufen (die Ziffer allein matcht nicht).
+    if _LASTORT_PENALTY != 1.0:
+        lo = _query_lastort(query)
+        if lo:
+            n_lo = 0
+            for fname in rrf_scores:
+                entry = index_by_filename.get(fname)
+                m = _LASTORT_RE.search(entry.get("title", "")) if entry else None
+                if m and m.group(1) != lo:
+                    rrf_scores[fname] *= _LASTORT_PENALTY
+                    n_lo += 1
+            if n_lo:
+                logger.info("Lastort-Scope (Lastort %s): %d Seite(n) mit anderem Lastort abgewertet",
+                            lo, n_lo)
 
     sorted_filenames = sorted(rrf_scores, key=rrf_scores.get, reverse=True)
 
